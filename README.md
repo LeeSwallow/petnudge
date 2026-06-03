@@ -21,6 +21,7 @@ Lo-fi BGM이 흐르는 픽셀 공부방에서 AI 캐릭터와 함께 뽀모도�
 - `docs/pixel-art-production-workflow.md` — 픽셀아트 asset 제작, 조명 layer, cleanup, mobile export 워크플로우
 - `docs/comfyui-pixel-workflow.md` — ComfyUI 기반 reference/variant/lighting/asset 후보 생성 파이프라인
 - `docs/video-generation-prompts.md` — focus→break 전이, reward dialogue, break idle, planner/timer 영상 생성 프롬프트 모음
+- `docs/video-generation-prompts-veo.md` — Google Veo용 자연어 콘티형 영상 생성 프롬프트
 - `apps/mobile/` — Expo/React Native 모바일 mock foundation: scene state, mock layer registry, planner/timer/dialogue 구조
 - `.github/` — issue/PR 템플릿
 - `github-labels.md` — GitHub lane/status/type/priority label 생성 명령
