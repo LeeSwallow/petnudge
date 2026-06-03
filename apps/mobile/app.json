@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "name": "Lofi Study Companion Mock",
+    "slug": "lofi-study-companion-mock",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "assetBundlePatterns": ["**/*"],
+    "ios": { "supportsTablet": false },
+    "android": { "adaptiveIcon": { "backgroundColor": "#17142c" } }
+  }
+}
