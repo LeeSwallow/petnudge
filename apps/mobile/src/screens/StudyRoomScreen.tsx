@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { DialoguePanel } from '../components/DialoguePanel';
-import { MockPixelScene } from '../components/MockPixelScene';
+import { SkiaStudyRoomScene } from '../components/SkiaStudyRoomScene';
 import { PlannerPanel } from '../components/PlannerPanel';
 import type { SceneState } from '../domain/scene';
 import {
@@ -36,7 +36,7 @@ export function StudyRoomScreen() {
         <Text style={styles.subtitle}>mobile mock · future Skia layers</Text>
       </View>
 
-      <MockPixelScene scene={scene} />
+      <SkiaStudyRoomScene scene={scene} />
 
       <View style={styles.bottom}>
         {isPlannerVisible(scene) ? (
