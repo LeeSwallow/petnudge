@@ -1,8 +1,8 @@
-# PixCompanion: 레이어드 엔진 아키텍처와 데스크톱 배포
+# Study Companion: 레이어드 엔진 아키텍처와 데스크톱 배포
 
 ## 목표
 
-Study Companion Pet(데스크톱)을 **PixCompanion** — 마감을 알고 먼저 말을 거는 픽셀 캐릭터 할 일 컴패니언 — 로 전환한다. 이를 위해:
+Study Companion Pet(데스크톱)을 **Study Companion** — 마감을 알고 먼저 말을 거는 픽셀 캐릭터 할 일 컴패니언 — 로 전환한다. 이를 위해:
 
 1. 흩어진 IPC 채널·타이머·`main.ts` 로직을 **core 엔진(action / event / query / scheduler) + 레이어드 구조**로 표준화한다.
 2. 할 일에 마감·리마인더·반복을 더하고, 리마인더에서 바로 뽀모도로로 이어지는 흐름을 만든다.
@@ -15,7 +15,7 @@ Study Companion Pet(데스크톱)을 **PixCompanion** — 마감을 알고 먼�
 | 출시 대상 | 데스크톱만 (macOS arm64·x64, Windows x64). 모바일 출시 없음 |
 | 제품 정체성 | 리마인더형 비서. 할 일(리마인더) + 뽀모도로가 주력 |
 | 모듈 위치 | 주력: todos, reminders, pomodoro / 유지: notes, dashboard, chat(AI) / 선택(기본 꺼짐): music |
-| 앱 이름 | PixCompanion (`appId: com.leeswallow.pixcompanion`) |
+| 앱 이름 | Study Companion (`appId: com.studycompanion.pet` 유지) |
 | 배포처 | GitHub Releases만. itch.io는 CI 단계 추가로 나중에 붙일 수 있게 둔다 |
 | 서명 | 공증 없이 출시(최소 ad-hoc). CI secret에 인증서를 넣으면 서명·공증이 켜지게 설정 |
 | `apps/mobile` | 사용 중인 도메인 코드를 데스크톱으로 옮긴 뒤 삭제 커밋 |
@@ -31,7 +31,7 @@ Study Companion Pet(데스크톱)을 **PixCompanion** — 마감을 알고 먼�
 
 ## 경쟁 제품 대비 위치
 
-픽셀 펫 + 뽀모도로 조합은 이미 있다(Desktop Pet by glitchedinorbit, PixPet, Mac Pet). PixCompanion의 차별점은 **마감 기반으로 먼저 말을 거는 캐릭터**, **자연어로 할 일·리마인더 생성**, **리마인더 → 뽀모도로 연결**, **mac/win 동시 지원**이다. 설계의 무게중심은 그래서 스케줄러와 리마인더에 있다.
+픽셀 펫 + 뽀모도로 조합은 이미 있다(Desktop Pet by glitchedinorbit, PixPet, Mac Pet). Study Companion의 차별점은 **마감 기반으로 먼저 말을 거는 캐릭터**, **자연어로 할 일·리마인더 생성**, **리마인더 → 뽀모도로 연결**, **mac/win 동시 지원**이다. 설계의 무게중심은 그래서 스케줄러와 리마인더에 있다.
 
 ## 1. 레이어 구조
 
@@ -238,7 +238,7 @@ CREATE TABLE reminders (
 
 ### 이름 변경과 데이터 이전
 
-- `productName: "PixCompanion"`, `appId: "com.leeswallow.pixcompanion"`.
+- `productName: "Study Companion"`. `appId`는 기존 `com.studycompanion.pet`을 유지해 OS가 같은 앱의 업데이트로 인식하게 한다.
 - 이름이 바뀌면 `userData` 경로가 바뀐다. 첫 실행 시 새 경로에 DB가 없고 옛 경로(`Study Companion Pet`)에 있으면 DB·mods·characters를 복사한다. 원본은 지우지 않는다.
 
 ### 파이프라인 (`.github/workflows/release.yml`)
@@ -253,7 +253,7 @@ CREATE TABLE reminders (
 - `electron-updater`가 GitHub Releases를 확인한다(시작 시 + 6시간마다, 스케줄러 job으로).
 - 새 버전이 있으면 캐릭터가 알려주고 사용자가 동의하면 내려받아 재시작 시 설치한다.
 - macOS 자동 업데이트는 서명된 앱에서만 동작하므로, 미서명 빌드에서는 "새 버전이 있어요" 알림과 Release 페이지 링크만 보여준다.
-- 빌드 시 `PIXCOMPANION_CHANNEL`(`github` 기본, 나중에 `itch`)을 주입해 배포처별로 업데이트 동작을 고른다.
+- 빌드 시 `STUDY_COMPANION_CHANNEL`(`github` 기본, 나중에 `itch`)을 주입해 배포처별로 업데이트 동작을 고른다.
 
 ## 7. 테스트
 
@@ -275,6 +275,6 @@ CREATE TABLE reminders (
 | 2 | `mobile` 도메인 코드를 `domain/`으로 이동, `apps/mobile` 삭제 |
 | 3 | 모듈 이전: todos → pomodoro → notes → dashboard → chat/AI·MCP 도구 → music → pet·characters·mods·friends·settings·backup. `main.ts` 분해, legacy 어댑터 제거 |
 | 4 | 리마인더: 마감·알림·반복, 말풍선 액션, 놓친 알림, 트레이, 자동 실행, 리마인더→뽀모도로 |
-| 5 | PixCompanion 이름 변경·데이터 이전, release workflow, electron-updater, 첫 공개 빌드 `v0.2.0` |
+| 5 | Study Companion 이름 변경·데이터 이전, release workflow, electron-updater, 첫 공개 빌드 `v0.2.0` |
 
 plan은 단계별로 쓴다. 1~2단계 plan을 먼저 쓰고, 3단계 이후는 앞 단계 결과를 반영해 그때 쓴다.
