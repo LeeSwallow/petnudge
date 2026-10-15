@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and ideas
+    url: https://github.com/LeeSwallow/petnudge/discussions
+    about: How do I...? Ideas start here, then become issues.
+  - name: A security problem
+    url: https://github.com/LeeSwallow/petnudge/security/advisories/new
+    about: Report it privately, not as an issue. See SECURITY.md.

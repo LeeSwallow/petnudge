@@ -1,0 +1,20 @@
+#!/bin/sh
+# commit-msg: take AI tools out of the commit's authors.
+#
+# A coding agent may end a commit message with a Co-Authored-By line naming
+# itself, or a "Generated with" line. Git and GitHub read every
+# Co-Authored-By name as an author, and an AI tool is not one: the person
+# who commits is responsible for the change. This hook removes those lines
+# and leaves human co-authors alone. Enable it once per clone:
+#
+#   git config core.hooksPath .githooks
+#
+# CI runs scripts/check-commit-trailers.sh on every pull request as well.
+set -eu
+msg="$1"
+tmp="$msg.tmp.$$"
+patterns="$(dirname "$0")/../scripts/ai-trailers.txt"
+grep -viEf "$patterns" "$msg" > "$tmp" || true
+# Drop the blank lines a removed trailer leaves at the end.
+awk '{ lines[NR] = $0 } END { n = NR; while (n > 0 && lines[n] ~ /^[[:space:]]*$/) n--; for (i = 1; i <= n; i++) print lines[i] }' "$tmp" > "$msg"
+rm -f "$tmp"

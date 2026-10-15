@@ -1,0 +1,22 @@
+# The labels the flow uses, as name|color|description.
+# Kind: one per pull request; it decides the release-notes section.
+feature|0e8a16|Something the pet could not do before
+enhancement|a2eeef|A change to something it already does
+bug|d73a4a|Something did not work
+breaking change|b60205|A change that needs users to do something
+docs|0075ca|The README or other documentation
+character|e99695|A character, an outfit or a mod
+chore|cfd3d7|Build, CI, refactoring, tests: nothing a user sees
+dependencies|0366d6|Pull requests that update a dependency file
+# Status
+needs triage|ededed|New: the maintainer has not looked at it yet
+needs info|d876e3|Waiting for details from the person who opened it
+accepted|0e8a16|Agreed and ready: anyone may take it
+in progress|fbca04|Someone has taken it; see the assignee
+# Issues
+design|c5def5|How the pet should behave
+feedback wanted|d4c5f9|Waiting for people to try it and say
+good first issue|7057ff|Small, well described, a good way in
+help wanted|008672|The maintainer would welcome a hand
+translation|0075ca|A language of the app or of the README
+skip-changelog|ededed|Left out of the release notes

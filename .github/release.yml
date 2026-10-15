@@ -1,0 +1,28 @@
+changelog:
+  exclude:
+    labels:
+      - skip-changelog
+  categories:
+    - title: New
+      labels:
+        - feature
+    - title: Changed
+      labels:
+        - enhancement
+        - breaking change
+    - title: Fixed
+      labels:
+        - bug
+    - title: Characters and mods
+      labels:
+        - character
+    - title: Docs
+      labels:
+        - docs
+    - title: Under the hood
+      labels:
+        - chore
+        - dependencies
+    - title: Other
+      labels:
+        - "*"

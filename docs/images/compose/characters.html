@@ -1,0 +1,14 @@
+<!doctype html>
+<meta charset="utf-8">
+<!-- Renders ../characters.png: node scripts/compose-images.mjs -->
+<style>
+  @font-face { font-family: GR; src: url(../../../node_modules/galmuri/dist/Galmuri11.ttf); }
+  html, body { margin: 0; width: 1200px; height: 420px; overflow: hidden; }
+  body { background: linear-gradient(#211547, #120c26); display: flex; justify-content: center; align-items: flex-end; gap: 40px; font-family: GR; color: #d9ccff; }
+  figure { margin: 0 0 22px; text-align: center; }
+  .pet { width: 300px; height: 270px; background-repeat: no-repeat; background-size: 380px auto; background-position: center bottom; image-rendering: pixelated; }
+  figcaption { font-size: 26px; margin-top: 8px; }
+</style>
+<figure><div class="pet" style="background-image:url(../pet-lila.png)"></div><figcaption>Lila</figcaption></figure>
+<figure><div class="pet" style="background-image:url(../pet-maru.png)"></div><figcaption>Maru</figcaption></figure>
+<figure><div class="pet" style="background-image:url(../pet-moa.png)"></div><figcaption>Moa</figcaption></figure>

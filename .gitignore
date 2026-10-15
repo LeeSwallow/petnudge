@@ -28,3 +28,9 @@ yarn-error.log*
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# Electron build output
+release/
+
+# Local agent workspaces
+.superpowers/

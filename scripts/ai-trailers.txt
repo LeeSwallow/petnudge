@@ -1,0 +1,2 @@
+^co-authored-by:.*<[^>]*(@anthropic\.com|@openai\.com|@cursor\.com|cursoragent@|\+copilot@users\.noreply\.github\.com|\[bot\]@users\.noreply\.github\.com|@devin\.ai|@aider\.chat|@codeium\.com|@windsurf\.com)>
+^[^a-z]*generated (with|by) .*(claude|copilot|cursor|codex|chatgpt|gemini|aider|devin)

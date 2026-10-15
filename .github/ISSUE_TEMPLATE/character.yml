@@ -1,0 +1,47 @@
+name: New character or mod
+description: Share a character or a mod you made, to be listed or built in.
+title: "[character] "
+labels: ["character", "needs triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Characters are layered: one layer per body part, drawn in Aseprite or Pixelorama, plus a pack file. See assets/characters/README.md.
+  - type: input
+    id: name
+    attributes:
+      label: Name
+    validations:
+      required: true
+  - type: textarea
+    id: preview
+    attributes:
+      label: Preview
+      description: A screenshot or GIF of it on the desktop.
+    validations:
+      required: true
+  - type: input
+    id: link
+    attributes:
+      label: Where the files are
+      description: A fork, a release asset or a zip attached here.
+    validations:
+      required: true
+  - type: dropdown
+    id: license
+    attributes:
+      label: License of the art
+      options:
+        - "MIT (same as petnudge; can be built in)"
+        - "CC BY 4.0"
+        - "CC BY-NC 4.0 (listed only, not built in)"
+        - "Other (say below)"
+    validations:
+      required: true
+  - type: checkboxes
+    id: rights
+    attributes:
+      label: Rights
+      options:
+        - label: I made this art myself, or I have the right to share it under the license above. It is not fan art of a character someone else owns.
+          required: true

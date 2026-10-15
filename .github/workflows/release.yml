@@ -1,0 +1,43 @@
+name: release
+
+# A v* tag builds the installers on each system and attaches them to a
+# draft GitHub release, to be checked and published by hand. The builds are
+# not code-signed yet (package.json: mac.identity null).
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: --mac dmg zip --arm64 --x64
+          - os: windows-latest
+            target: --win nsis
+          - os: ubuntu-latest
+            target: --linux AppImage
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      # electron-builder names the release after package.json, not the tag.
+      - name: the tag matches package.json
+        shell: bash
+        run: |
+          version="v$(node -p "require('./package.json').version")"
+          [ "$version" = "${{ github.ref_name }}" ] || { echo "tag ${{ github.ref_name }} but package.json says $version"; exit 1; }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: node build.mjs
+      - run: npx electron-builder ${{ matrix.target }} --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

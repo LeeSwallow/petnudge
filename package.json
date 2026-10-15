@@ -1,0 +1,102 @@
+{
+  "name": "petnudge",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A pixel pet that lives on your desktop and nudges you: todos, pomodoro, and your coding agent over MCP.",
+  "keywords": [
+    "desktop-pet",
+    "pixel-art",
+    "pomodoro",
+    "todo",
+    "reminder",
+    "electron",
+    "mcp",
+    "claude-code",
+    "codex",
+    "petdex"
+  ],
+  "homepage": "https://github.com/LeeSwallow/petnudge#readme",
+  "bugs": "https://github.com/LeeSwallow/petnudge/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LeeSwallow/petnudge.git"
+  },
+  "license": "MIT",
+  "author": "leeswallow",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "node build.mjs",
+    "start": "node build.mjs && electron .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "bake": "node scripts/bake-character.mjs miso",
+    "dist:mac": "node build.mjs && electron-builder --mac dmg zip",
+    "dist:win": "node build.mjs && electron-builder --win nsis",
+    "build:character": "node scripts/build-character.mjs lila",
+    "watch:character": "node scripts/build-character.mjs lila --watch",
+    "dist:linux": "node build.mjs && electron-builder --linux AppImage",
+    "demo:shots": "node scripts/demo-shots.mjs && node scripts/compose-images.mjs"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/node": "^2.1.0",
+    "@modelcontextprotocol/server": "^2.1.0",
+    "@types/node": "^22.20.5",
+    "effect": "4.0.5",
+    "electron": "^41.10.7",
+    "electron-builder": "^26.0.12",
+    "esbuild": "0.24.0",
+    "galmuri": "^2.40.3",
+    "typescript": "~5.6.3",
+    "vitest": "^2.1.9",
+    "zod": "^4.6.5",
+    "zustand": "^5.0.3"
+  },
+  "dependencies": {
+    "@langchain/anthropic": "^1.5.12",
+    "@langchain/core": "^1.2.17",
+    "@langchain/openai": "^1.6.2"
+  },
+  "build": {
+    "appId": "com.studycompanion.pet",
+    "productName": "petnudge",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "identity": null
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "petnudge",
+      "artifactName": "petnudge-Setup-${version}.${ext}"
+    },
+    "linux": {
+      "target": "AppImage",
+      "category": "Utility",
+      "artifactName": "petnudge-${version}.${ext}"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "LeeSwallow",
+      "repo": "petnudge",
+      "releaseType": "draft"
+    },
+    "artifactName": "petnudge-${version}-${arch}.${ext}"
+  },
+  "engines": {
+    "node": ">=22.16.0"
+  }
+}

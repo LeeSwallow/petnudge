@@ -1,0 +1,46 @@
+name: Bug report
+description: Something did not work.
+title: "[bug] "
+labels: ["bug", "needs triage"]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The release you installed, or the commit if you run from source.
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      description: e.g. macOS 26 on Apple silicon; Windows 11; Ubuntu 24.04 (GNOME, Wayland)
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: What did you do?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened?
+      description: A screenshot or a screen recording helps most.
+    validations:
+      required: true
+  - type: dropdown
+    id: fix
+    attributes:
+      label: Would you like to fix it?
+      options:
+        - "Yes"
+        - "Yes, with some pointers"
+        - "No"

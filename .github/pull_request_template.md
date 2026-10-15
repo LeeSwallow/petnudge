@@ -1,58 +1,16 @@
-## Summary
-
-<!-- What changed and why? -->
-
-## Linked issue
-
 Closes #
 
-## Lane
+## Why
 
-- [ ] FE
-- [ ] BE
-- [ ] AI
-- [ ] Contracts
-- [ ] QA
-- [ ] Docs/Workflow
+<!-- What this changes and why. A sentence or two is enough. -->
 
-## Acceptance criteria
+## How I checked
 
-- [ ] 
-- [ ] 
-- [ ] 
+<!-- The tests you added, and for a visible change a screenshot of the pet or the panel. If an AI agent wrote part of it, say what you read and checked yourself. -->
 
-## Validation
+## Checklist
 
-Commands run:
-
-```bash
-
-```
-
-Observed result:
-
-```text
-
-```
-
-## Contract impact
-
-- [ ] No contract changes
-- [ ] Contract changes included in this PR
-- [ ] Follow-up contract issue required
-
-## Review checklist
-
-- [ ] Spec compliance checked
-- [ ] Code quality checked
-- [ ] Tests/evals updated or explicitly not needed
-- [ ] No generated/vendor/secrets committed
-- [ ] Ready/WIP/blockers are clearly separated
-
-## Screenshots/logs
-
-<!-- Required for FE behavior changes. Required logs/eval samples for AI behavior changes. -->
-
-## Known WIP/blockers
-
-- 
+- [ ] The title is a Conventional Commit phrased for the release notes ("feat: snooze a reminder until tomorrow", not "fix bug")
+- [ ] One kind label: feature, enhancement, bug, breaking change, docs, character or chore
+- [ ] `npm run typecheck && npm test` pass
+- [ ] For a change in behaviour: the README (all three languages, or say which one needs a translation)
