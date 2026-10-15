@@ -171,12 +171,38 @@ CREATE INDEX jobs_pending ON jobs(status, due_at);
 
 `at(dueAt, kind, payload, owner?) → jobId`, `reschedule(jobId, dueAt)`, `cancel(jobId)`, `cancelOwner(owner)`.
 
-### 동작
+### 이벤트 기반 루프
 
-- 타이머는 하나다. 가장 가까운 pending job의 `due_at`까지 `setTimeout`을 걸되 최대 60초로 끊어 다시 확인한다(시계 오차, `setTimeout` 상한, 절전 대비).
-- 발화 시 해당 kind의 `schedules` 핸들러를 엔진 큐를 통해 실행한다. 핸들러가 성공하면 job은 `done`이 된다. 실패하면 로그를 남기고 `done`으로 둔다(무한 재시도 금지).
-- **놓친 job 처리**: 앱 시작, `powerMonitor` 의 `resume`·`unlock-screen`, 그리고 60초 확인 시 실제 경과 시간이 예상보다 2분 넘게 크면(시계 변경·절전) 지난 job을 `due_at` 순으로 모두 실행한다. `now - due_at > 2분`이면 핸들러에 `late: true`가 전달된다.
-- reminders 모듈은 한 번의 따라잡기에서 들어온 `late` 알림을 묶어 `reminder/missed-summary` 이벤트 하나로 보여준다("놓친 알림 3개").
+스케줄러는 주기적으로 돌지 않는다. **깨우는 신호(wake)가 올 때만** 한 번 정리(reconcile)하고 다음 타이머를 건 뒤 잠든다.
+
+```
+            ┌──────────── wake 신호 ────────────┐
+            │ boot            앱 시작             │
+            │ job-changed     at·reschedule·cancel│
+            │ timer           걸어둔 타이머 만료    │
+            │ resume          절전 해제 (공통)      │
+            │ unlock          화면 잠금 해제 (mac·win)│
+            │ active          사용자 복귀 (mac)     │
+            │ dispatch        사용자/AI action 처리 후│
+            └────────────────┬──────────────────┘
+                             ▼
+               같은 tick의 wake는 하나로 합침 (microtask)
+                             ▼
+   reconcile: pending 중 due_at ≤ now 를 due_at 순으로 꺼냄
+       → 각 job을 엔진 큐에 `schedules[kind]` 실행으로 넣음
+       → 성공·실패 모두 done (실패는 로그, 무한 재시도 금지)
+       → 2개 이상이 late면 `scheduler/caught-up { jobs }` 이벤트 발행
+                             ▼
+   arm: 다음 pending job까지 타이머 하나 (최대 1시간으로 끊어 체인)
+       pending이 없으면 타이머를 걸지 않음
+```
+
+- **wake의 출처**: `boot`·`timer`·`job-changed`는 core가 직접 낸다. `resume`·`unlock`·`active`는 `infra/electron/power`가 `powerMonitor` 이벤트를 받아 `scheduler.wake(reason)`로 넘긴다. `dispatch`는 엔진이 action 하나를 처리한 직후에 낸다.
+- **왜 `dispatch` wake가 있나**: Electron에는 시스템 시계 변경 이벤트가 없다. 사용자가 시계를 앞으로 돌리면 걸어둔 타이머(경과 시간 기준)는 늦게 울린다. 사용자가 무언가를 조작하는 순간 정리하면 이 공백이 사용자 눈에 띄기 전에 메워진다. 비용은 인덱스 조회 한 번이다.
+- **왜 1시간 체인인가**: `setTimeout` 상한(약 24.8일)을 넘는 예약과, 조작 없이 방치된 상태의 시계 변경을 최대 1시간 안에 바로잡기 위해서다. pending job이 있을 때만 동작한다.
+- **late**: `now - due_at > 2분`이면 핸들러에 `late: true`가 전달된다.
+- **놓친 알림 묶기**: reminders 모듈은 `scheduler/caught-up`을 구독해 그 안의 `reminder/fire` job들을 `reminder/missed-summary` 이벤트 하나로 바꿔 보여준다("놓친 알림 3개"). 이때 개별 `reminder/fire` 핸들러는 `late`이면 말풍선을 띄우지 않고 기록만 남긴다.
+- **신호 흐름의 예**: `todo/create` action → todos가 `todo/created` 발행 → reminders가 구독해 `scheduler.at(...)` → `job-changed` wake → 타이머 재설정. 모든 연결이 이벤트로 이어지고, 어느 모듈도 시간을 직접 기다리지 않는다.
 
 ### 시계
 
