@@ -65,7 +65,7 @@ export const installChatBar = (openFull: () => void) => {
     void sendChat(text, activeSession().id);
   };
 
-  button.addEventListener('click', () => open(bar.hidden));
+  button.addEventListener('click', () => open(bar.hidden === true));
   send.addEventListener('click', submit);
   bar.querySelector('#chat-quick-full')!.addEventListener('click', openFull);
   onEnter(input, submit);

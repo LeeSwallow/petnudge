@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { createRepository, type Repository } from './db/repository';
 import { migrate } from './db/schema';
 import { createMcpTools, type McpBridge } from './mcpTools';
@@ -6,7 +6,7 @@ import { createMcpTools, type McpBridge } from './mcpTools';
 const { DatabaseSync } = process.getBuiltinModule('node:sqlite') as typeof import('node:sqlite');
 
 let repo: Repository;
-let bridge: McpBridge & { sendTimerCommand: ReturnType<typeof vi.fn>; notifyChanged: ReturnType<typeof vi.fn> };
+let bridge: McpBridge & { sendTimerCommand: Mock<McpBridge['sendTimerCommand']>; notifyChanged: Mock<McpBridge['notifyChanged']> };
 let tools: ReturnType<typeof createMcpTools>;
 
 const parse = (result: { content: { text: string }[] }) => JSON.parse(result.content[0].text);
@@ -15,7 +15,7 @@ beforeEach(() => {
   const db = new DatabaseSync(':memory:');
   migrate(db);
   repo = createRepository(db);
-  bridge = { sendTimerCommand: vi.fn(), notifyChanged: vi.fn(), todayKey: () => '2026-10-15' };
+  bridge = { sendTimerCommand: vi.fn<McpBridge['sendTimerCommand']>(), notifyChanged: vi.fn<McpBridge['notifyChanged']>(), todayKey: () => '2026-10-15' };
   tools = createMcpTools(repo, bridge);
 });
 

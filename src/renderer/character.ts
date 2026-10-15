@@ -125,7 +125,7 @@ const frameFor = (avatar: Avatar, face: string, moves: Record<string, Move>, hea
   const canvas = document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;
-  canvas.getContext('2d')!.putImageData(new ImageData(new Uint8ClampedArray(out.data.buffer), W, H), 0, 0);
+  canvas.getContext('2d')!.putImageData(new ImageData(new Uint8ClampedArray(out.data.buffer as ArrayBuffer), W, H), 0, 0);
   const frame = { canvas, owner, ids };
   if (frameCache.size > 96) frameCache.clear();
   frameCache.set(key, frame);

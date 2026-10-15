@@ -7,6 +7,10 @@ updates:
     groups:
       dev:
         dependency-type: development
+    ignore:
+      # The types follow the Node.js the app and CI run on (22), not the newest.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
