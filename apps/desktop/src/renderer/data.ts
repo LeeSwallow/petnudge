@@ -1,4 +1,4 @@
-import { toDateKey } from '../../../mobile/src/domain/progress';
+import { toDateKey } from '../domain/progress/progress';
 import { defaultSettings, type AppSettings } from '../shared/settings';
 import { lastDateKeys, shiftDateKey } from '../shared/stats';
 import type { DailyFocus, HourlyFocus, Note, Playlist, Todo } from '../shared/types';

@@ -1,4 +1,4 @@
-import type { TimerMode } from '../../../mobile/src/domain/timer';
+import type { TimerMode } from '../domain/pomodoro/timer';
 import { decideMusicAction, isExternalPlayer, type NowPlaying } from '../shared/music';
 import { skipInQueue, startQueue, stepQueue, type QueueState } from '../shared/playlistQueue';
 import type { PlaylistItem } from '../shared/types';

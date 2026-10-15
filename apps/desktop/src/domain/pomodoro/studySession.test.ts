@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { advanceDialogue, advanceTransition } from '../scene/sceneMachine';
+import { advanceDialogue, advanceTransition } from '../pet/sceneMachine';
 import {
   abandonFocus,
   beginFocus,

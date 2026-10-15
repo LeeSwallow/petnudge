@@ -1,8 +1,8 @@
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { createStore } from 'zustand/vanilla';
-import { pauseTimer, resumeTimer } from '../../../mobile/src/domain/timer';
-import { toDateKey } from '../../../mobile/src/domain/progress';
-import { advanceDialogue, advanceTransition } from '../../../mobile/src/scene/sceneMachine';
+import { pauseTimer, resumeTimer } from '../domain/pomodoro/timer';
+import { toDateKey } from '../domain/progress/progress';
+import { advanceDialogue, advanceTransition } from '../domain/pet/sceneMachine';
 import {
   abandonFocus,
   beginFocus,
@@ -11,7 +11,7 @@ import {
   finishFocusIfDue,
   skipBreak,
   type StudySession
-} from '../../../mobile/src/session/studySession';
+} from '../domain/pomodoro/studySession';
 import type { AppSettings } from '../shared/settings';
 import { api } from './api';
 

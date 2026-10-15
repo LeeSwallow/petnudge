@@ -1,4 +1,4 @@
-import type { TimerMode } from '../../../mobile/src/domain/timer';
+import type { TimerMode } from '../domain/pomodoro/timer';
 
 // External players are controlled over AppleScript (macOS); 'Local' is the
 // app's own audio player for files the user added.

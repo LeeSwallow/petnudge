@@ -1,4 +1,4 @@
-import type { CharacterAnimationKey, LightingMood, ScenePhase, SceneState } from '../domain/scene';
+import type { CharacterAnimationKey, LightingMood, ScenePhase, SceneState } from './scene';
 
 const transitionOrder: Partial<Record<ScenePhase, ScenePhase>> = {
   focus_end_chime: 'character_pen_down',

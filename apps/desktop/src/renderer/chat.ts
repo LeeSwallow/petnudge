@@ -1,4 +1,4 @@
-import { formatRemaining, getRemainingMs } from '../../../mobile/src/domain/timer';
+import { formatRemaining, getRemainingMs } from '../domain/pomodoro/timer';
 import { api } from './api';
 import { pack, setCharacter } from './character';
 import { data, updateSettings } from './data';

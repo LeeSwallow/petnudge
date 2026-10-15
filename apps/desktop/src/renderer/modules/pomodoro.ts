@@ -1,4 +1,4 @@
-import { formatRemaining, getRemainingMs, getTimerProgress, isTimerPaused, type TimerState } from '../../../../mobile/src/domain/timer';
+import { formatRemaining, getRemainingMs, getTimerProgress, isTimerPaused, type TimerState } from '../../domain/pomodoro/timer';
 import { esc, progressRing, tomatoRow } from '../charts';
 import { api } from '../api';
 import { data, refreshStats } from '../data';

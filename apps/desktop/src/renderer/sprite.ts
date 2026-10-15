@@ -1,4 +1,4 @@
-import type { CharacterAnimationKey } from '../../../mobile/src/domain/scene';
+import type { CharacterAnimationKey } from '../domain/pet/scene';
 import { drawCharacter, pack, type Avatar, type Turn } from './character';
 import type { Fx } from './character/actions';
 

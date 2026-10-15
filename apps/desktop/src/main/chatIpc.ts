@@ -1,6 +1,6 @@
 import { ipcMain, safeStorage, type BrowserWindow } from 'electron';
 import path from 'node:path';
-import { toDateKey } from '../../../mobile/src/domain/progress';
+import { toDateKey } from '../domain/progress/progress';
 import { PROVIDER_INFO, isChatProvider, parseChatConfig, parseChatRequest } from '../shared/chat';
 import { allowedTools, createChat } from './chat';
 import type { Repository } from './db/repository';

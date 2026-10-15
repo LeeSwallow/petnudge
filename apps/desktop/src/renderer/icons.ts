@@ -1,4 +1,4 @@
-import { pixelIcons as sharedIcons, pixelPalette, moodIcons, moodLabels } from '../../../mobile/src/domain/pixelIcons';
+import { pixelIcons as sharedIcons, pixelPalette, moodIcons, moodLabels } from '../domain/icons/pixelIcons';
 import { esc } from './charts';
 
 export { moodIcons, moodLabels };

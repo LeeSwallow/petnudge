@@ -1,5 +1,5 @@
-import { unlockables } from '../../../../mobile/src/domain/progress';
-import { formatRemaining, getRemainingMs, isTimerPaused } from '../../../../mobile/src/domain/timer';
+import { unlockables } from '../../domain/progress/progress';
+import { formatRemaining, getRemainingMs, isTimerPaused } from '../../domain/pomodoro/timer';
 import { api } from '../api';
 import { data } from '../data';
 import { typewrite } from '../fx';

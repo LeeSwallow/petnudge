@@ -1,4 +1,4 @@
-import { EXP_PER_LEVEL, getLevel, unlockables } from '../../../../mobile/src/domain/progress';
+import { EXP_PER_LEVEL, getLevel, unlockables } from '../../domain/progress/progress';
 import { esc, heatLegend, heatmap, hourBars, splitBar, weekBars } from '../charts';
 import { data, STATS_WEEKS } from '../data';
 import { countUp, enter } from '../fx';

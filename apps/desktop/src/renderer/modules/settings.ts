@@ -1,6 +1,6 @@
 import { pixelIcon } from '../icons';
 import { api } from '../api';
-import { unlockables } from '../../../../mobile/src/domain/progress';
+import { unlockables } from '../../domain/progress/progress';
 import { esc } from '../charts';
 import { pack, setCharacter } from '../character';
 import { modStatus, onModStatus } from '../pet/mods';

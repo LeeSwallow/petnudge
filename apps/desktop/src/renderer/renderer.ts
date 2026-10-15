@@ -1,5 +1,5 @@
-import { toDateKey } from '../../../mobile/src/domain/progress';
-import { getRemainingMs, type TimerState } from '../../../mobile/src/domain/timer';
+import { toDateKey } from '../domain/progress/progress';
+import { getRemainingMs, type TimerState } from '../domain/pomodoro/timer';
 import { api } from './api';
 import { data, onData, refreshAll, refreshNotes, refreshSettings, refreshStats, refreshTodos, type DataKind } from './data';
 import { confetti, enter, pop } from './fx';

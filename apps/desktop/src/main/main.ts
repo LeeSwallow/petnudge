@@ -8,7 +8,7 @@ import { isExternalPlayer, isValidMusicRef, type NowPlaying } from '../shared/mu
 import { isDbMethod } from '../shared/dbMethods';
 import { createRepository, type Repository } from './db/repository';
 import { migrate } from './db/schema';
-import { toDateKey } from '../../../mobile/src/domain/progress';
+import { toDateKey } from '../domain/progress/progress';
 import { startMcpServer, type McpInfo } from './mcp';
 import { controlPlayer, playItem, readNowPlaying } from './nowPlaying';
 import { WINDOW_WIDTH, computeLayout, type Point } from './layout';

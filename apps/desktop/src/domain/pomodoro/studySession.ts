@@ -1,8 +1,8 @@
-import { createEmptyPlannerState, type PlannerState } from '../domain/planner';
-import { createInitialProgress, recordFocusSession, type ProgressState } from '../domain/progress';
-import type { SceneState } from '../domain/scene';
-import { createIdleTimer, isTimerDone, startTimer, type TimerState } from '../domain/timer';
-import { completeFocus, createInitialSceneState, openBreakPlanner, startFocus } from '../scene/sceneMachine';
+import { createEmptyPlannerState, type PlannerState } from './planner';
+import { createInitialProgress, recordFocusSession, type ProgressState } from '../progress/progress';
+import type { SceneState } from '../pet/scene';
+import { createIdleTimer, isTimerDone, startTimer, type TimerState } from './timer';
+import { completeFocus, createInitialSceneState, openBreakPlanner, startFocus } from '../pet/sceneMachine';
 
 export type StudySession = {
   planner: PlannerState;

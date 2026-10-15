@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { pixelPalette, moodIcons } from '../../../mobile/src/domain/pixelIcons';
+import { pixelPalette, moodIcons } from '../domain/icons/pixelIcons';
 import { pixelIcon, pixelIcons } from './icons';
 
 describe('pixel icons', () => {

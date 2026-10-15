@@ -1,4 +1,4 @@
-import { toDateKey } from '../../../mobile/src/domain/progress';
+import { toDateKey } from '../domain/progress/progress';
 import { shiftDateKey } from './stats';
 
 // Date-range filtering and day grouping shared by the notes, todo and focus

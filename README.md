@@ -22,8 +22,7 @@ Lo-fi BGM이 흐르는 픽셀 공부방에서 AI 캐릭터와 함께 뽀모도�
 - `docs/comfyui-pixel-workflow.md` — ComfyUI 기반 reference/variant/lighting/asset 후보 생성 파이프라인
 - `docs/video-generation-prompts.md` — focus→break 전이, reward dialogue, break idle, planner/timer 영상 생성 프롬프트 모음
 - `docs/video-generation-prompts-veo.md` — Google Veo용 자연어 콘티형 영상 생성 프롬프트
-- `apps/mobile/` — Expo/React Native 모바일 mock foundation: scene state, mock layer registry, planner/timer/dialogue 구조
-- `apps/desktop/` — Electron 데스크톱 펫: 투명·항상 위 창의 픽셀 캐릭터, 뽀모도로/플래너, Spotify·Apple Music 재생 감지와 타이머 연동 (mobile의 domain/session 로직 재사용)
+- `apps/desktop/` — Electron 데스크톱 펫: 투명·항상 위 창의 픽셀 캐릭터, 뽀모도로/플래너, Spotify·Apple Music 재생 감지와 타이머 연동 (도메인 로직은 `apps/desktop/src/domain`, 엔진은 `apps/desktop/src/core`)
 - `.github/` — issue/PR 템플릿
 - `github-labels.md` — GitHub lane/status/type/priority label 생성 명령
 - `workflow.json` — 자동화 스크립트가 읽는 단계/역할/산출물/검증 기준
