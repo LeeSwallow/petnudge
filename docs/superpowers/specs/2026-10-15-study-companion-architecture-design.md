@@ -20,8 +20,8 @@ Study Companion Pet(데스크톱)을 **Study Companion** — 마감을 알고 �
 | 배포처 | GitHub Releases만. itch.io는 CI 단계 추가로 나중에 붙일 수 있게 둔다 |
 | 서명 | 공증 없이 출시(최소 ad-hoc). CI secret에 인증서를 넣으면 서명·공증이 켜지게 설정 |
 | `apps/mobile` | 사용 중인 도메인 코드를 데스크톱으로 옮긴 뒤 삭제 커밋 |
-| 엔진 | 직접 구현(얇게). 외부 framework 없음 |
-| 신규 의존성 | `rrule`(반복 규칙), `electron-updater`(자동 업데이트) 두 개만 |
+| 엔진 | **Effect-TS v4** (`effect@4.0.x`) 위에 구성. main 프로세스의 core·app·infra만 Effect, domain(순수 함수)과 ui(renderer)는 일반 TS |
+| 신규 의존성 | `effect`(엔진), `rrule`(반복 규칙), `electron-updater`(자동 업데이트) |
 
 ### 비목표
 
@@ -53,7 +53,7 @@ domain/  순수 규칙: 할 일, 리마인더 계산, rrule, ← 핵심 규칙
 ```
 apps/desktop/src/
   domain/   todos/ reminders/ pomodoro/ progress/ pet/ icons/
-  core/     engine.ts scheduler.ts clock.ts contract.ts ports.ts module.ts errors.ts
+  core/     db.ts events.ts engine.ts scheduler.ts module.ts errors.ts contract.ts testing.ts
   app/      todos/ reminders/ pomodoro/ notes/ dashboard/ chat/ music/
             pet/ characters/ mods/ friends/ settings/ backup/
   infra/    db/ electron/ ipc/ music/ mcp/ characters/
@@ -65,10 +65,10 @@ apps/desktop/src/
 
 | 레이어 | 허용 | 금지 |
 |---|---|---|
-| domain | 순수 함수와 타입. 시간은 인자로 받는다 | IO, `Date.now()`, 다른 레이어 import |
-| core | domain 타입, 포트 정의 | `electron`, `node:sqlite` import |
+| domain | 순수 함수와 타입. 시간은 인자로 받는다 | IO, `Date.now()`, `effect`, 다른 레이어 import |
+| core | domain 타입, `effect`, 서비스(포트) 정의(`Context.Service`) | `electron` import. `node:sqlite`는 `core/db.ts`의 타입 import만 허용 |
 | app | domain + core(엔진·포트) | 다른 `app/*` import, `electron`·`node:sqlite` import |
-| infra | 포트 구현, core·domain 타입 | 비즈니스 규칙 판단 |
+| infra | 서비스 구현(`Layer`), core·domain 타입 | 비즈니스 규칙 판단 |
 | ui | `dispatch` / `query` / `on`, domain의 순수 표시용 함수 | DB·엔진 내부 접근, `app/`·`infra/` import |
 
 `src/architecture.test.ts`가 모든 소스의 import 문을 훑어 위 규칙을 검사한다(외부 라이브러리 없이 정규식 + 경로 해석). 위반 시 테스트가 실패한다.
@@ -100,7 +100,22 @@ export const todosModule = defineModule({
 });
 ```
 
-- `ctx`: `{ repos, emit, scheduler, clock, notify, settings }`. 모두 core의 포트 타입이며 Electron을 모른다.
+- 핸들러는 `Effect.gen`으로 쓰고, 필요한 서비스를 `yield*`로 꺼낸다(`Db`, `Events`, `Scheduler`, 그리고 모듈 자신의 저장소 서비스). 시간은 Effect 내장 `Clock`(`Clock.currentTimeMillis`)으로만 읽는다. 어떤 서비스도 Electron을 모른다.
+- 입력·이벤트 스키마는 Effect `Schema`로 선언한다(zod 대체). 기존 AI·MCP 도구 코드의 zod는 3단계에서 모듈을 옮길 때 함께 교체한다.
+
+### Effect 적용 방식
+
+| spec 개념 | Effect 구현 |
+|---|---|
+| 포트 / 구현체 | `Context.Service` 클래스 / `Layer.effect`·`Layer.succeed` |
+| 앱 조립 | `main.ts`에서 `ManagedRuntime.make(AppLayer)`. IPC 핸들러는 `runtime.runPromiseExit(...)` 결과를 `Result`로 바꿔 돌려준다 |
+| 에러 | `Data.TaggedError('DomainError')<{ code; message }>`. 예상 못한 결함(defect)은 `internal`로 변환 |
+| 직렬 dispatch | 엔진 내부 `Semaphore(1)`로 action·schedule 실행을 한 번에 하나만 |
+| 이벤트 버스 | `PubSub.unbounded<AppEvent>()`. 모듈 구독자는 엔진이 직접 호출하고, renderer broadcast는 PubSub 구독 fiber가 담당 |
+| 커밋 후 발행 | 핸들러의 `emit`은 dispatch마다 만드는 `Ref<AppEvent[]>` 버퍼에 쌓이고, 트랜잭션 커밋 뒤 발행 |
+| 스케줄러 루프 | `Queue.sliding(1)` wake 큐 + `Effect.raceFirst(Effect.sleep(delay), Queue.take(wakes))`. sliding(1)이라 같은 시점의 wake 여러 개가 자연히 하나로 합쳐진다 |
+| 가짜 시계 | `effect/testing`의 `TestClock.layer()` + `TestClock.adjust(...)` |
+| 정리 | 엔진·스케줄러 fiber는 `Layer` scope에 묶여 `runtime.dispose()` 시 함께 종료 |
 - 모듈끼리는 import하지 않고 이벤트로만 소통한다. 예: todos는 `pomodoro/completed`를 구독해 `focus_minutes`를 누적한다.
 - AI 채팅 도구와 MCP 도구는 같은 `tools` 정의에서 생성한다. UI와 AI가 같은 action을 쓰므로 로직은 한 벌이다.
 - 선택 모듈이 꺼져 있으면 엔진이 그 모듈을 등록하지 않는다. 해당 action은 `module_disabled` 에러를 돌려주고, 패널 탭은 숨는다.
@@ -206,7 +221,7 @@ CREATE INDEX jobs_pending ON jobs(status, due_at);
 
 ### 시계
 
-`core/clock.ts`의 `Clock` 포트(`now()`, `setTimer(ms, fn) → cancel`)를 통해서만 시간을 다룬다. 실제 구현은 `Date.now`/`setTimeout`, 테스트는 Vitest 가짜 타이머(`vi.useFakeTimers`, `vi.setSystemTime`)로 시간을 앞당긴다.
+main 프로세스 코드는 Effect 내장 `Clock`(`Clock.currentTimeMillis`, `Effect.sleep`)으로만 시간을 다룬다. 실제 실행에서는 시스템 시계, 테스트에서는 `TestClock.layer()`를 주입하고 `TestClock.adjust('4 hours')`처럼 시간을 앞당긴다. 테스트 러너는 기존 Vitest 2를 그대로 쓴다(`@effect/vitest` 4.x는 Vitest 5를 요구하므로 쓰지 않는다). `core/testing.ts`의 `runTest(effect, layer)` 헬퍼가 TestClock과 메모리 SQLite를 붙여 `Effect.runPromise`로 실행한다.
 
 ### 기존 타이밍의 정리
 
