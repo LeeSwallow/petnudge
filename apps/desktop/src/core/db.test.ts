@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Effect, Exit } from 'effect';
+import { Effect, Exit, Fiber } from 'effect';
 import { Db, layerDb, transaction } from './db';
 import { domainError, toWire } from './errors';
 
@@ -30,6 +30,19 @@ describe('transaction', () => {
     const died = transaction(Effect.andThen(insert('b'), Effect.die(new Error('bug'))));
     await Effect.runPromiseExit(failed.pipe(Effect.provide(layerDb(db))));
     await Effect.runPromiseExit(died.pipe(Effect.provide(layerDb(db))));
+    expect(rows(db)).toEqual([]);
+  });
+
+  it('rolls back when the fiber is interrupted mid-transaction', async () => {
+    const db = setup();
+    await Effect.runPromise(
+      Effect.gen(function* () {
+        const fiber = yield* Effect.forkChild(transaction(Effect.andThen(insert('a'), Effect.never)));
+        yield* Effect.yieldNow;
+        yield* Fiber.interrupt(fiber);
+      }).pipe(Effect.provide(layerDb(db)))
+    );
+    expect(db.isTransaction).toBe(false);
     expect(rows(db)).toEqual([]);
   });
 });

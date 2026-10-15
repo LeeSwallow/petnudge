@@ -1,11 +1,11 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { Effect, Layer, PubSub, Scope } from 'effect';
 import { TestClock } from 'effect/testing';
-import { layerDb } from './db';
+import { layerDb, type Db } from './db';
 import { Engine, layerEngine, type EngineOptions } from './engine';
 import type { AppEvent } from './events';
 import type { ModuleDef } from './module';
-import { jobsTableSql, layerScheduler } from './scheduler';
+import { Scheduler, jobsTableSql, layerScheduler } from './scheduler';
 
 // Vite strips the `node:` prefix from imports it does not know, so load the
 // built-in through Node directly.
@@ -25,7 +25,10 @@ export const testEngine = <R>(db: DatabaseSync, modules: ReadonlyArray<ModuleDef
     Layer.provideMerge(layerDb(db))
   );
 
-export const runTest = <A, E>(effect: Effect.Effect<A, E, Engine | Scope.Scope>, layer: Layer.Layer<Engine, never, never>) =>
+export const runTest = <A, E>(
+  effect: Effect.Effect<A, E, Engine | Scheduler | Db | Scope.Scope>,
+  layer: Layer.Layer<Engine | Scheduler | Db, never, never>
+) =>
   Effect.runPromise(
     Effect.gen(function* () {
       // Set the clock before the engine layer starts its scheduler loop.
@@ -48,3 +51,9 @@ export const settle = Effect.gen(function* () {
   for (let i = 0; i < 50; i += 1) yield* Effect.yieldNow;
 });
 
+
+// What the host does once its event listeners are attached: start the scheduler loop.
+export const boot = Effect.gen(function* () {
+  const scheduler = yield* Scheduler;
+  yield* scheduler.wake('boot');
+});

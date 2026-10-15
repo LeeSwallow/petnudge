@@ -1,15 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { Effect, Layer } from 'effect';
+import type { DatabaseSync } from 'node:sqlite';
 import { TestClock } from 'effect/testing';
 import { layerDb } from './db';
 import { Scheduler, layerScheduler } from './scheduler';
 import { memoryDb, START } from './testing';
 
-const run = <A>(effect: Effect.Effect<A, never, Scheduler>) =>
+const run = <A>(effect: Effect.Effect<A, never, Scheduler>, db: DatabaseSync = memoryDb()) =>
   Effect.runPromise(
     Effect.gen(function* () {
       yield* TestClock.setTime(START);
-      return yield* effect.pipe(Effect.provide(layerScheduler.pipe(Layer.provide(layerDb(memoryDb())))));
+      return yield* effect.pipe(Effect.provide(layerScheduler.pipe(Layer.provide(layerDb(db)))));
     }).pipe(Effect.provide(TestClock.layer()))
   );
 
@@ -42,6 +43,20 @@ describe('scheduler store', () => {
         expect([a, b]).toHaveLength(2);
       })
     ));
+
+  it('finishes rows it cannot read instead of failing the whole batch', async () => {
+    const db = memoryDb();
+    db.prepare("INSERT INTO jobs (id, kind, payload, due_at, owner, created_at) VALUES ('bad', 'k', 'not json', ?, NULL, 0)").run(START);
+    await run(
+      Effect.gen(function* () {
+        const scheduler = yield* Scheduler;
+        const good = yield* scheduler.at(START, 'k', { ok: true });
+        expect((yield* scheduler.due(START)).map((job) => job.id)).toEqual([good]);
+      }),
+      db
+    );
+    expect(db.prepare("SELECT status FROM jobs WHERE id = 'bad'").get()).toEqual({ status: 'done' });
+  });
 
   it('collapses wakes that arrive before the loop listens', () =>
     run(

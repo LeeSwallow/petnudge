@@ -7,7 +7,7 @@ import { domainError, toWire } from './errors';
 import { emit } from './events';
 import { defineModule, handler } from './module';
 import { Scheduler } from './scheduler';
-import { memoryDb, recordEvents, runTest, settle, START, testEngine } from './testing';
+import { boot, memoryDb, recordEvents, runTest, settle, START, testEngine } from './testing';
 
 const notesSql = 'CREATE TABLE notes (id TEXT PRIMARY KEY, body TEXT NOT NULL);';
 const count = Effect.gen(function* () {
@@ -155,6 +155,7 @@ describe('engine failures', () => {
     await runTest(
       Effect.gen(function* () {
         const seen = yield* recordEvents;
+        yield* boot;
         yield* TestClock.adjust('1 second');
         yield* settle;
         expect(types(seen)).toEqual(['note/pinged']);
@@ -213,7 +214,7 @@ describe('scheduler loop', () => {
       engine()
     ));
 
-  it('catches up overdue jobs on boot, marks them late and summarises them', async () => {
+  it('waits for the boot wake, then catches up overdue jobs, marks them late and summarises them', async () => {
     const db = memoryDb(notesSql);
     const insert = db.prepare(
       "INSERT INTO jobs (id, kind, payload, due_at, owner, created_at) VALUES (?, 'note/ping', ?, ?, NULL, 0)"
@@ -224,8 +225,9 @@ describe('scheduler loop', () => {
     await runTest(
       Effect.gen(function* () {
         const seen = yield* recordEvents;
-        const { dispatch } = yield* Engine;
-        yield* dispatch('note/count-noop').pipe(Effect.ignore); // any dispatch wakes the loop
+        yield* settle;
+        expect(seen).toEqual([]); // nothing runs before the host says it is listening
+        yield* boot;
         yield* settle;
         expect(seen.filter((e) => e.type === 'note/pinged').map((e) => e.payload)).toEqual([
           { id: 'a', late: true },
@@ -238,5 +240,23 @@ describe('scheduler loop', () => {
       testEngine(db, [notes])
     );
     expect(db.prepare("SELECT COUNT(*) AS n FROM jobs WHERE status = 'pending'").get()).toEqual({ n: 0 });
+  });
+
+  it('keeps the loop alive when a cycle fails, and retries shortly after', async () => {
+    const db = memoryDb(notesSql);
+    await runTest(
+      Effect.gen(function* () {
+        const seen = yield* recordEvents;
+        db.exec('ALTER TABLE jobs RENAME TO jobs_offline');
+        yield* boot;
+        yield* settle;
+        db.exec('ALTER TABLE jobs_offline RENAME TO jobs');
+        db.prepare("INSERT INTO jobs (id, kind, payload, due_at, owner, created_at) VALUES ('j', 'note/ping', '{}', ?, NULL, 0)").run(START);
+        yield* TestClock.adjust('1 second');
+        yield* settle;
+        expect(types(seen)).toEqual(['note/pinged']);
+      }),
+      testEngine(db, [notes])
+    );
   });
 });

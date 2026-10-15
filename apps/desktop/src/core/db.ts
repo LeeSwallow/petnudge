@@ -9,8 +9,13 @@ export const layerDb = (sql: DatabaseSync) => Layer.succeed(Db, { sql });
 export const transaction = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R | Db> =>
   Effect.gen(function* () {
     const { sql } = yield* Db;
-    sql.exec('BEGIN');
-    const exit = yield* Effect.exit(self);
-    sql.exec(Exit.isSuccess(exit) ? 'COMMIT' : 'ROLLBACK');
-    return yield* exit;
+    // Only `self` may be interrupted; BEGIN and COMMIT/ROLLBACK always run as a pair.
+    return yield* Effect.uninterruptibleMask((restore) =>
+      Effect.gen(function* () {
+        sql.exec('BEGIN');
+        const exit = yield* Effect.exit(restore(self));
+        sql.exec(Exit.isSuccess(exit) ? 'COMMIT' : 'ROLLBACK');
+        return yield* exit;
+      })
+    );
   });

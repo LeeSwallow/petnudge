@@ -76,9 +76,20 @@ export const layerScheduler = Layer.effect(
       cancelOwner: (owner) => run("UPDATE jobs SET status = 'cancelled' WHERE owner = ? AND status = 'pending'", owner),
       wake,
       awaitWake: Queue.take(wakes),
+      // A row that cannot be read (corrupt payload) is finished, never retried:
+      // throwing here would stop every job behind it on every boot.
       due: (now) =>
         Effect.sync(() =>
-          (sql.prepare("SELECT * FROM jobs WHERE status = 'pending' AND due_at <= ? ORDER BY due_at, created_at").all(now) as Row[]).map(toJob)
+          (sql.prepare("SELECT * FROM jobs WHERE status = 'pending' AND due_at <= ? ORDER BY due_at, created_at").all(now) as Row[]).flatMap(
+            (row) => {
+              try {
+                return [toJob(row)];
+              } catch {
+                sql.prepare("UPDATE jobs SET status = 'done' WHERE id = ?").run(String(row.id));
+                return [];
+              }
+            }
+          )
         ),
       nextDueAt: Effect.sync(() => {
         const row = sql.prepare("SELECT MIN(due_at) AS next FROM jobs WHERE status = 'pending'").get() as Row | undefined;

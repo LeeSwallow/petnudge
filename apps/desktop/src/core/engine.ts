@@ -1,4 +1,4 @@
-import { Clock, Context, Effect, Exit, Layer, PubSub, Schema, Scope, Semaphore } from 'effect';
+import { Cause, Clock, Context, Effect, Exit, Layer, PubSub, Schema, Scope, Semaphore } from 'effect';
 import { Db, transaction } from './db';
 import { DomainError, domainError } from './errors';
 import { Emitter, type AppEvent } from './events';
@@ -7,6 +7,7 @@ import { Scheduler, type Job } from './scheduler';
 
 export const LATE_AFTER_MS = 2 * 60_000;
 export const MAX_SLEEP_MS = 60 * 60_000;
+export const RETRY_AFTER_MS = 1000;
 const MAX_DELIVERIES = 1000;
 
 export class Engine extends Context.Service<
@@ -145,7 +146,16 @@ export const layerEngine = <R>(modules: ReadonlyArray<ModuleDef<R>>, options: En
         const now = yield* Clock.currentTimeMillis;
         yield* Effect.raceFirst(Effect.sleep(Math.min(Math.max(next - now, 0), MAX_SLEEP_MS)), scheduler.awaitWake);
       });
-      yield* Effect.forkScoped(Effect.forever(cycle));
+      // A failed cycle (SQLite error, bug) must not end the loop: log, pause, go again.
+      // Interruption still passes through so the loop stops when the layer closes.
+      const guarded = Effect.catchCause(cycle, (cause) =>
+        Cause.hasInterruptsOnly(cause)
+          ? Effect.failCause(cause)
+          : Effect.andThen(Effect.logError('scheduler cycle failed', cause), Effect.sleep(RETRY_AFTER_MS))
+      );
+      // The host wakes the loop with 'boot' once its event listeners are attached,
+      // so the catch-up summary of missed jobs reaches them.
+      yield* Effect.forkScoped(Effect.andThen(scheduler.awaitWake, Effect.forever(guarded)));
 
       return { dispatch, query, subscribe: PubSub.subscribe(pubsub) };
     })

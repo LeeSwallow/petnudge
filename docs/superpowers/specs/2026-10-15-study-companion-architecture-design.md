@@ -147,7 +147,9 @@ type Result<T> = { ok: true; value: T } | { ok: false; error: { code: string; me
 1. `dispatch`는 직렬 큐로 하나씩 처리한다(재진입 방지).
 2. 핸들러는 DB 트랜잭션 안에서 실행된다. 핸들러 안의 `emit`은 버퍼에 쌓인다.
 3. 커밋 성공 후에만 버퍼의 이벤트를 발행한다. 실패하면 롤백하고 이벤트는 버린다.
-4. 발행 순서: app 모듈 구독자(`on`) → renderer 창들에 broadcast. 구독자가 dispatch하는 action은 큐 뒤에 붙는다.
+4. 발행 순서: app 모듈 구독자(`on`) → renderer 창들에 broadcast. 구독자는 action을 dispatch하지 않고(직렬 잠금 재진입 방지) 작업 후 `emit`만 하며, 그 이벤트는 큐 뒤에 붙는다.
+5. 핸들러는 트랜잭션 안에서 외부 대기(`Effect.promise`, `Effect.sleep`, 네트워크)를 하지 않는다. DB 연결이 하나뿐이라, 대기하는 동안 엔진 밖 코드(legacy IPC, MCP, 백업 복원)의 쓰기가 열린 트랜잭션에 섞이거나 BEGIN 충돌을 낸다. 외부 작업은 핸들러가 끝난 뒤 이벤트 구독 쪽에서 하고, 3단계 이전 기간에는 legacy 어댑터의 쓰기도 엔진 action을 거친다.
+6. 앱 시작 시 host는 이벤트 리스너를 붙인 뒤 `wake('boot')`를 보낸다. 스케줄러 루프는 첫 wake 전까지 job을 실행하지 않으므로, 놓친 job 요약이 리스너에 반드시 도달한다.
 
 ### 전송
 
