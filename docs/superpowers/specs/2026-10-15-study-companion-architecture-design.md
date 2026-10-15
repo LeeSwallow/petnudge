@@ -14,6 +14,7 @@ Study Companion Pet(데스크톱)을 **Study Companion** — 마감을 알고 �
 |---|---|
 | 출시 대상 | 데스크톱만 (macOS arm64·x64, Windows x64). 모바일 출시 없음 |
 | 제품 정체성 | 리마인더형 비서. 할 일(리마인더) + 뽀모도로가 주력 |
+| 주 사용자 | 학생·수험생·자격증 준비생. 업무용 할 일 관리가 아니라 공부 일정·과제 마감·개인 할 일 |
 | 모듈 위치 | 주력: todos, reminders, pomodoro / 유지: notes, dashboard, chat(AI) / 선택(기본 꺼짐): music |
 | 앱 이름 | Study Companion (`appId: com.studycompanion.pet` 유지) |
 | 배포처 | GitHub Releases만. itch.io는 CI 단계 추가로 나중에 붙일 수 있게 둔다 |
