@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self'; img-src 'self' data:; media-src pet-audio:" />
+    <title>Study Companion Pet</title>
+    <link rel="stylesheet" href="fonts.css" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="data-views.css" />
+  </head>
+  <body>
+    <section id="panel" class="frame" data-hit hidden>
+      <nav class="tabs" id="tabs" role="tablist" aria-label="기능 탭"></nav>
+      <div id="module-host" class="module-host"></div>
+    </section>
+
+    <div id="pet-area">
+      <div id="player-strip" class="frame strip" data-hit hidden>
+        <span id="player-badge" class="badge"></span>
+        <span class="marquee"><span id="player-title"></span></span>
+        <button id="player-toggle" class="icon-button" type="button" aria-label="재생/일시정지"></button>
+        <button id="player-next" class="icon-button" type="button" aria-label="다음 곡"></button>
+      </div>
+      <div id="pet-unit">
+        <div id="bubble" data-hit></div>
+        <canvas id="pet" data-hit tabindex="0" role="button" aria-label="펫: 왼쪽 클릭으로 상호작용, 드래그로 이동, 오른쪽 클릭으로 메뉴"></canvas>
+      </div>
+    </div>
+    <div id="tooltip" role="tooltip" hidden></div>
+    <script src="renderer.js"></script>
+  </body>
+</html>

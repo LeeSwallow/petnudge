@@ -1,0 +1,30 @@
+{
+  "format": "study-pet-mod@1",
+  "id": "friends",
+  "name": "친구 수다",
+  "description": "친구 펫이 20초 넘게 곁에 있으면 가끔 서로 마주 보고 수다를 떨어요 (AI 대화 설정의 제공자를 써요).",
+  "characters": ["*"],
+  "behaviors": [
+    {
+      "id": "greet",
+      "when": { "block": "friend", "phase": "near" },
+      "cooldownMs": 60000,
+      "do": [{ "block": "fx", "kind": "sparkles", "ms": 1200 }]
+    },
+    {
+      "id": "chat",
+      "name": "곁에 오래 있으면 수다",
+      "when": { "block": "friend", "phase": "stay", "afterMs": 20000 },
+      "if": [{ "block": "chance", "p": 0.6 }, { "block": "not", "if": { "block": "timer", "mode": "focus" } }],
+      "cooldownMs": 600000,
+      "priority": 5,
+      "do": [{ "block": "talk", "turns": 6 }]
+    },
+    {
+      "id": "bye",
+      "when": { "block": "friend", "phase": "leave" },
+      "cooldownMs": 60000,
+      "do": [{ "block": "say", "lines": ["또 봐~", "다음에 또 놀자!", "어디 가?"] }]
+    }
+  ]
+}

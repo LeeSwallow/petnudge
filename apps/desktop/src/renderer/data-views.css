@@ -1,0 +1,189 @@
+/* Date-grouped lists, the funnel filter and data backup (notes, todo,
+   dashboard focus records, settings). Kept apart from styles.css. */
+
+/* ---------- funnel button ---------- */
+button.funnel {
+  flex: none;
+  width: 28px;
+  height: 26px;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  border: 2px solid transparent;
+}
+
+button.funnel:hover {
+  border-color: var(--edge);
+}
+
+/* A filter is in effect: show it even while the panel is closed. */
+button.funnel.on {
+  background: var(--well);
+  border-color: var(--break);
+  box-shadow: 2px 2px 0 var(--shadow);
+}
+
+button.funnel[aria-expanded='true'] {
+  background: var(--well);
+  border-color: var(--edge-hi);
+}
+
+.section-title button.funnel {
+  width: 24px;
+  height: 22px;
+  margin-bottom: -2px;
+}
+
+/* ---------- filter panel ---------- */
+.filter-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 8px;
+}
+
+.filter-panel[hidden] {
+  display: none;
+}
+
+.filter-panel .toggle {
+  font: 11px var(--font-small);
+}
+
+.filter-panel select {
+  padding: 3px 6px;
+  font-size: 11px;
+}
+
+.filter-panel .row {
+  font: 11px var(--font-small);
+  color: var(--ink-2);
+}
+
+.seg {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.seg button {
+  padding: 1px 6px;
+  font: 10px var(--font-small);
+  color: var(--ink-2);
+  background: transparent;
+  border: 2px solid var(--edge);
+  box-shadow: none;
+}
+
+.seg button[aria-pressed='true'] {
+  color: #1a1024;
+  background: var(--break);
+  border-color: var(--shadow);
+}
+
+.filter-dates span {
+  color: var(--muted);
+}
+
+.filter-dates input[type='date'] {
+  flex: 1;
+  min-width: 0;
+  padding: 3px 4px;
+  font: 11px var(--font-digits);
+  color: var(--ink);
+  color-scheme: dark;
+  background: var(--well);
+  border: 2px solid var(--shadow);
+  box-shadow: inset 2px 2px 0 #0007;
+  outline: none;
+}
+
+.filter-dates input[type='date']:focus {
+  border-color: var(--break);
+}
+
+button.filter-reset {
+  align-self: flex-end;
+  padding: 0 2px;
+  font: 10px var(--font-small);
+  text-decoration: underline;
+}
+
+button.filter-reset[hidden] {
+  display: none;
+}
+
+/* ---------- day groups ---------- */
+li.day-head,
+.session-log li.day-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 0;
+  font: 10px var(--font-small);
+  color: var(--muted);
+  list-style: none;
+  cursor: default;
+}
+
+li.day-head:first-child,
+li.filter-count + li.day-head {
+  margin-top: 0;
+}
+
+li.day-head b {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--ink-2);
+  font-weight: 700;
+}
+
+/* Dotted rule between the label and the count, like the panel dividers. */
+li.day-head::after {
+  content: '';
+  order: 1;
+  flex: 1;
+  height: 2px;
+  background: repeating-linear-gradient(90deg, var(--edge) 0 2px, transparent 2px 4px);
+}
+
+li.day-head span {
+  order: 2;
+}
+
+li.filter-count {
+  list-style: none;
+  font: 10px var(--font-small);
+}
+
+#todo-done-title small {
+  margin-left: 4px;
+}
+
+/* ---------- data backup ---------- */
+.backup-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  background: #2a1424;
+  border: 2px dashed var(--long);
+}
+
+.backup-confirm[hidden] {
+  display: none;
+}
+
+.backup-confirm small {
+  font: 10px var(--font-small);
+  color: var(--muted);
+}
+
+button.danger {
+  color: #1a1024;
+  font-weight: 700;
+  background: var(--long);
+  border-color: var(--shadow);
+}

@@ -1,0 +1,21 @@
+{
+  "format": "study-pet-mod@1",
+  "id": "_template",
+  "name": "새 모드",
+  "description": "블록을 고쳐서 나만의 반응을 만들어 보세요. 형식: docs/superpowers/specs/2026-10-15-mods-design.md",
+  "characters": ["*"],
+  "states": {},
+  "behaviors": [
+    {
+      "id": "hello",
+      "name": "머리를 쓰다듬으면 인사",
+      "when": { "block": "tap", "area": "head" },
+      "if": [{ "block": "chance", "p": 0.5 }],
+      "cooldownMs": 3000,
+      "do": [
+        { "block": "play", "state": "patted", "ms": 1200, "fx": "hearts" },
+        { "block": "say", "lines": ["안녕! 이건 내 모드야."] }
+      ]
+    }
+  ]
+}

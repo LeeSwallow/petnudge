@@ -1,0 +1,25 @@
+/* Galmuri by Lee Minseo — SIL Open Font License 1.1 (fonts/LICENSE.txt). */
+@font-face {
+  font-family: 'Galmuri11';
+  src: url('fonts/Galmuri11.woff2') format('woff2');
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'Galmuri11';
+  font-weight: 700;
+  src: url('fonts/Galmuri11-Bold.woff2') format('woff2');
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'Galmuri9';
+  src: url('fonts/Galmuri9.woff2') format('woff2');
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'GalmuriMono11';
+  src: url('fonts/GalmuriMono11.woff2') format('woff2');
+  font-display: block;
+}

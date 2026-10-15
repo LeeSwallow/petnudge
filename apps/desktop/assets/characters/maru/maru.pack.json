@@ -1,0 +1,1463 @@
+{
+  "format": "study-pet-character@2",
+  "id": "maru",
+  "name": "마루",
+  "persona": "상어 후드를 뒤집어쓴 장난꾸러기 공부 메이트. 호기심 많고 금방 친해지며 게임과 간식을 좋아해. 혼자 있는 건 싫어해서 '같이 하자!'를 입에 달고 살고, 공부할 땐 '조금만 더!' 하며 응원해. 반말로 밝고 짧게 말해.",
+  "license": "Original artwork for Study Companion Pet (AI-assisted with PixelLab, hand-finished)",
+  "source": "maru.pxo",
+  "frame": {
+    "w": 96,
+    "h": 112
+  },
+  "feetY": 110,
+  "outline": {
+    "color": "#2a1a46",
+    "opacity": 0.7,
+    "width": 1
+  },
+  "layers": [
+    {
+      "id": "hair.back",
+      "follow": [
+        "upper",
+        "head"
+      ],
+      "group": "body"
+    },
+    {
+      "id": "leg.L",
+      "follow": [
+        "legL"
+      ],
+      "group": "body"
+    },
+    {
+      "id": "leg.R",
+      "follow": [
+        "legR"
+      ],
+      "group": "body"
+    },
+    {
+      "id": "shoe.L",
+      "follow": [
+        "legL"
+      ],
+      "group": "body",
+      "edge": {
+        "color": "#1a1030",
+        "opacity": 0.5,
+        "light": "#5b4b70"
+      }
+    },
+    {
+      "id": "shoe.R",
+      "follow": [
+        "legR"
+      ],
+      "group": "body",
+      "edge": {
+        "color": "#1a1030",
+        "opacity": 0.5,
+        "light": "#5b4b70"
+      }
+    },
+    {
+      "id": "arm.L",
+      "follow": [
+        "upper",
+        "armL"
+      ],
+      "group": "body"
+    },
+    {
+      "id": "arm.R",
+      "follow": [
+        "upper",
+        "armR"
+      ],
+      "group": "body"
+    },
+    {
+      "id": "torso.belly",
+      "follow": [],
+      "group": "body"
+    },
+    {
+      "id": "torso.chest",
+      "follow": [
+        "upper"
+      ],
+      "group": "body"
+    },
+    {
+      "id": "bottom",
+      "follow": [],
+      "group": "body",
+      "edge": {
+        "color": "#1a1030",
+        "opacity": 0.5,
+        "light": "#5b4b70"
+      }
+    },
+    {
+      "id": "outer",
+      "from": "slot",
+      "edge": {
+        "color": "#1a1030",
+        "opacity": 0.5,
+        "light": "#5b4b70"
+      },
+      "ignore": [
+        "armL",
+        "armR",
+        "legL",
+        "legR"
+      ]
+    },
+    {
+      "id": "neck",
+      "follow": [
+        "upper"
+      ],
+      "group": "body"
+    },
+    {
+      "id": "head",
+      "follow": [
+        "upper",
+        "head"
+      ],
+      "group": "body"
+    },
+    {
+      "id": "shade",
+      "from": "face",
+      "follow": [
+        "upper",
+        "head"
+      ],
+      "group": "body"
+    },
+    {
+      "id": "mouth",
+      "from": "face",
+      "follow": [
+        "upper",
+        "head"
+      ],
+      "group": "body"
+    },
+    {
+      "id": "eye.L",
+      "from": "face",
+      "follow": [
+        "upper",
+        "head"
+      ],
+      "group": "body"
+    },
+    {
+      "id": "eye.R",
+      "from": "face",
+      "follow": [
+        "upper",
+        "head"
+      ],
+      "group": "body"
+    },
+    {
+      "id": "iris.L",
+      "from": "face",
+      "follow": [
+        "upper",
+        "head",
+        "eyes"
+      ],
+      "clip": "socket.L",
+      "clipFollow": [
+        "upper",
+        "head"
+      ],
+      "group": "body"
+    },
+    {
+      "id": "iris.R",
+      "from": "face",
+      "follow": [
+        "upper",
+        "head",
+        "eyes"
+      ],
+      "clip": "socket.R",
+      "clipFollow": [
+        "upper",
+        "head"
+      ],
+      "group": "body"
+    },
+    {
+      "id": "hair.front",
+      "follow": [
+        "upper",
+        "head"
+      ],
+      "group": "body"
+    },
+    {
+      "id": "armfront.L",
+      "follow": [
+        "upper"
+      ],
+      "group": "body"
+    },
+    {
+      "id": "armfront.R",
+      "follow": [
+        "upper"
+      ],
+      "group": "body"
+    },
+    {
+      "id": "headwear",
+      "from": "slot",
+      "edge": {
+        "color": "#1a1030",
+        "opacity": 0.5,
+        "light": "#5b4b70"
+      },
+      "ignore": [
+        "armL",
+        "armR",
+        "legL",
+        "legR"
+      ]
+    }
+  ],
+  "expressions": {
+    "open": {
+      "iris.L": "open",
+      "iris.R": "open"
+    },
+    "closed": {
+      "iris.L": "none",
+      "eye.L": "closed",
+      "iris.R": "none",
+      "eye.R": "closed",
+      "mouth": "closed"
+    },
+    "focused": {
+      "iris.L": "focused",
+      "eye.L": "focused",
+      "iris.R": "focused",
+      "eye.R": "focused",
+      "mouth": "focused"
+    },
+    "smile": {
+      "iris.L": "none",
+      "eye.L": "smile",
+      "iris.R": "none",
+      "eye.R": "smile",
+      "mouth": "smile"
+    },
+    "surprised": {
+      "iris.L": "none",
+      "eye.L": "surprised",
+      "iris.R": "none",
+      "eye.R": "surprised",
+      "mouth": "surprised"
+    },
+    "pout": {
+      "iris.L": "pout",
+      "eye.L": "pout",
+      "iris.R": "pout",
+      "eye.R": "pout",
+      "mouth": "pout"
+    },
+    "ouch": {
+      "iris.L": "none",
+      "eye.L": "ouch",
+      "iris.R": "none",
+      "eye.R": "ouch",
+      "mouth": "ouch"
+    },
+    "laugh": {
+      "iris.L": "none",
+      "eye.L": "laugh",
+      "iris.R": "none",
+      "eye.R": "laugh",
+      "mouth": "laugh"
+    },
+    "yawn": {
+      "iris.L": "none",
+      "eye.L": "yawn",
+      "iris.R": "none",
+      "eye.R": "yawn",
+      "mouth": "yawn",
+      "shade": "yawn"
+    },
+    "talkA": {
+      "mouth": "talkA"
+    },
+    "talkB": {
+      "mouth": "talkB"
+    },
+    "lookDown": {
+      "iris.L": "lookDown",
+      "eye.L": "lookDown",
+      "iris.R": "lookDown",
+      "eye.R": "lookDown"
+    },
+    "open@turnL": {
+      "iris.L": "none",
+      "iris.R": "none"
+    },
+    "closed@turnL": {
+      "eye.L": "closed",
+      "eye.R": "closed",
+      "mouth": "closed",
+      "shade": "closed",
+      "iris.L": "none",
+      "iris.R": "none"
+    },
+    "smile@turnL": {
+      "eye.L": "smile",
+      "eye.R": "smile",
+      "mouth": "smile",
+      "shade": "smile",
+      "iris.L": "none",
+      "iris.R": "none"
+    },
+    "focused@turnL": {
+      "eye.L": "focused",
+      "eye.R": "focused",
+      "mouth": "focused",
+      "shade": "focused",
+      "iris.L": "none",
+      "iris.R": "none"
+    }
+  },
+  "regions": {
+    "upper": [
+      [
+        0,
+        0,
+        96,
+        52
+      ]
+    ],
+    "head": [
+      [
+        0,
+        0,
+        96,
+        42
+      ]
+    ],
+    "eyes": [
+      [
+        35,
+        26,
+        44,
+        33
+      ],
+      [
+        47,
+        26,
+        56,
+        33
+      ]
+    ],
+    "ribbons": [
+      [
+        0,
+        68,
+        31,
+        96
+      ],
+      [
+        57,
+        68,
+        96,
+        96
+      ]
+    ],
+    "legL": [
+      [
+        34,
+        72,
+        46,
+        112
+      ]
+    ],
+    "legR": [
+      [
+        46,
+        72,
+        57,
+        112
+      ]
+    ],
+    "armL": [
+      [
+        22,
+        44,
+        38,
+        74
+      ]
+    ],
+    "armR": [
+      [
+        54,
+        44,
+        70,
+        74
+      ]
+    ]
+  },
+  "hitAreas": {
+    "head": {
+      "layers": [
+        "hair.back",
+        "head",
+        "shade",
+        "mouth",
+        "eye.L",
+        "eye.R",
+        "iris.L",
+        "iris.R",
+        "hair.front"
+      ]
+    },
+    "chest": {
+      "layers": [
+        "torso.chest",
+        "neck"
+      ]
+    },
+    "belly": {
+      "layers": [
+        "torso.belly"
+      ]
+    }
+  },
+  "actions": {
+    "pat": {
+      "label": "머리 쓰다듬기",
+      "area": "head",
+      "tap": true,
+      "menu": true,
+      "state": "patted",
+      "ms": 1600,
+      "fx": "hearts",
+      "lines": [
+        "헤헤, 더 쓰다듬어도 돼!",
+        "상어도 쓰다듬는 거 좋아해~",
+        "오늘 나 잘했지? 그치?"
+      ]
+    },
+    "pokeChest": {
+      "label": "가슴 콕",
+      "area": "chest",
+      "menu": true,
+      "state": "pouty",
+      "ms": 1600,
+      "fx": "anger",
+      "lines": [
+        "앗, 거긴 안 돼!",
+        "상어한테 물린다~!",
+        "으으, 장난치지 마!"
+      ]
+    },
+    "pokeBelly": {
+      "label": "배 콕",
+      "area": "belly",
+      "menu": true,
+      "state": "poked",
+      "ms": 1100,
+      "fx": "sweat",
+      "lines": [
+        "히익!",
+        "배는 간지럽단 말이야!",
+        "깜짝 놀랐잖아!"
+      ]
+    },
+    "flick": {
+      "label": "꿀밤",
+      "menu": true,
+      "state": "ouch",
+      "ms": 1500,
+      "fx": "stars",
+      "lines": [
+        "아얏! 왜 때려~",
+        "흥, 상어 이빨 맛 좀 볼래?",
+        "히잉… 이마 빨개졌어."
+      ]
+    },
+    "tickle": {
+      "label": "간지럽히기",
+      "menu": true,
+      "state": "giggle",
+      "ms": 2200,
+      "fx": "sparkles",
+      "lines": [
+        "아하하! 그만, 그만~!",
+        "간지러워어~!",
+        "항복! 항복이야!"
+      ]
+    },
+    "emoteHappy": {
+      "label": "신남",
+      "state": "celebrate",
+      "ms": 1300,
+      "fx": "sparkles",
+      "lines": [
+        "오늘도 같이 하자!",
+        "조금만 더, 할 수 있어!",
+        "헤헤, 신난다~"
+      ]
+    },
+    "emoteLove": {
+      "label": "좋아함",
+      "state": "heart",
+      "ms": 1400,
+      "fx": "hearts",
+      "lines": [
+        "같이 있으니까 좋다.",
+        "작은 하루가 모이면 더 큰 내가 될 거야!",
+        "헤헤…"
+      ]
+    },
+    "emoteHuh": {
+      "label": "갸웃",
+      "state": "poked",
+      "ms": 1100,
+      "fx": "sweat",
+      "lines": [
+        "어라?",
+        "방금 뭐였지?",
+        "음…?"
+      ]
+    },
+    "emoteBored": {
+      "label": "심심",
+      "state": "pouty",
+      "ms": 1500,
+      "fx": "anger",
+      "lines": [
+        "심심해~ 놀아줘!",
+        "간식 먹고 싶다…",
+        "혼자는 싫단 말이야!"
+      ]
+    },
+    "emoteGiggle": {
+      "label": "키득",
+      "state": "giggle",
+      "ms": 1600,
+      "fx": "sparkles",
+      "lines": [
+        "히히",
+        "킥킥, 재밌는 거 생각났어!",
+        "이번엔 꼭 클리어하자!"
+      ]
+    }
+  },
+  "states": {
+    "idle": {
+      "look": true,
+      "blink": {
+        "everyMs": 4200,
+        "ms": 140
+      },
+      "loop": [
+        {
+          "ms": 700
+        },
+        {
+          "ms": 350,
+          "move": {
+            "upper": [
+              0,
+              -1
+            ]
+          }
+        },
+        {
+          "ms": 500,
+          "move": {
+            "upper": [
+              0,
+              -1
+            ],
+            "ribbons": [
+              1,
+              0
+            ]
+          }
+        },
+        {
+          "ms": 350,
+          "move": {
+            "upper": [
+              0,
+              -1
+            ]
+          }
+        },
+        {
+          "ms": 600
+        },
+        {
+          "ms": 450,
+          "move": {
+            "ribbons": [
+              -1,
+              0
+            ]
+          }
+        }
+      ]
+    },
+    "focus": {
+      "face": "focused",
+      "blink": {
+        "everyMs": 6000,
+        "ms": 160
+      },
+      "loop": [
+        {
+          "ms": 1100
+        },
+        {
+          "ms": 900,
+          "move": {
+            "upper": [
+              0,
+              -1
+            ]
+          }
+        }
+      ],
+      "look": true
+    },
+    "penDown": {
+      "face": "focused",
+      "loop": [
+        {
+          "ms": 420,
+          "move": {
+            "head": [
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "ms": 420
+        }
+      ]
+    },
+    "sip": {
+      "face": "closed",
+      "loop": [
+        {
+          "ms": 600,
+          "move": {
+            "head": [
+              0,
+              -1
+            ]
+          }
+        },
+        {
+          "ms": 600,
+          "move": {
+            "head": [
+              0,
+              -1
+            ],
+            "upper": [
+              0,
+              -1
+            ]
+          }
+        }
+      ]
+    },
+    "lookUp": {
+      "blink": {
+        "everyMs": 3600,
+        "ms": 140
+      },
+      "loop": [
+        {
+          "ms": 600,
+          "move": {
+            "eyes": [
+              0,
+              -1
+            ]
+          }
+        },
+        {
+          "ms": 600,
+          "move": {
+            "eyes": [
+              0,
+              -1
+            ],
+            "upper": [
+              0,
+              -1
+            ]
+          }
+        }
+      ],
+      "look": true
+    },
+    "windowGaze": {
+      "blink": {
+        "everyMs": 5000,
+        "ms": 160
+      },
+      "loop": [
+        {
+          "ms": 900,
+          "move": {
+            "eyes": [
+              1,
+              0
+            ]
+          }
+        },
+        {
+          "ms": 900,
+          "move": {
+            "eyes": [
+              1,
+              0
+            ],
+            "upper": [
+              0,
+              -1
+            ]
+          }
+        }
+      ],
+      "look": true
+    },
+    "sleep": {
+      "face": "closed",
+      "loop": [
+        {
+          "ms": 900,
+          "move": {
+            "head": [
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "ms": 900,
+          "move": {
+            "head": [
+              0,
+              2
+            ]
+          }
+        },
+        {
+          "ms": 700,
+          "move": {
+            "head": [
+              0,
+              2
+            ],
+            "upper": [
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "ms": 700,
+          "move": {
+            "head": [
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    "dragged": {
+      "face": "surprised",
+      "loop": [
+        {
+          "ms": 90,
+          "dy": -2,
+          "pose": "flail",
+          "move": {
+            "legL": [
+              -1,
+              -2
+            ],
+            "ribbons": [
+              1,
+              0
+            ]
+          }
+        },
+        {
+          "ms": 90,
+          "dy": -1,
+          "pose": "flail",
+          "move": {
+            "legR": [
+              1,
+              -2
+            ],
+            "ribbons": [
+              -1,
+              0
+            ]
+          }
+        },
+        {
+          "ms": 90,
+          "dy": -2,
+          "pose": "flail",
+          "move": {
+            "legL": [
+              -1,
+              -1
+            ]
+          }
+        },
+        {
+          "ms": 90,
+          "dy": -1,
+          "pose": "flail",
+          "move": {
+            "legR": [
+              1,
+              -1
+            ],
+            "ribbons": [
+              1,
+              0
+            ]
+          }
+        }
+      ]
+    },
+    "celebrate": {
+      "face": "smile",
+      "loop": [
+        {
+          "ms": 120,
+          "dy": -1
+        },
+        {
+          "ms": 140,
+          "dy": -4,
+          "move": {
+            "ribbons": [
+              1,
+              0
+            ],
+            "legL": [
+              0,
+              -1
+            ],
+            "legR": [
+              0,
+              -1
+            ]
+          }
+        },
+        {
+          "ms": 120,
+          "dy": -2,
+          "move": {
+            "ribbons": [
+              -1,
+              0
+            ]
+          }
+        },
+        {
+          "ms": 160,
+          "dy": 0,
+          "move": {
+            "upper": [
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    "heart": {
+      "face": "smile",
+      "loop": [
+        {
+          "ms": 300
+        },
+        {
+          "ms": 300,
+          "move": {
+            "upper": [
+              0,
+              -1
+            ],
+            "head": [
+              0,
+              -1
+            ]
+          }
+        }
+      ]
+    },
+    "lookAround": {
+      "loop": [
+        {
+          "ms": 900,
+          "head": "turnL"
+        },
+        {
+          "ms": 450
+        },
+        {
+          "ms": 900,
+          "head": "turnR"
+        },
+        {
+          "ms": 450
+        }
+      ]
+    },
+    "yawn": {
+      "loop": [
+        {
+          "ms": 250,
+          "move": {
+            "upper": [
+              0,
+              -1
+            ]
+          }
+        },
+        {
+          "ms": 1300,
+          "face": "yawn",
+          "move": {
+            "upper": [
+              0,
+              -2
+            ]
+          }
+        },
+        {
+          "ms": 350,
+          "face": "closed",
+          "move": {
+            "upper": [
+              0,
+              -1
+            ]
+          }
+        },
+        {
+          "ms": 300
+        }
+      ]
+    },
+    "hum": {
+      "loop": [
+        {
+          "ms": 380,
+          "face": "smile",
+          "move": {
+            "head": [
+              0,
+              -1
+            ],
+            "legR": [
+              0,
+              -1
+            ]
+          }
+        },
+        {
+          "ms": 380,
+          "face": "smile",
+          "move": {
+            "ribbons": [
+              1,
+              0
+            ]
+          }
+        },
+        {
+          "ms": 380,
+          "face": "smile",
+          "move": {
+            "head": [
+              0,
+              -1
+            ],
+            "legR": [
+              0,
+              -1
+            ]
+          }
+        },
+        {
+          "ms": 380,
+          "face": "smile",
+          "move": {
+            "ribbons": [
+              -1,
+              0
+            ]
+          }
+        },
+        {
+          "ms": 380,
+          "face": "smile",
+          "move": {
+            "head": [
+              0,
+              -1
+            ],
+            "legR": [
+              0,
+              -1
+            ]
+          }
+        },
+        {
+          "ms": 380,
+          "face": "smile"
+        }
+      ]
+    },
+    "patted": {
+      "face": "smile",
+      "loop": [
+        {
+          "ms": 260,
+          "move": {
+            "head": [
+              0,
+              1
+            ],
+            "legL": [
+              0,
+              -1
+            ]
+          }
+        },
+        {
+          "ms": 260
+        }
+      ]
+    },
+    "pouty": {
+      "face": "pout",
+      "start": [
+        {
+          "ms": 140,
+          "face": "surprised",
+          "dy": -1
+        }
+      ],
+      "loop": [
+        {
+          "ms": 420,
+          "move": {
+            "head": [
+              0,
+              -1
+            ],
+            "legR": [
+              0,
+              -1
+            ]
+          }
+        },
+        {
+          "ms": 420
+        }
+      ]
+    },
+    "poked": {
+      "face": "surprised",
+      "start": [
+        {
+          "ms": 160,
+          "dy": -2
+        },
+        {
+          "ms": 120,
+          "dy": -1
+        }
+      ],
+      "loop": [
+        {
+          "ms": 400
+        }
+      ]
+    },
+    "ouch": {
+      "face": "ouch",
+      "start": [
+        {
+          "ms": 160,
+          "move": {
+            "head": [
+              0,
+              1
+            ]
+          }
+        }
+      ],
+      "loop": [
+        {
+          "ms": 240,
+          "move": {
+            "head": [
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "ms": 240
+        }
+      ]
+    },
+    "giggle": {
+      "face": "laugh",
+      "loop": [
+        {
+          "ms": 110,
+          "dx": -1,
+          "move": {
+            "ribbons": [
+              1,
+              0
+            ],
+            "legL": [
+              0,
+              -1
+            ]
+          }
+        },
+        {
+          "ms": 110,
+          "dx": 1,
+          "move": {
+            "ribbons": [
+              -1,
+              0
+            ],
+            "legR": [
+              0,
+              -1
+            ]
+          },
+          "dy": -1
+        }
+      ]
+    },
+    "walkL": {
+      "loop": [
+        {
+          "ms": 110,
+          "head": "turnL",
+          "pose": "walk1"
+        },
+        {
+          "ms": 110,
+          "head": "turnL",
+          "pose": "walk2"
+        },
+        {
+          "ms": 110,
+          "head": "turnL",
+          "pose": "walk3"
+        },
+        {
+          "ms": 110,
+          "head": "turnL",
+          "pose": "walk4"
+        },
+        {
+          "ms": 110,
+          "head": "turnL",
+          "pose": "walk5"
+        },
+        {
+          "ms": 110,
+          "head": "turnL",
+          "pose": "walk6"
+        },
+        {
+          "ms": 110,
+          "head": "turnL",
+          "pose": "walk7"
+        },
+        {
+          "ms": 110,
+          "head": "turnL",
+          "pose": "walk8"
+        }
+      ]
+    },
+    "walkR": {
+      "loop": [
+        {
+          "ms": 110,
+          "head": "turnR",
+          "pose": "walk1"
+        },
+        {
+          "ms": 110,
+          "head": "turnR",
+          "pose": "walk2"
+        },
+        {
+          "ms": 110,
+          "head": "turnR",
+          "pose": "walk3"
+        },
+        {
+          "ms": 110,
+          "head": "turnR",
+          "pose": "walk4"
+        },
+        {
+          "ms": 110,
+          "head": "turnR",
+          "pose": "walk5"
+        },
+        {
+          "ms": 110,
+          "head": "turnR",
+          "pose": "walk6"
+        },
+        {
+          "ms": 110,
+          "head": "turnR",
+          "pose": "walk7"
+        },
+        {
+          "ms": 110,
+          "head": "turnR",
+          "pose": "walk8"
+        }
+      ]
+    }
+  },
+  "slots": {
+    "hair": {
+      "label": "머리색",
+      "swatch": "#e8c1ab",
+      "variants": {
+        "blonde": {
+          "label": "허니 블론드"
+        },
+        "pink": {
+          "label": "핑크",
+          "recolor": {
+            "layers": [
+              "hair.back",
+              "hair.front"
+            ],
+            "map": {
+              "#833c4c": "#6e2f56",
+              "#874b53": "#823e67",
+              "#92575a": "#964e78",
+              "#8d636c": "#a35884",
+              "#a16668": "#b0628f",
+              "#a36f6c": "#b76996",
+              "#b57c76": "#c679a6",
+              "#bb847b": "#cd80ae",
+              "#c08d82": "#d589b7",
+              "#c99587": "#dc95c0",
+              "#db948d": "#e19ec6",
+              "#da9c95": "#e5a7cc",
+              "#d4a191": "#e6a8cd",
+              "#d9ad9b": "#efb8d8",
+              "#e3b6a0": "#f6c6e2",
+              "#f3b1af": "#f7cae4",
+              "#e8c1ab": "#f8d1e8",
+              "#f7c5c1": "#fbdced",
+              "#f4d7c0": "#fde7f3",
+              "#f9d4cd": "#fde8f4",
+              "#f9e0cc": "#fff0f8"
+            }
+          }
+        },
+        "silver": {
+          "label": "실버",
+          "recolor": {
+            "layers": [
+              "hair.back",
+              "hair.front"
+            ],
+            "map": {
+              "#833c4c": "#4e5266",
+              "#874b53": "#606479",
+              "#92575a": "#72778c",
+              "#8d636c": "#7e839a",
+              "#a16668": "#8a8fa6",
+              "#a36f6c": "#9297ad",
+              "#b57c76": "#a3a7bb",
+              "#bb847b": "#acb0c2",
+              "#c08d82": "#b5b9ca",
+              "#c99587": "#c0c4d3",
+              "#db948d": "#c9ccd9",
+              "#da9c95": "#d1d4e0",
+              "#d4a191": "#d2d5e1",
+              "#d9ad9b": "#e1e3ec",
+              "#e3b6a0": "#eef0f6",
+              "#f3b1af": "#f0f2f7",
+              "#e8c1ab": "#f2f4f8",
+              "#f7c5c1": "#f7f8fb",
+              "#f4d7c0": "#fbfcfd",
+              "#f9d4cd": "#fcfcfd",
+              "#f9e0cc": "#ffffff"
+            }
+          }
+        },
+        "brown": {
+          "label": "브라운",
+          "recolor": {
+            "layers": [
+              "hair.back",
+              "hair.front"
+            ],
+            "map": {
+              "#833c4c": "#3a241c",
+              "#874b53": "#482d23",
+              "#92575a": "#57372a",
+              "#8d636c": "#623e2f",
+              "#a16668": "#6b4433",
+              "#a36f6c": "#744b38",
+              "#b57c76": "#865a43",
+              "#bb847b": "#8f6148",
+              "#c08d82": "#99694e",
+              "#c99587": "#a37357",
+              "#db948d": "#aa7a5d",
+              "#da9c95": "#b18164",
+              "#d4a191": "#b28265",
+              "#d9ad9b": "#be8f70",
+              "#e3b6a0": "#c99a7b",
+              "#f3b1af": "#cda082",
+              "#e8c1ab": "#d3aa8d",
+              "#f7c5c1": "#ddb99f",
+              "#f4d7c0": "#e7c9b2",
+              "#f9d4cd": "#e9cbb4",
+              "#f9e0cc": "#f0d6c2"
+            }
+          }
+        }
+      }
+    },
+    "outer": {
+      "label": "아우터",
+      "variants": {
+        "shark": {
+          "label": "상어 후드티"
+        },
+        "none": {
+          "label": "없음"
+        }
+      }
+    },
+    "headwear": {
+      "label": "머리 장식",
+      "variants": {
+        "sharkhood": {
+          "label": "상어 후드",
+          "hides": [
+            "hair.back"
+          ]
+        },
+        "none": {
+          "label": "없음"
+        }
+      }
+    }
+  },
+  "fallback": "idle",
+  "fidgets": {
+    "states": [
+      "lookAround",
+      "yawn",
+      "hum"
+    ],
+    "everyMs": [
+      9000,
+      22000
+    ]
+  },
+  "mirror": {
+    "turnR": "turnL"
+  },
+  "emotes": {
+    "actions": [
+      "emoteHappy",
+      "emoteLove",
+      "emoteHuh",
+      "emoteBored",
+      "emoteGiggle"
+    ],
+    "everyMs": [
+      15000,
+      40000
+    ]
+  },
+  "poses": {
+    "walk1": {
+      "cell": "pose.walk1",
+      "whole": true
+    },
+    "walk2": {
+      "cell": "pose.walk2",
+      "whole": true
+    },
+    "walk3": {
+      "cell": "pose.walk3",
+      "whole": true
+    },
+    "walk4": {
+      "cell": "pose.walk4",
+      "whole": true
+    },
+    "walk5": {
+      "cell": "pose.walk5",
+      "whole": true
+    },
+    "walk6": {
+      "cell": "pose.walk6",
+      "whole": true
+    },
+    "walk7": {
+      "cell": "pose.walk7",
+      "whole": true
+    },
+    "walk8": {
+      "cell": "pose.walk8",
+      "whole": true
+    },
+    "flail": {
+      "cell": "pose.flail",
+      "whole": true
+    }
+  }
+}

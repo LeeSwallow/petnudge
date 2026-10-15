@@ -1,0 +1,437 @@
+{
+  "format": "study-pet-character@1",
+  "id": "miso",
+  "name": "미소",
+  "license": "Original artwork for Study Companion Pet",
+  "credit": {
+    "author": "Study Companion Pet",
+    "url": ""
+  },
+  "padTop": 4,
+  "origin": [
+    4,
+    0
+  ],
+  "frame": {
+    "w": 40,
+    "h": 60
+  },
+  "sheet": "sheet.png",
+  "columns": 8,
+  "states": {
+    "idle": {
+      "loop": [
+        {
+          "cell": 0,
+          "ms": 700,
+          "dy": 0
+        },
+        {
+          "cell": 1,
+          "ms": 600,
+          "dy": 1
+        }
+      ]
+    },
+    "idle@left": {
+      "loop": [
+        {
+          "cell": 2,
+          "ms": 700,
+          "dy": 0
+        },
+        {
+          "cell": 3,
+          "ms": 600,
+          "dy": 1
+        }
+      ]
+    },
+    "idle@right": {
+      "loop": [
+        {
+          "cell": 4,
+          "ms": 700,
+          "dy": 0
+        },
+        {
+          "cell": 5,
+          "ms": 600,
+          "dy": 1
+        }
+      ]
+    },
+    "focus": {
+      "loop": [
+        {
+          "cell": 6,
+          "ms": 900,
+          "dy": 0
+        },
+        {
+          "cell": 7,
+          "ms": 900,
+          "dy": 1
+        }
+      ]
+    },
+    "focus@left": {
+      "loop": [
+        {
+          "cell": 8,
+          "ms": 900,
+          "dy": 0
+        },
+        {
+          "cell": 9,
+          "ms": 900,
+          "dy": 1
+        }
+      ]
+    },
+    "focus@right": {
+      "loop": [
+        {
+          "cell": 10,
+          "ms": 900,
+          "dy": 0
+        },
+        {
+          "cell": 11,
+          "ms": 900,
+          "dy": 1
+        }
+      ]
+    },
+    "penDown": {
+      "loop": [
+        {
+          "cell": 12,
+          "ms": 420,
+          "dy": 0
+        },
+        {
+          "cell": 13,
+          "ms": 420,
+          "dy": 1
+        }
+      ]
+    },
+    "sip": {
+      "loop": [
+        {
+          "cell": 14,
+          "ms": 520,
+          "dy": 0
+        },
+        {
+          "cell": 15,
+          "ms": 520,
+          "dy": 1
+        }
+      ]
+    },
+    "lookUp": {
+      "loop": [
+        {
+          "cell": 16,
+          "ms": 600,
+          "dy": 0
+        },
+        {
+          "cell": 17,
+          "ms": 600,
+          "dy": 0
+        }
+      ]
+    },
+    "lookUp@left": {
+      "loop": [
+        {
+          "cell": 18,
+          "ms": 600,
+          "dy": 0
+        },
+        {
+          "cell": 19,
+          "ms": 600,
+          "dy": 0
+        }
+      ]
+    },
+    "lookUp@right": {
+      "loop": [
+        {
+          "cell": 20,
+          "ms": 600,
+          "dy": 0
+        },
+        {
+          "cell": 21,
+          "ms": 600,
+          "dy": 0
+        }
+      ]
+    },
+    "windowGaze": {
+      "loop": [
+        {
+          "cell": 22,
+          "ms": 700,
+          "dy": 0
+        },
+        {
+          "cell": 23,
+          "ms": 700,
+          "dy": 1
+        }
+      ],
+      "turn": 1
+    },
+    "sleep": {
+      "loop": [
+        {
+          "cell": 24,
+          "ms": 900,
+          "dy": 1
+        },
+        {
+          "cell": 25,
+          "ms": 900,
+          "dy": 2
+        }
+      ]
+    },
+    "dragged": {
+      "loop": [
+        {
+          "cell": 26,
+          "ms": 180,
+          "dy": 0
+        },
+        {
+          "cell": 27,
+          "ms": 180,
+          "dy": 1
+        }
+      ]
+    },
+    "celebrate": {
+      "loop": [
+        {
+          "cell": 28,
+          "ms": 120,
+          "dy": -1
+        },
+        {
+          "cell": 29,
+          "ms": 120,
+          "dy": -3
+        },
+        {
+          "cell": 30,
+          "ms": 160,
+          "dy": 0
+        }
+      ]
+    },
+    "heart": {
+      "loop": [
+        {
+          "cell": 31,
+          "ms": 300,
+          "dy": 0
+        },
+        {
+          "cell": 32,
+          "ms": 300,
+          "dy": 1
+        }
+      ]
+    },
+    "heart@left": {
+      "loop": [
+        {
+          "cell": 33,
+          "ms": 300,
+          "dy": 0
+        },
+        {
+          "cell": 34,
+          "ms": 300,
+          "dy": 1
+        }
+      ]
+    },
+    "heart@right": {
+      "loop": [
+        {
+          "cell": 35,
+          "ms": 300,
+          "dy": 0
+        },
+        {
+          "cell": 36,
+          "ms": 300,
+          "dy": 1
+        }
+      ]
+    }
+  },
+  "layers": {
+    "blink": {
+      "center": 37,
+      "left": 38,
+      "right": 39
+    },
+    "headwear:headset": {
+      "center": 40,
+      "left": 41,
+      "right": 42
+    },
+    "headwear:catband": {
+      "center": 43,
+      "left": 44,
+      "right": 45
+    },
+    "glow": {
+      "center": 46,
+      "left": 47,
+      "right": 48
+    }
+  },
+  "slots": {
+    "hair": {
+      "label": "머리색",
+      "variants": {
+        "lilac": {
+          "label": "라일락",
+          "recolor": {}
+        },
+        "pink": {
+          "label": "네온 핑크",
+          "recolor": {
+            "#4b3790": "#8a2e6b",
+            "#7d68d6": "#d65ca8",
+            "#a594f0": "#f08cc8",
+            "#e4dcff": "#ffd6ee"
+          }
+        },
+        "silver": {
+          "label": "실버",
+          "recolor": {
+            "#4b3790": "#5a5f7a",
+            "#7d68d6": "#a8adc8",
+            "#a594f0": "#cfd3e8",
+            "#e4dcff": "#ffffff"
+          }
+        },
+        "mint": {
+          "label": "민트",
+          "recolor": {
+            "#4b3790": "#2b6b6b",
+            "#7d68d6": "#4fb8a8",
+            "#a594f0": "#8fe0d0",
+            "#e4dcff": "#e0fff8"
+          }
+        },
+        "brown": {
+          "label": "브라운",
+          "recolor": {
+            "#4b3790": "#4a2418",
+            "#7d68d6": "#7a3e2a",
+            "#a594f0": "#a85a3c",
+            "#e4dcff": "#d9926a"
+          }
+        },
+        "ink": {
+          "label": "흑발",
+          "recolor": {
+            "#4b3790": "#15121f",
+            "#7d68d6": "#2e2944",
+            "#a594f0": "#4a4270",
+            "#e4dcff": "#8a80c0"
+          }
+        }
+      }
+    },
+    "outfit": {
+      "label": "후드",
+      "variants": {
+        "violet": {
+          "label": "바이올렛 후드",
+          "recolor": {}
+        },
+        "black": {
+          "label": "블랙 테크웨어",
+          "recolor": {
+            "#3c2a6e": "#26222e",
+            "#2a1d52": "#16141c",
+            "#4fe8f7": "#4fe8f7",
+            "#ff5ad0": "#ff5ad0"
+          }
+        },
+        "teal": {
+          "label": "시안 후드",
+          "recolor": {
+            "#3c2a6e": "#1f6b80",
+            "#2a1d52": "#164d5c",
+            "#4fe8f7": "#ffe14f",
+            "#ff5ad0": "#ff5ad0"
+          }
+        },
+        "cardigan": {
+          "label": "니트 가디건",
+          "recolor": {
+            "#3c2a6e": "#f0e0c8",
+            "#2a1d52": "#d8c2a0",
+            "#4fe8f7": "#c27a4a",
+            "#ff5ad0": "#e8486e"
+          },
+          "unlock": "outfit-knit-cardigan"
+        }
+      }
+    },
+    "headwear": {
+      "label": "머리 장식",
+      "variants": {
+        "headset": {
+          "label": "LED 헤드셋",
+          "layer": "headwear:headset"
+        },
+        "catband": {
+          "label": "고양이 머리띠",
+          "layer": "headwear:catband"
+        },
+        "none": {
+          "label": "없음",
+          "layer": null
+        }
+      }
+    },
+    "led": {
+      "label": "LED",
+      "variants": {
+        "cyan": {
+          "label": "시안",
+          "recolor": {}
+        },
+        "magenta": {
+          "label": "마젠타",
+          "recolor": {
+            "#4ff0ff": "#ff5ad0",
+            "#ff4fd8": "#4fe8f7"
+          }
+        },
+        "gold": {
+          "label": "골드",
+          "recolor": {
+            "#4ff0ff": "#ffd34f",
+            "#ff4fd8": "#ff8a3d"
+          }
+        }
+      }
+    }
+  },
+  "fallback": "idle"
+}

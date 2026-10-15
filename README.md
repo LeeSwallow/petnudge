@@ -23,6 +23,7 @@ Lo-fi BGM이 흐르는 픽셀 공부방에서 AI 캐릭터와 함께 뽀모도�
 - `docs/video-generation-prompts.md` — focus→break 전이, reward dialogue, break idle, planner/timer 영상 생성 프롬프트 모음
 - `docs/video-generation-prompts-veo.md` — Google Veo용 자연어 콘티형 영상 생성 프롬프트
 - `apps/mobile/` — Expo/React Native 모바일 mock foundation: scene state, mock layer registry, planner/timer/dialogue 구조
+- `apps/desktop/` — Electron 데스크톱 펫: 투명·항상 위 창의 픽셀 캐릭터, 뽀모도로/플래너, Spotify·Apple Music 재생 감지와 타이머 연동 (mobile의 domain/session 로직 재사용)
 - `.github/` — issue/PR 템플릿
 - `github-labels.md` — GitHub lane/status/type/priority label 생성 명령
 - `workflow.json` — 자동화 스크립트가 읽는 단계/역할/산출물/검증 기준
@@ -41,6 +42,23 @@ python tools/study_companion_workflow.py render
 
 - `generated/workflow-checklist.md`
 - `generated/agent-prompt-pack.md`
+
+## 데스크톱 펫 실행
+
+```bash
+cd apps/desktop
+npm install
+npm start          # 빌드 후 Electron 실행
+npm test           # 도메인·DB·MCP 테스트
+npm run bake       # 캐릭터 원화(assets/characters/miso/art.mjs) → sheet.png + character.json
+npm run dist:mac   # 설치 파일(release/*.dmg)
+```
+
+- 투명·항상 위 창의 픽셀 캐릭터. 드래그로 이동(화면 밖으로는 못 나감), 클릭하면 패널. 잃어버리면 ⌘/Ctrl + Alt + P.
+- 패널 모듈: 할 일 · 뽀모도로 · 대시보드(차트) · 음악 · 메모 · 대화(서버 연결 전) · 설정. 데이터는 내장 SQLite(`node:sqlite`).
+- 음악: 내 음악 파일 플레이리스트(내장 플레이어)가 기본, Spotify/Apple Music 연동은 선택(macOS).
+- 캐릭터: 스프라이트 시트 + JSON 상태표. 머리색·후드·머리 장식·LED를 바꿀 수 있고 커서 쪽으로 고개를 돌린다.
+- AI 연결(MCP): 앱 실행 중 `127.0.0.1:47615/mcp` (토큰 인증). 설정 → AI 연결에서 Claude Code / Cursor 설정을 복사.
 
 ## 점수
 

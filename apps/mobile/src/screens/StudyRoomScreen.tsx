@@ -1,17 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { DialoguePanel } from '../components/DialoguePanel';
 import { SkiaStudyRoomScene } from '../components/SkiaStudyRoomScene';
 import { PlannerPanel } from '../components/PlannerPanel';
+import { StudyHud } from '../components/StudyHud';
 import type { SceneState } from '../domain/scene';
-import {
-  advanceDialogue,
-  advanceTransition,
-  completeFocus,
-  createInitialSceneState,
-  openBreakPlanner,
-  startFocus
-} from '../scene/sceneMachine';
+import { useStudyStore } from '../store/studyStore';
 
 const isPlannerVisible = (scene: SceneState) =>
   scene.phase === 'planning_note_open' ||
@@ -19,33 +13,51 @@ const isPlannerVisible = (scene: SceneState) =>
   scene.phase === 'break_planning';
 
 export function StudyRoomScreen() {
-  const [scene, setScene] = useState(createInitialSceneState);
+  const scene = useStudyStore((s) => s.scene);
+  const tick = useStudyStore((s) => s.tick);
+  const advanceTransition = useStudyStore((s) => s.advanceTransition);
+  const advanceDialogue = useStudyStore((s) => s.advanceDialogue);
+  const openBreakPlanner = useStudyStore((s) => s.openBreakPlanner);
+  const abandonFocus = useStudyStore((s) => s.abandonFocus);
+  const [now, setNow] = useState(Date.now);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      const current = Date.now();
+      setNow(current);
+      tick(current);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [tick]);
 
   const handleAdvance = () => {
-    setScene((current) => {
-      if (current.phase === 'focus_active') return completeFocus(current);
-      if (current.phase === 'break_dialogue_active') return advanceDialogue(current);
-      return advanceTransition(current);
-    });
+    if (scene.phase === 'break_dialogue_active') advanceDialogue();
+    else advanceTransition();
   };
 
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
         <Text style={styles.title}>Lofi Study Companion</Text>
-        <Text style={styles.subtitle}>mobile mock · future Skia layers</Text>
+        <Text style={styles.subtitle}>pomodoro · planner · progress</Text>
       </View>
+
+      <StudyHud now={now} />
 
       <SkiaStudyRoomScene scene={scene} />
 
       <View style={styles.bottom}>
         {isPlannerVisible(scene) ? (
-          <PlannerPanel onStartFocus={() => setScene((current) => startFocus(current))} />
+          <PlannerPanel />
         ) : (
           <>
-            <DialoguePanel scene={scene} onAdvance={() => setScene((current) => advanceDialogue(current))} />
-            {scene.phase === 'break_idle_window' ? (
-              <Pressable style={styles.secondaryButton} onPress={() => setScene((current) => openBreakPlanner(current))}>
+            <DialoguePanel scene={scene} onAdvance={advanceDialogue} />
+            {scene.phase === 'focus_active' ? (
+              <Pressable style={styles.secondaryButton} onPress={abandonFocus}>
+                <Text style={styles.secondaryButtonText}>이번 세션 그만두기</Text>
+              </Pressable>
+            ) : scene.phase === 'break_idle_window' ? (
+              <Pressable style={styles.secondaryButton} onPress={openBreakPlanner}>
                 <Text style={styles.secondaryButtonText}>노트/타이머 정리하기</Text>
               </Pressable>
             ) : (

@@ -206,7 +206,7 @@ CREATE INDEX jobs_pending ON jobs(status, due_at);
    reconcile: pending 중 due_at ≤ now 를 due_at 순으로 꺼냄
        → 각 job을 엔진 큐에 `schedules[kind]` 실행으로 넣음
        → 성공·실패 모두 done (실패는 로그, 무한 재시도 금지)
-       → 2개 이상이 late면 `scheduler/caught-up { jobs }` 이벤트 발행
+       → late job이 하나라도 있으면 `scheduler/caught-up { jobs }` 이벤트 발행
                              ▼
    arm: 다음 pending job까지 타이머 하나 (최대 1시간으로 끊어 체인)
        pending이 없으면 타이머를 걸지 않음

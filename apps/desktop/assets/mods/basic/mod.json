@@ -1,0 +1,51 @@
+{
+  "format": "study-pet-mod@1",
+  "id": "basic",
+  "name": "기본 반응",
+  "description": "집중을 시작하고 끝낼 때, 밤늦게, 음악이 나올 때 반응해요.",
+  "characters": ["*"],
+  "states": {
+    "cheerJump": { "face": "smile", "loop": [{ "ms": 140, "dy": -2 }, { "ms": 140, "dy": -4, "move": { "legL": [0, -1], "legR": [0, -1] } }, { "ms": 140, "dy": -1 }, { "ms": 200 }] }
+  },
+  "behaviors": [
+    {
+      "id": "focus-start",
+      "name": "집중 시작 응원",
+      "when": { "block": "timer", "event": "focusStart" },
+      "do": [
+        { "block": "play", "state": "cheerJump", "ms": 900, "fx": "sparkles" },
+        { "block": "say", "lines": ["좋아, 같이 집중하자!", "시작! 파이팅!", "나도 옆에서 공부할게."] }
+      ]
+    },
+    {
+      "id": "focus-end",
+      "name": "집중 끝 칭찬",
+      "when": { "block": "timer", "event": "focusEnd" },
+      "do": [
+        { "block": "play", "state": "celebrate", "ms": 1400, "fx": "stars" },
+        { "block": "say", "lines": ["수고했어! 잠깐 쉬자.", "한 세션 끝! 대단해.", "물 한 잔 마시고 오자."] }
+      ]
+    },
+    {
+      "id": "late-night",
+      "name": "밤늦게 걱정",
+      "when": { "block": "random", "everyMs": [600000, 1200000] },
+      "if": [{ "block": "hours", "from": 0, "to": 5 }, { "block": "not", "if": { "block": "timer", "mode": "focus" } }],
+      "do": [
+        { "block": "play", "state": "yawn", "ms": 2000 },
+        { "block": "say", "lines": ["벌써 이렇게 늦었어… 너무 무리하지 마.", "졸리면 자도 괜찮아."] }
+      ]
+    },
+    {
+      "id": "music-on",
+      "name": "음악이 나오면 흥얼",
+      "when": { "block": "music", "playing": true },
+      "if": [{ "block": "chance", "p": 0.5 }],
+      "cooldownMs": 120000,
+      "do": [
+        { "block": "play", "state": "hum", "ms": 2200 },
+        { "block": "say", "lines": ["이 노래 좋다~", "♪"] }
+      ]
+    }
+  ]
+}
