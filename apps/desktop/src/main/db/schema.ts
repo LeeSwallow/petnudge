@@ -1,4 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
+import { jobsTableSql } from '../../core/scheduler';
 
 // Each entry upgrades the schema by one version; PRAGMA user_version tracks
 // how many have run. Never edit a shipped migration — append a new one.
@@ -58,7 +59,9 @@ const migrations: string[] = [
 
   CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
   CREATE TABLE kv (key TEXT PRIMARY KEY, value TEXT NOT NULL);
-  `
+  `,
+  // v2: scheduler jobs (core/scheduler.ts).
+  jobsTableSql
 ];
 
 export const migrate = (db: DatabaseSync) => {

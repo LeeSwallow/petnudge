@@ -18,6 +18,8 @@ import { createBackup, parseBackup, restoreBackup, summarizeBackup, type Backup 
 import { readFile, stat, writeFile } from 'node:fs/promises';
 import { installChat } from './chatIpc';
 import { createFriends } from './friends';
+import { startEngine, type EngineHandle } from '../infra/runtime';
+import { bridgePower } from '../infra/electron/power';
 const NOW_PLAYING_POLL_MS = 2000;
 
 const AUDIO_EXTENSIONS = ['mp3', 'm4a', 'aac', 'wav', 'ogg', 'oga', 'flac', 'opus', 'webm'];
@@ -69,6 +71,9 @@ let win: BrowserWindow | null = null;
 let repository: Repository;
 // Raw handle for backup/restore, which works on whole tables.
 let database: DatabaseSync;
+// Core engine (docs/superpowers/specs/2026-10-15-study-companion-architecture-design.md).
+// No modules are registered yet; stage 3 moves features onto it one by one.
+let engine: EngineHandle | null = null;
 let mcpInfo: McpInfo | null = null;
 
 // Early dev builds stored data under the package name; carry it over once.
@@ -88,7 +93,11 @@ const openDatabase = () => {
   migrate(db);
   repository = createRepository(db);
   database = db;
-  app.on('will-quit', () => db.close());
+  // Stop the scheduler loop before the database it reads goes away.
+  app.on('will-quit', () => {
+    void engine?.dispose();
+    db.close();
+  });
 };
 
 const RESET_SHORTCUT = 'CommandOrControl+Alt+P';
@@ -436,6 +445,12 @@ const startMcp = async () => {
 
 app.whenReady().then(() => {
   openDatabase();
+  void startEngine(database, [])
+    .then((handle) => {
+      engine = handle;
+      bridgePower((reason) => void handle.wake(reason));
+    })
+    .catch((error) => console.error('engine failed to start', error));
   serveAudio();
   createWindow();
   if (!app.isPackaged) watchBuiltinCharacter();
