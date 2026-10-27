@@ -260,10 +260,8 @@ const friends = createFriends({
   alwaysOnTop: () => repository.getSettings().alwaysOnTop,
   mainAnchor: () => view.anchor,
   mainContents: () => win?.webContents,
-  onListChange: (ids) => {
-    repository.setKv('friends.out', JSON.stringify(ids));
-    win?.webContents.send('friends:list', ids);
-  }
+  // Not saved: each launch starts with the main pet alone (캐릭터 tab).
+  onListChange: (ids) => win?.webContents.send('friends:list', ids)
 });
 ipcMain.handle('friends:list', () => friends.list());
 ipcMain.handle('friends:open', async (_event, id: unknown) => {
@@ -465,10 +463,6 @@ app.whenReady().then(() => {
   pollNowPlaying();
   void startMcp();
   friends.watchProximity();
-  // Friends who were out last time come back.
-  win?.webContents.once('did-finish-load', () => {
-    try { for (const id of JSON.parse(repository.getKv('friends.out') ?? '[]')) friends.open(String(id)); } catch { /* none */ }
-  });
 });
 
 app.on('will-quit', () => {

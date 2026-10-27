@@ -1571,3 +1571,13 @@ button.mini {
 .chat-bubble.guest {
   border-color: var(--break);
 }
+
+/* 캐릭터 tab (modules/friends.ts) */
+.friends-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}

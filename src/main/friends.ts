@@ -23,7 +23,7 @@ type Deps = {
 
 export const createFriends = (deps: Deps) => {
   const friends = new Map<string, Friend>();
-  // Quitting closes every window; that shouldn't forget who was out.
+  // Quitting closes every window; no need to announce each one going.
   let quitting = false;
   app.on('before-quit', () => { quitting = true; });
 

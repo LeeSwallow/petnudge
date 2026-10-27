@@ -1,7 +1,7 @@
 import type { DataKind } from '../data';
 import type { PixelIconName } from '../icons';
 
-export type ModuleId = 'todo' | 'pomodoro' | 'dashboard' | 'playlist' | 'notes' | 'chat' | 'settings';
+export type ModuleId = 'todo' | 'pomodoro' | 'dashboard' | 'playlist' | 'notes' | 'chat' | 'friends' | 'settings';
 
 export type PanelModule = {
   id: ModuleId;

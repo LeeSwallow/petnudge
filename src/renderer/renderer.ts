@@ -11,6 +11,7 @@ import { holdStill } from './pet/behavior';
 import { sayNow } from './pet/bubble';
 import { faceToward } from './pet/gaze';
 import { dashboardModule } from './modules/dashboard';
+import { friendsModule } from './modules/friends';
 import type { ModuleId, PanelModule } from './modules/module';
 import { notesModule } from './modules/notes';
 import { playlistModule } from './modules/playlist';
@@ -26,7 +27,7 @@ import { pixelIcon } from './icons';
 import { characterReady, pack, setCharacter } from './character';
 
 const TRANSITION_STEP_MS = 1200;
-const MODULES: PanelModule[] = [todoModule, pomodoroModule, dashboardModule, playlistModule, notesModule, chatModule, settingsModule];
+const MODULES: PanelModule[] = [todoModule, pomodoroModule, dashboardModule, playlistModule, notesModule, chatModule, friendsModule, settingsModule];
 
 const panel = document.getElementById('panel')!;
 const tabs = document.getElementById('tabs')!;
