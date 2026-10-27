@@ -82,10 +82,11 @@ const renderProfile = () => {
   if (document.activeElement !== model) model.value = p.model ?? '';
   model.placeholder = p.provider ? modelFor(chatState.config, p.provider) || '기본 모델' : '';
   const name = ids.find((c) => c.id === profileId)?.name ?? profileId;
+  const packPersona = profileId === pack.id ? pack.persona : ids.find((c) => c.id === profileId)?.persona;
   const persona = $<HTMLTextAreaElement>(root, '#ai-persona');
   if (document.activeElement !== persona) persona.value = p.persona ?? '';
-  persona.placeholder = profileId === pack.id && pack.persona ? `캐릭터 기본값: ${pack.persona}` : '예: 밝고 장난기 많지만 공부는 꼼꼼히 챙겨 주는 친구';
-  root.querySelectorAll<HTMLButtonElement>('[data-speech]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.speech === p.speech)));
+  persona.placeholder = packPersona ? `캐릭터 기본값: ${packPersona}` : '예: 밝고 장난기 많지만 공부는 꼼꼼히 챙겨 주는 친구';
+  root.querySelectorAll<HTMLButtonElement>('[data-speech]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.speech === (p.speech ?? ''))));
   root.querySelectorAll<HTMLButtonElement>('[data-length]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.length === p.length)));
   const call = $<HTMLInputElement>(root, '#ai-call');
   if (document.activeElement !== call) call.value = p.callUser ?? '';
@@ -94,7 +95,7 @@ const renderProfile = () => {
   const extra = $<HTMLTextAreaElement>(root, '#ai-extra');
   if (document.activeElement !== extra) extra.value = p.extra ?? '';
   $(root, '#ai-preview').textContent = buildSystemPrompt(chatState.config, {
-    characterId: profileId, character: name, packPersona: profileId === pack.id ? pack.persona : undefined,
+    characterId: profileId, character: name, packPersona,
     nickname: data.settings.nickname || undefined, status: '(보낼 때의 시간·타이머·할 일·음악)'
   });
 };
@@ -142,7 +143,7 @@ export const mountAiSettings = (el: HTMLElement, onBack: () => void) => {
       <div class="hint">캐릭터마다 다른 AI를 정하면, 그룹 대화나 "서로 대화"에서 서로 다른 LLM끼리 이야기해요.</div>
       <label class="ai-field">성격·말투<textarea id="ai-persona" rows="3" maxlength="800"></textarea></label>
       <div class="row"><span class="ai-label">높임</span>
-        <div class="segmented grow"><button type="button" data-action="speech" data-speech="banmal">반말</button><button type="button" data-action="speech" data-speech="jondaet">존댓말</button></div></div>
+        <div class="segmented grow"><button type="button" data-action="speech" data-speech="">캐릭터대로</button><button type="button" data-action="speech" data-speech="banmal">반말</button><button type="button" data-action="speech" data-speech="jondaet">존댓말</button></div></div>
       <div class="row"><span class="ai-label">길이</span>
         <div class="segmented grow"><button type="button" data-action="length" data-length="short">짧게</button><button type="button" data-action="length" data-length="normal">보통</button><button type="button" data-action="length" data-length="long">자세히</button></div></div>
       <div class="row"><span class="ai-label">부를 이름</span><input type="text" id="ai-call" class="grow" maxlength="40" /></div>
@@ -198,7 +199,7 @@ export const mountAiSettings = (el: HTMLElement, onBack: () => void) => {
       await refreshChatProviders(false);
       status('키를 지웠어요');
     },
-    speech: (target) => saveProfile({ speech: target.dataset.speech as ChatProfile['speech'] }),
+    speech: (target) => saveProfile({ speech: (target.dataset.speech || undefined) as ChatProfile['speech'] }),
     length: (target) => saveProfile({ length: target.dataset.length as ChatProfile['length'] }),
     'profile-reset': () => {
       const profiles = { ...chatState.config.profiles };

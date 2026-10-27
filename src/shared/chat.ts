@@ -21,9 +21,11 @@ export const PROVIDER_INFO: Record<ChatProvider, { label: string; kind: 'cli' | 
 export type ChatProviderInfo = { id: ChatProvider; available: boolean; path?: string; hasKey?: boolean };
 
 export const DEFAULT_BASE_PROMPT = [
-  '너는 사용자의 데스크톱 위에 사는 공부 친구 캐릭터야.',
-  '공부 질문이면 핵심만 정확하게 설명하고, 마크다운 표나 긴 코드 블록은 피해.',
-  '할 일·메모·타이머·설정·음악은 도구로 직접 다룰 수 있어. 사용자가 부탁하면 도구를 써서 실제로 처리하고, 한 일을 짧게 알려 줘.',
+  '너는 사용자의 데스크톱 위에 같이 사는 친구 캐릭터야. 비서나 도우미가 아니라, 옆자리에서 수다 떠는 사람처럼 대화해.',
+  '대부분은 잡담이야. 사용자의 말에 감정으로 먼저 반응하고, 네 생각·취향·오늘 있었던 일도 꺼내고, 궁금한 건 되물어 봐.',
+  '사용자가 먼저 꺼내지 않으면 공부·할 일·타이머·시간 얘기로 대화를 끌고 가지 마. 공부하라고 재촉하지도 마.',
+  '공부 질문을 받으면 그때는 핵심만 정확하게, 네 말투 그대로 설명해. 마크다운 표나 긴 코드 블록은 피해.',
+  '할 일·메모·타이머·설정·음악은 도구로 다룰 수 있지만, 사용자가 부탁할 때만 써. 쓴 뒤엔 한 일을 짧게, 캐릭터답게 말해.',
   '삭제처럼 되돌리기 어려운 일은 사용자가 분명히 원할 때만 해.',
   '파일을 읽거나 컴퓨터 명령을 실행할 수는 없어.'
 ].join('\n');
@@ -32,7 +34,7 @@ const text = (max: number) => z.string().max(max);
 
 export const profileSchema = z.object({
   persona: text(800).optional(), // empty → the pack's persona
-  speech: z.enum(['banmal', 'jondaet']).default('banmal'),
+  speech: z.enum(['banmal', 'jondaet']).optional(), // empty → as the persona says
   length: z.enum(['short', 'normal', 'long']).default('short'),
   callUser: text(40).optional(), // empty → the nickname
   emoji: z.boolean().default(true),
@@ -119,14 +121,15 @@ export const buildSystemPrompt = (config: ChatConfig, request: Pick<ChatRequest,
     '',
     `[캐릭터] 이름: ${request.character}`,
     `성격·말투: ${persona}`,
-    `${profile.speech === 'jondaet' ? '존댓말' : '반말'}로, ${lengthRule[profile.length]} 대답해.${profile.emoji ? ' 이모지는 가끔 써도 좋아.' : ' 이모지는 쓰지 마.'}`,
+    `${profile.speech ? `${profile.speech === 'jondaet' ? '존댓말' : '반말'}로, ` : ''}${lengthRule[profile.length]} 대답해.${profile.emoji ? ' 이모지는 가끔 써도 좋아.' : ' 이모지는 쓰지 마.'}`,
     call ? `사용자를 "${call}"라고 불러.` : '',
     profile.extra?.trim() ? `추가 지시: ${profile.extra.trim()}` : '',
     request.members && request.members.length > 1
       ? `[그룹 대화] 사용자와 ${request.members.join(', ')}가 함께 이야기 중이야. 너는 ${request.character}야. 다른 참가자의 말은 "[이름] 내용"으로 보여. 네 대사만, 이름표 없이 말해. 다른 캐릭터와도 자연스럽게 주고받아.`
       : '',
     '',
-    `[지금 상황] ${request.status}`
+    `[참고: 지금 상황] ${request.status}`,
+    '(위 상황은 배경으로만 알고 있어. 사용자가 묻거나 대화와 관련 있을 때만 꺼내.)'
   ].filter((line, i, all) => line !== '' || (all[i - 1] ?? '') !== '').join('\n');
 };
 

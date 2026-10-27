@@ -145,13 +145,16 @@ export const clearAllSessions = () => {
 // ---------- members ----------
 
 let names: Record<string, string> = {};
+let personas: Record<string, string | undefined> = {};
 // Friends out on the desktop speak in their own bubbles (main/friends.ts).
 export const friendsOnScreen = new Set<string>();
 export const nameOf = (id: string) =>
   id.startsWith('guest:') ? id.slice(6) : id === pack.id ? pack.name : names[id] ?? id;
 export const membersOf = (session: ChatSession) => session.members ?? [session.characterId];
 export const refreshNames = async () => {
-  names = Object.fromEntries((await api.listCharacters().catch(() => [])).map((c) => [c.id, c.name]));
+  const list = await api.listCharacters().catch(() => []);
+  names = Object.fromEntries(list.map((c) => [c.id, c.name]));
+  personas = Object.fromEntries(list.map((c) => [c.id, c.persona]));
 };
 
 export const inviteToSession = (id: string, characterId: string) => {
@@ -252,7 +255,7 @@ const replyAs = async (session: ChatSession, speaker: string): Promise<boolean> 
         messages: historyFor(session, speaker),
         characterId: speaker,
         character: nameOf(speaker),
-        packPersona: mine ? pack.persona : undefined,
+        packPersona: mine ? pack.persona : personas[speaker],
         nickname: data.settings.nickname || undefined,
         status: status(),
         members: members.length > 1 ? members.map(nameOf) : undefined

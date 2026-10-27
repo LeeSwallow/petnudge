@@ -68,5 +68,5 @@ export const validateImportedPack = (input: unknown, sheetWidth: number, sheetHe
   return pack;
 };
 
-export type CharacterChoice = { id: string; name: string; editable: boolean; builtin: boolean };
+export type CharacterChoice = { id: string; name: string; persona?: string; editable: boolean; builtin: boolean };
 export type CharacterAsset = { pack: CharacterPack; sheetUrl: string };

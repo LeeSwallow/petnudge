@@ -66,7 +66,7 @@ export const createCharacterLibrary = (root: string, builtinRoot: string, { edit
         const { pack } = await load(id);
         const files = sourcePaths(folder(id), id);
         const builtin = builtins.includes(id);
-        choices.push({ id, name: pack.name, builtin, editable: builtin || await exists(files.source) && await exists(files.manifest) });
+        choices.push({ id, name: pack.name, persona: pack.persona, builtin, editable: builtin || await exists(files.source) && await exists(files.manifest) });
       } catch { /* A broken custom pack must not prevent the default from loading. */ }
     }
     return choices;
