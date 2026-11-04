@@ -1,4 +1,4 @@
-// Character pack types ("study-pet-character@2").
+// Character pack types ("study-pet-character@2" and the standard pack "@3").
 // Pure data shapes, so the domain (buildPack) can produce a pack; validation
 // and layer lookup stay in src/shared/characterPack.ts, which re-exports these.
 //
@@ -10,8 +10,13 @@
 export type Box = [x0: number, y0: number, x1: number, y1: number];
 export type Move = [dx: number, dy: number];
 
+export const PACK_FORMATS = ['study-pet-character@2', 'study-pet-character@3'] as const;
+export type PackFormat = (typeof PACK_FORMATS)[number];
+
 // `pose` swaps in `<cell>#<pose>` cells (e.g. arms up); `head` forces a turned head.
-export type FrameDef = { ms: number; dx?: number; dy?: number; face?: string; pose?: string; head?: string; move?: Record<string, Move> };
+// `flip` (@3) draws the frame mirrored left-right around the frame centre; L/R
+// parts flip with the picture (no renaming).
+export type FrameDef = { ms: number; dx?: number; dy?: number; face?: string; pose?: string; head?: string; move?: Record<string, Move>; flip?: boolean };
 export type StateDef = {
   face?: string;
   // Eyes follow the cursor (moves the "eyes" region by the head turn).
@@ -77,7 +82,9 @@ export type PoseOutfit = { when: Record<string, string>; cell: string };
 export type PoseDef = string | { cell: string; whole?: boolean; outfits?: PoseOutfit[] };
 
 export type CharacterPack = {
-  format: 'study-pet-character@2';
+  format: PackFormat;
+  // Standard packs (@3) made by the character editor.
+  editor?: { version: 1 };
   id: string;
   name: string;
   // How she talks in chat (main/chat.ts), e.g. "밝고 장난기 많은 게이머".

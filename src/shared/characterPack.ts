@@ -1,12 +1,14 @@
-import type { CharacterPack, LayerDef, PoseDef, Recolor, Variant } from '../domain/character/pack';
+import { PACK_FORMATS, type CharacterPack, type LayerDef, type PoseDef, type Recolor, type Variant } from '../domain/character/pack';
 
-// Character pack v2 ("study-pet-character@2"): layered paper-doll sprites. The
+// Character packs: layered paper-doll sprites, format @2 and the standard pack
+// @3 (made by the character editor; adds `editor` and frame `flip`). The
 // types live in src/domain/character/pack.ts; see timeline.ts and pixels.ts
 // for how frames are composed. Authored as <id>.pack.json + <id>.aseprite/.pxo,
 // built into character.json + sheet.png by scripts/build-character.mjs.
 export type {
-  ActionDef, Box, CharacterPack, Expression, FrameDef, Fx, HitArea, LayerDef, Move, PoseDef, PoseOutfit, Recolor, Slot, StateDef, Variant
+  ActionDef, Box, CharacterPack, Expression, FrameDef, Fx, HitArea, LayerDef, Move, PackFormat, PoseDef, PoseOutfit, Recolor, Slot, StateDef, Variant
 } from '../domain/character/pack';
+export { PACK_FORMATS } from '../domain/character/pack';
 
 // Chosen variant id per slot.
 export type Avatar = Record<string, string>;
@@ -17,7 +19,7 @@ const fail = (message: string): never => {
 
 export const validatePack = (input: unknown): CharacterPack => {
   const pack = input as CharacterPack;
-  if (pack?.format !== 'study-pet-character@2') fail(`unsupported format ${String(pack?.format)}`);
+  if (!(PACK_FORMATS as readonly unknown[]).includes(pack?.format)) fail(`unsupported format ${String(pack?.format)}`);
   if (!/^[a-z][a-z0-9-]{0,47}$/.test(pack.id) || typeof pack.name !== 'string' || pack.name.length > 80) fail('invalid identity');
   if (![pack.frame?.w, pack.frame?.h].every((n) => Number.isInteger(n) && n >= 1 && n <= 256)) fail('frame must be 1..256 pixels');
   if (!Number.isInteger(pack.feetY) || pack.feetY < 0 || pack.feetY > pack.frame.h) fail('invalid feetY');

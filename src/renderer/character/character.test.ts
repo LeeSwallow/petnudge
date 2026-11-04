@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { faceTurns, layerCells, recolorsFor, resolveHead, validatePack, variantOf, type CharacterPack } from './pack';
 import { applyMoves, blank, clipTo, hexToPixel, moveRegion, over, recolor, rimUnder, shift, type Pixels } from './pixels';
-import { frameAt, isBlinking, poseAt, stateLength, talkFace } from './timeline';
+import { drawView, frameAt, isBlinking, poseAt, stateLength, talkFace } from './timeline';
 import { actionForArea, areaAt, menuActions, pickLine } from './actions';
 
 const makePack = (): CharacterPack => ({
@@ -287,6 +287,22 @@ describe('timeline', () => {
     expect(poseAt(pack, 'idle', 0, 0, 0, 2).face).toBe('lookDown');
     pack.states.idle.face = 'closed';
     expect(poseAt(pack, 'idle', 0, 0, 0, 2).face).toBe('closed');
+  });
+
+  it('mirrors a flipped frame around the frame centre, L/R parts and all', () => {
+    const pack = makePartPack();
+    pack.states.walk = { loop: [{ ms: 100, flip: true, dx: 1, move: { upper: [1, 0] } }, { ms: 100 }] };
+    expect(() => validatePack(pack)).not.toThrow();
+    const pose = poseAt(pack, 'walk', 0, 0, 0);
+    expect(pose).toMatchObject({ flip: true, dx: 1 });
+    expect(poseAt(pack, 'walk', 150, 0, 0).flip).toBeFalsy();
+    // the frame is composed as authored (same cells, same moves) and drawn mirrored
+    expect(drawView(pack, pose)).toEqual({ head: undefined, moves: { upper: [1, 0] }, flip: true });
+    expect(drawView(pack, { ...pose, flip: false })).toEqual({ head: undefined, moves: { upper: [1, 0] }, flip: false });
+    // a mirrored head direction composes reversed moves and flips; a flipped frame flips that back
+    pack.mirror = { turnR: 'turnL' };
+    expect(drawView(pack, { ...pose, head: 'turnR', flip: false })).toEqual({ head: 'turnL', moves: { upper: [-1, 0] }, flip: true });
+    expect(drawView(pack, { ...pose, head: 'turnR' })).toEqual({ head: 'turnL', moves: { upper: [-1, 0] }, flip: false });
   });
 
   it('measures one play-through of a state', () => {
