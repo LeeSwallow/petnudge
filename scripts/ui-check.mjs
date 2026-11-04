@@ -17,12 +17,24 @@ const electron = createRequire(import.meta.url)('electron');
 
 // The chat talks to a stand-in `claude` CLI in a throwaway home (main looks in
 // ~/.local/bin first), never to your real one: it streams 40 numbered lines,
-// one every 50ms, in the CLI's stream-json format.
+// one every 50ms, in the CLI's stream-json format. Asked to "마크다운 보여 줘", it
+// answers in Markdown instead, pausing after an unclosed ** so the check can
+// see it stay text.
+const MARKDOWN_REST = '게** 말이에요.\n\n- 하나\n- *둘*\n\n```js\nconst a = 1;\n```\n\n[문서](https://example.com/doc) <b>태그</b> <script>alert(1)</script>';
 const home = path.join(profile, 'home');
 mkdirSync(path.join(home, '.local', 'bin'), { recursive: true });
 writeFileSync(path.join(home, '.local', 'bin', 'claude'), `#!/usr/bin/env node
 const out = (event) => process.stdout.write(JSON.stringify(event) + '\\n');
 out({ type: 'stream_event', event: { type: 'message_start' } });
+const say = (text) => out({ type: 'stream_event', event: { type: 'content_block_delta', delta: { type: 'text_delta', text } } });
+if ((process.argv[process.argv.indexOf('-p') + 1] ?? '').includes('마크다운 보여 줘')) {
+  say('이건 **굵');
+  setTimeout(() => {
+    say(${JSON.stringify(MARKDOWN_REST)});
+    out({ type: 'result', subtype: 'success', is_error: false, result: '' });
+  }, 1500);
+  return;
+}
 let i = 0;
 const timer = setInterval(() => {
   i += 1;
@@ -195,6 +207,12 @@ check('chat: new conversation, rename, delete with a second press', `$('.chat-fr
 check('chat: a streamed reply follows the bottom', `$('.chat-friend.open .chat-new').click(); await wait(300); await until(() => !$('#chat-input').disabled); type('#chat-input', '길게 말해 줘'); key('#chat-input', 'Enter'); const log = $('#chat-log'); await until(() => replies() === 1); await wait(1200); const mid = [text('#chat-send'), log.scrollHeight > log.clientHeight, atBottom(log)]; await until(() => text('#chat-send') === '보내기'); await wait(100); return [mid, atBottom(log), $('#chat-new-below') === null];`, [['멈춤', true, true], true, true]);
 check('chat: scrolled up, a streamed reply keeps the place and offers 새 메시지 ↓', `type('#chat-input', '또'); key('#chat-input', 'Enter'); const log = $('#chat-log'); await until(() => replies() === 2); log.scrollTop = 0; await wait(150); const height = log.scrollHeight; await wait(600); return [text('#chat-send'), log.scrollTop, log.scrollHeight > height, text('#chat-new-below')];`, ['멈춤', 0, true, '새 메시지 ↓']);
 check('chat: 새 메시지 ↓ goes to the bottom and follows again', `const log = $('#chat-log'); $('#chat-new-below').click(); await wait(150); const jumped = [atBottom(log), $('#chat-new-below') === null]; await until(() => text('#chat-send') === '보내기'); await wait(100); const done = [atBottom(log), $('#chat-new-below') === null, replies()]; $('[aria-label="목록으로"]').click(); await wait(300); return [jumped, done];`, [[true, true], [true, true, 2]]);
+check('chat: an unclosed ** stays text while the reply streams', `$('.chat-friend.open .chat-new').click(); await wait(300); await until(() => !$('#chat-input').disabled); type('#chat-input', '마크다운 보여 줘'); key('#chat-input', 'Enter'); await until(() => text('#chat-log').includes('**굵')); const b = $$('#chat-log .chat-bubble.pet').at(-1); return [b.textContent.includes('이건 **굵'), b.querySelectorAll('strong').length];`, [true, 0]);
+check('chat: a Markdown reply shows bold, a list and a code block', `await until(() => text('#chat-send') === '보내기'); await wait(200); const b = $$('#chat-log .chat-bubble.pet').at(-1); const pre = b.querySelector('pre'); return [b.querySelector('strong')?.textContent, [...b.querySelectorAll('ul > li')].map((li) => li.textContent), b.querySelector('ul em')?.textContent, pre?.textContent, getComputedStyle(pre).fontFamily.includes('GalmuriMono11'), $$('#chat-log .chat-bubble.user').at(-1).textContent];`, ['굵게', ['하나', '둘'], '둘', 'const a = 1;', true, '마크다운 보여 줘']);
+check('chat: HTML in a reply shows as text', `const b = $$('#chat-log .chat-bubble.pet').at(-1); return [b.querySelectorAll('b, script').length, b.textContent.includes('<b>태그</b> <script>alert(1)</script>')];`, [0, true]);
+// the copy is caught before the system clipboard, which belongs to the user
+check('chat: the copy button copies the code block', `const copied = []; navigator.clipboard.writeText = async (t) => { copied.push(t); }; const b = $$('#chat-log .chat-bubble.pet').at(-1); const button = b.querySelector('.md-copy'); const label = button.textContent; button.click(); await until(() => button.textContent === '복사됨', 2000); delete navigator.clipboard.writeText; return [label, button.textContent, copied];`, ['복사', '복사됨', ['const a = 1;']]);
+check('chat: a link asks before opening, and cancel closes it', `const link = $$('#chat-log .chat-bubble.pet').at(-1).querySelector('.md-link'); const shape = [link.tagName, link.textContent, link.getAttribute('href'), $('#chat-link-confirm') === null]; link.click(); await wait(150); const asked = [text('#chat-link-confirm').includes('https://example.com/doc'), text('#chat-link-open')]; $('#chat-link-cancel').click(); await wait(150); const closed = $('#chat-link-confirm') === null; $('[aria-label="목록으로"]').click(); await wait(300); return [shape, asked, closed];`, [['BUTTON', '문서', null, true], [true, '열기'], true]);
 check('settings: quit button under settings', `await open_('settings'); return $('[data-quit]') !== null;`, true);
 check('panel: 220px keeps both tab rows', `$('#panel').style.setProperty('--panel-height', '220px'); await wait(100); const p = $('#panel').getBoundingClientRect(), s = $('.ui-tabs.sub').getBoundingClientRect(); $('#panel').style.removeProperty('--panel-height'); return s.height > 0 && s.bottom <= p.bottom;`, true);
 check('home: opened last, so it is saved as the module to reopen', `await open_('home'); return $('[data-group][aria-selected=true]').dataset.group;`, 'home');

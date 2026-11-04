@@ -12,6 +12,7 @@
   import { logError } from '../../log';
   import { revision } from '../../state/revision.svelte';
   import { followBottom, friendIds, isGroup, preview, when } from './logic';
+  import Markdown from './Markdown.svelte';
   import { chatView } from './view.svelte';
 
   // The 대화 tab, like a messenger: each character is a friend you can unfold
@@ -31,6 +32,8 @@
   // not reactive: only the scroll handler and the jump button change it
   let following = true;
   let newBelow = $state(false);
+  // a link in a reply waiting for "열기" (it never opens without asking)
+  let askLink = $state<string | null>(null);
 
   onMount(() => {
     onChat(() => {
@@ -108,7 +111,16 @@
     void openId;
     following = true;
     newBelow = false;
+    askLink = null;
   });
+
+  const openLink = async () => {
+    const href = askLink;
+    askLink = null;
+    if (!href) return;
+    const opened = await api.openLink(href).catch((error) => logError('chat:link', error, 'warn'));
+    if (opened === false) logError('chat:link', new Error(`refused to open ${href.slice(0, 80)}`), 'warn');
+  };
 
   // what moves the bottom: a new line, an edited last line, the reply so far
   const content = $derived.by(() => {
@@ -183,7 +195,7 @@
 
 {#snippet bubble(m: ChatMessage, extra: string, group: boolean)}
   <li class="chat-bubble {m.role}{m.speaker?.startsWith('guest:') ? ' guest' : ''} {extra}">
-    {#if group && m.role === 'pet' && m.speaker}<span class="chat-who">{nameOf(m.speaker)}</span>{/if}{m.text}
+    {#if group && m.role === 'pet' && m.speaker}<span class="chat-who">{nameOf(m.speaker)}</span>{/if}{#if m.role === 'pet'}<Markdown text={m.text} onlink={(href) => (askLink = href)} />{:else}{m.text}{/if}
   </li>
 {/snippet}
 
@@ -262,6 +274,16 @@
       {/if}
     </ul>
     {#if newBelow}<button type="button" class="mini chat-new-below" id="chat-new-below" onclick={toBottom}>새 메시지 ↓</button>{/if}
+    {#if askLink}
+      <div class="chat-link-confirm" id="chat-link-confirm" role="alertdialog" aria-label="링크 열기">
+        <span>브라우저에서 열까요?</span>
+        <span class="chat-link-url">{askLink}</span>
+        <div class="row">
+          <button type="button" class="mini primary" id="chat-link-open" onclick={openLink}>열기</button>
+          <button type="button" class="mini ghost" id="chat-link-cancel" onclick={() => (askLink = null)}>취소</button>
+        </div>
+      </div>
+    {/if}
     </div>
     <div class="row">
       <span class="grow" bind:this={input}>
@@ -276,6 +298,27 @@
 <style>
   .chat-log-wrap {
     position: relative;
+  }
+
+  .chat-link-confirm {
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    bottom: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 6px 8px;
+    background: var(--color-panel);
+    border: 2px solid var(--color-edge-hi);
+    box-shadow: 2px 2px 0 var(--color-shadow);
+  }
+
+  .chat-link-url {
+    font: var(--type-small) var(--font-small);
+    color: var(--color-ink-2);
+    overflow-wrap: anywhere;
+    user-select: text;
   }
 
   .chat-new-below {
