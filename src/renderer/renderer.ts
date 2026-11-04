@@ -27,17 +27,22 @@ import { pixelIcon } from './icons';
 import { characterReady, pack, setCharacter } from './character';
 import { createPanel, type PanelController, type RenderCause } from '../ui/panel/controller';
 import { restoreModule } from '../ui/panel/groups';
+import type { AnyModule } from '../ui/modules/module';
+import { bump } from '../ui/state/revision.svelte';
 import { installTokens } from '../ui/theme/install';
 
 const TRANSITION_STEP_MS = 1200;
-const MODULES: PanelModule[] = [todoModule, pomodoroModule, dashboardModule, playlistModule, notesModule, chatModule, friendsModule, settingsModule];
+const MODULES: AnyModule[] = [todoModule, pomodoroModule, dashboardModule, playlistModule, notesModule, chatModule, friendsModule, settingsModule];
 
 const panel = document.getElementById('panel')!;
 let panelUi: PanelController | null = null;
 
 const visible = () => !panel.hidden;
 
-const renderActive = (cause: RenderCause) => panelUi?.render(cause);
+const renderActive = (cause: RenderCause) => {
+  bump(cause);
+  panelUi?.render(cause);
+};
 const showModule = (id: ModuleId, animate = true) => panelUi?.show(id, animate);
 
 const togglePanel = () => {
