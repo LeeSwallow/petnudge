@@ -52,10 +52,9 @@ describe('pose colours', () => {
     expect(poseColourMismatches(pack, cells)).toEqual([{ cell: 'pose.walk1', colour: '#fbf2f5', count: 5, nearest: SKIN }]);
   });
 
-  it('compares a part drawn for a pose with the colours of that part', () => {
-    // skin is a standing colour, but not one of the back hair's
-    const cells = pictures({ ...standing, 'hair.back#walk1': pic(['hhs'], { h: HAIR, s: SKIN }) });
-    expect(poseColourMismatches(pack, cells)).toEqual([{ cell: 'hair.back#walk1', colour: SKIN, count: 1, nearest: HAIR }]);
+  it('checks a part drawn for a pose against every standing colour (a hood drawn with the fringe in it)', () => {
+    const cells = pictures({ ...standing, 'hair.back#walk1': pic(['hhs', 'p..'], { h: HAIR, s: SKIN, p: '#fbf2f5' }) });
+    expect(poseColourMismatches(pack, cells)).toEqual([{ cell: 'hair.back#walk1', colour: '#fbf2f5', count: 1, nearest: SKIN }]);
   });
 });
 

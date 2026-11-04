@@ -79,31 +79,26 @@ const coloursOf = (px, into) => {
 // Whole poses (Lila's side-view walk, a flail) are drawn apart from the
 // standing layers, so their colours drift: a paler skin, another headset
 // (#66). Every colour a pose drawing uses should be one the standing character
-// uses: a part drawn for a pose (`hair.back#walk1`) the colours of that part,
-// a whole drawing any standing colour. The pack's rim colours are allowed.
+// uses, a whole drawing or a part drawn for a pose (`hair.back#walk1`; a hood
+// drawn with the fringe in it holds hair colours too). The pack's rim colours
+// are allowed.
 // → [{ cell, colour, count, nearest }]
 export const poseColourMismatches = (pack, pictures) => {
   const poses = new Set(Object.keys(pack.poses ?? {}));
   const masks = new Set(pack.layers.filter((l) => l.clip).map((l) => l.clip));
   const whole = new Set(Object.values(pack.poses ?? {}).flatMap((def) => (typeof def === 'string' ? [def] : [def.cell, ...(def.outfits ?? []).map((o) => o.cell)])));
   const all = new Set();
-  const byLayer = new Map();
   for (const [name, px] of pictures) {
     if (whole.has(name) || name.includes('#')) continue;
     const owner = ownerOf(pack, splitSuffix(name).base);
-    if (!owner || masks.has(owner.id)) continue;
-    coloursOf(px, all);
-    if (!byLayer.has(owner.id)) byLayer.set(owner.id, new Set());
-    coloursOf(px, byLayer.get(owner.id));
+    if (owner && !masks.has(owner.id)) coloursOf(px, all);
   }
   const allowed = new Set(pack.layers.flatMap((l) => (l.edge ? [l.edge.color, l.edge.light] : [])).filter(Boolean).map(pixelOf));
   const out = [];
   for (const [name, px] of pictures) {
-    const { base, pose } = splitSuffix(name);
-    let palette;
-    if (whole.has(name)) palette = all;
-    else if (pose && poses.has(pose)) palette = byLayer.get(ownerOf(pack, base)?.id) ?? all;
-    else continue;
+    const { pose } = splitSuffix(name);
+    if (!whole.has(name) && !(pose && poses.has(pose))) continue;
+    const palette = all;
     if (!palette.size) continue;
     const counts = new Map();
     for (const p of px.data) if (opaque(p) && !palette.has(p >>> 0) && !allowed.has(p >>> 0)) counts.set(p >>> 0, (counts.get(p >>> 0) ?? 0) + 1);
