@@ -57,6 +57,7 @@ body.below {
   flex: none;
   display: flex;
   flex-direction: column;
+  justify-content: flex-end; /* min-height keeps room for a tall dock (src/ui/dock) */
   align-items: center;
   gap: 6px;
 }
@@ -108,49 +109,6 @@ body.below {
   }
 }
 
-.tabs {
-  display: flex;
-  flex: none;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: thin;
-  scrollbar-color: var(--edge) var(--well);
-  gap: 3px;
-  padding: 8px 6px 4px;
-  background: var(--well);
-  border-bottom: 2px solid var(--edge);
-}
-
-.tab {
-  flex: 0 0 auto;
-  white-space: nowrap;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 6px 10px 4px;
-  margin-bottom: -2px;
-  font: 12px var(--font);
-  color: var(--muted);
-  background: #1f1830;
-  border: 2px solid var(--shadow);
-  border-bottom: none;
-  cursor: pointer;
-}
-
-.tab[aria-selected='true'] {
-  color: var(--ink);
-  background: var(--panel);
-  border-color: var(--edge);
-  padding-top: 8px;
-  margin-top: -2px;
-  box-shadow: inset 2px 2px 0 var(--edge-hi);
-}
-
-.tab-icon {
-  display: inline-flex;
-}
-
 .pixel-icon {
   display: inline-block;
   flex: none;
@@ -174,11 +132,6 @@ body.below {
 button:focus-visible {
   outline: 2px solid var(--goal);
   outline-offset: -2px;
-}
-
-.tab[aria-selected='true'] .tab-icon {
-  color: var(--focus);
-  animation: bob 1s steps(2) infinite;
 }
 
 @keyframes bob {
@@ -306,6 +259,8 @@ select:focus {
 
 .toggle input {
   appearance: none;
+  /* never squeezed by a long label: its knob would stick out */
+  flex: none;
   width: 30px;
   height: 16px;
   margin: 0;
@@ -715,60 +670,36 @@ select:focus {
   color: var(--muted);
 }
 
-/* ---------- now-playing strip ---------- */
-.strip {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 6px;
-}
-
-.badge {
-  padding: 0 4px;
-  font: 9px var(--font-small);
-  color: #1a1024;
-  background: var(--muted);
-}
-
-.badge.focus {
-  background: var(--focus);
-}
-
-.badge.break {
-  background: var(--break);
-}
-
-.marquee {
-  flex: 1;
-  overflow: hidden;
-  white-space: nowrap;
-  font: 11px var(--font);
-  color: var(--ink-2);
-}
-
-.marquee span.scroll {
-  display: inline-block;
-  padding-left: 100%;
-  animation: marquee 14s steps(140) infinite;
-}
-
-@keyframes marquee {
-  to {
-    transform: translateX(-100%);
-  }
-}
-
 /* ---------- speech bubble & pet ---------- */
 #bubble {
   position: relative;
-  max-width: 100%;
+  /* --head-width: as wide as she is while a tall dock stands beside her */
+  max-width: var(--head-width, 100%);
   padding: 6px 10px;
   background: var(--well);
   border: 2px solid var(--long);
   box-shadow: 3px 3px 0 var(--shadow);
   text-align: center;
   font: 12px var(--font);
+  /* wraps at spaces, as ui/bubble/text.ts counts its three lines */
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+/* "더 보기 ▸" after a chat line cut at three lines: opens 기록 › 대화 */
+#bubble .bubble-more {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--goal);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+#bubble .bubble-more:hover,
+#bubble .bubble-more:focus-visible {
+  text-decoration: underline;
 }
 
 #bubble::after {
@@ -916,65 +847,6 @@ select:focus {
   *::after {
     animation: none !important;
   }
-}
-
-/* ---------- 7-module dock ---------- */
-/* Tabs split the full width into equal columns, with a 3x icon over an
-   11px label and a 52px-tall target. */
-.tabs {
-  display: grid;
-  grid-template-columns: repeat(var(--tab-count, 7), minmax(0, 1fr)) 40px;
-}
-
-/* Quit sits at the end of the tab row, set apart from the tabs. */
-.dock-quit {
-  min-height: 52px;
-  margin: 0 0 2px 3px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  padding: 6px 0 4px;
-  font: 10px var(--font);
-  color: var(--muted);
-  background: #1f1830;
-  border: 2px solid var(--shadow);
-  cursor: pointer;
-}
-
-.dock-quit .pixel-icon {
-  width: 16px;
-  height: 16px;
-}
-
-.dock-quit:hover {
-  color: #ff8fa3;
-  border-color: #df6074;
-}
-
-.tab {
-  min-width: 0;
-  min-height: 52px;
-  flex-direction: column;
-  gap: 3px;
-  padding: 6px 0 4px;
-  font: 11px var(--font);
-  letter-spacing: -1px;
-}
-
-.tab .pixel-icon {
-  width: 24px;
-  height: 24px;
-}
-
-.tab:hover:not([aria-selected='true']) {
-  color: var(--ink-2);
-  background: #2a2140;
-}
-
-.tab[aria-selected='true'] {
-  padding-top: 8px;
 }
 
 .module-host {
@@ -1208,11 +1080,10 @@ select:focus {
   box-shadow: none;
 }
 
-.swatch i {
-  width: 8px;
-  height: 8px;
-  display: inline-block;
-  border: 1px solid var(--shadow);
+.slot-why {
+  flex-basis: 100%;
+  font: 10px var(--font-small);
+  color: var(--ink-2);
 }
 
 .swatch.selected {
@@ -1221,23 +1092,15 @@ select:focus {
 }
 
 /* ---------- quick chat (pet/chatbar.ts) ---------- */
+/* her canvas and, beside it, the dock with the talk button (src/ui/dock) */
 #pet-body {
   position: relative;
   line-height: 0;
 }
 
 #chat-toggle {
-  position: absolute;
-  right: 8%;
-  top: 30%;
-  opacity: 0;
-  transition: opacity 120ms steps(2);
-}
-
-#pet-body:hover #chat-toggle,
-#chat-toggle:focus-visible,
-#chat-toggle.on {
-  opacity: 1;
+  width: 28px;
+  height: 26px;
 }
 
 #chat-toggle.on {
@@ -1247,7 +1110,7 @@ select:focus {
 #chat-bar {
   display: flex;
   gap: 4px;
-  width: min(260px, 100%);
+  width: min(260px, var(--head-width, 100%));
   padding: 4px;
 }
 
@@ -1354,7 +1217,7 @@ select:focus {
   color: var(--ink-2);
 }
 
-/* ---------- AI chat settings (modules/aiSettings.ts) ---------- */
+/* ---------- AI chat settings (ui/modules/settings/aiSettings.ts) ---------- */
 .ai-open > :not(#ai-page) {
   display: none !important;
 }
@@ -1418,9 +1281,11 @@ select:focus {
 }
 
 .ai-label {
-  width: 64px;
+  /* a longer label (other languages) takes two lines, not the field's room */
+  min-width: 64px;
+  max-width: 40%;
   flex: none;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .ai-field {
@@ -1570,4 +1435,14 @@ button.mini {
 
 .chat-bubble.guest {
   border-color: var(--break);
+}
+
+/* 캐릭터 tab (modules/friends.ts) */
+.friends-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }

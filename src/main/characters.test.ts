@@ -12,7 +12,7 @@ describe('character library', () => {
     const library = createCharacterLibrary(root, noBuiltins);
     const id = await library.importFolder(path.resolve('assets/characters/moa'));
     expect(id).toBe('moa');
-    expect(await library.list()).toEqual([{ id: 'moa', name: '모아', builtin: false, editable: true }]);
+    expect(await library.list()).toEqual([{ id: 'moa', name: '모아', persona: expect.stringContaining('츤데레'), builtin: false, editable: true }]);
     expect((await library.prepareSource('moa')).source).toMatch(/moa\.pxo$/);
   }, 30_000);
 

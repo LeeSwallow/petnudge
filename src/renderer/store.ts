@@ -33,7 +33,6 @@ type PetActions = {
   tick: (now: number) => void;
   advanceTransition: () => void;
   advanceDialogue: () => void;
-  dismissUnlock: () => void;
   finishReflection: () => void;
 };
 
@@ -82,19 +81,17 @@ export const petStore = createStore<PetState & PetActions>()(
         }),
       advanceTransition: () => set((s) => ({ scene: advanceTransition(s.scene) })),
       advanceDialogue: () => set((s) => ({ scene: advanceDialogue(s.scene) })),
-      dismissUnlock: () => set((s) => ({ pendingUnlocks: s.pendingUnlocks.slice(1) })),
       finishReflection: () => set({ awaitingReflection: false })
     }),
     {
       name: 'session',
       version: 1,
       storage: sqliteStorage,
-      partialize: ({ planner, progress, timer, scene, pendingUnlocks, activeTodoId, pauseCount, awaitingReflection }): PetState => ({
+      partialize: ({ planner, progress, timer, scene, activeTodoId, pauseCount, awaitingReflection }): PetState => ({
         planner,
         progress,
         timer,
         scene,
-        pendingUnlocks,
         activeTodoId,
         pauseCount,
         awaitingReflection

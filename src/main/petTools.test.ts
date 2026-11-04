@@ -64,4 +64,11 @@ describe('pet tools', () => {
     expect(prompt).toContain('이모지는 쓰지 마');
     expect(prompt).toContain('추가 지시: 게임 비유');
   });
+
+  it('leaves the speech style to the persona unless the profile sets one', () => {
+    const prompt = buildSystemPrompt(parseChatConfig({}), { characterId: 'lila', character: '리라', packPersona: '늘 존댓말을 써요', status: '집중 중' });
+    expect(prompt).toContain('성격·말투: 늘 존댓말을 써요');
+    expect(prompt).not.toMatch(/반말로|존댓말로/);
+    expect(prompt).toContain('[참고: 지금 상황] 집중 중');
+  });
 });

@@ -1,13 +1,14 @@
 import lilaPack from '../../assets/characters/lila/character.json';
+import { t } from '../i18n';
 import lilaSheet from '../../assets/characters/lila/sheet.png';
-import { hasFace, layerCells, recolorsFor, resolveHead, validatePack, type Avatar, type Move } from './character/pack';
+import { hasFace, layerCells, recolorsFor, validatePack, type Avatar, type Move } from './character/pack';
 import { withModStates } from './character/mods';
 import type { Mod } from '../shared/mods';
 import { applyMoves, blank, clipTo, crop, hexToPixel, over, recolor, rimUnder, shift, type Pixels } from './character/pixels';
-import { poseAt, resolveState, stateLength, talkFace, type Look } from './character/timeline';
+import { drawView, poseAt, resolveState, stateLength, talkFace, type Look } from './character/timeline';
 import type { CharacterAsset } from '../shared/characterImport';
 
-// Layered character (pack format @2): each layer is cut from the sheet,
+// Layered character (pack format @2, and the standard pack @3): each layer is cut from the sheet,
 // recoloured for the avatar, moved for the pose (whole, or by region boxes)
 // and drawn back to front. Composed frames are cached as canvases, so steady
 // states cost one drawImage.
@@ -48,7 +49,7 @@ const readImage = (url: string) => new Promise<Pixels>((resolve, reject) => {
     const { data } = ctx.getImageData(0, 0, image.width, image.height);
     resolve({ w: image.width, h: image.height, data: new Uint32Array(data.buffer) });
   };
-  image.onerror = () => reject(new Error('캐릭터 PNG를 읽지 못했어요'));
+  image.onerror = () => reject(new Error(t('error.character.png')));
   image.src = url;
 });
 const ready = readImage(lilaSheet).then((pixels) => { sheet = pixels; });
@@ -208,10 +209,8 @@ export const drawCharacter = (ctx: CanvasRenderingContext2D, x: number, y: numbe
   const pose = poseAt(pack, state, now - current.since, now, opts.turn, opts.tilt ?? 0);
   if (opts.face && hasFace(pack, opts.face) && pose.face !== 'closed') pose.face = opts.face;
   if (opts.talking && pose.face === 'open' && !pose.head) pose.face = talkFace(pack, pose.face, now);
-  // A mirrored direction draws the other one flipped; its sideways moves are
-  // composed reversed so they come out the intended way after the flip.
-  const { head, flip } = resolveHead(pack, pose.head);
-  const moves = flip ? Object.fromEntries(Object.entries(pose.moves).map(([r, [mx, my]]) => [r, [-mx, my] as Move])) : pose.moves;
+  // Mirrored head directions and flipped frames (see drawView).
+  const { head, moves, flip } = drawView(pack, pose);
   const { canvas: frame, owner, ids } = frameFor(opts.avatar, pose.face, moves, head, pose.pose);
   shown = { owner, ids, dx: pose.dx, dy: pose.dy + opts.bob, flip };
   const left = (x + pose.dx) * scale;

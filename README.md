@@ -83,6 +83,15 @@ when you use it, your messages, the pet's context (timer, todo count, the
 song playing) and the results of the tools you allow go to the provider you
 picked.
 
+### 언어 / Language / 言語
+
+The app speaks Korean, English and Japanese. It starts in your system's
+language (anything other than Korean or Japanese gets English); change it
+in Settings › Profile › Language, and the panel, the pet's bubble and the
+tray menu switch at once. Chat replies follow the same language. Built-in
+characters' own lines are in Korean; a character pack can carry lines and a
+persona per language (see [the character guide](assets/characters/README.md)).
+
 ## Your coding agent
 
 While petnudge runs, it serves MCP (Model Context Protocol) on your machine
@@ -177,7 +186,7 @@ into those layers module by module. More in [docs/architecture.md](docs/architec
 The most useful thing right now is to use it for a day and say what you
 expected. Then:
 
-- a [bug report](https://github.com/LeeSwallow/petnudge/issues/new?template=bug.yml),
+- a [bug report](https://github.com/LeeSwallow/petnudge/issues/new?template=bug.yml), with Settings › 문제 해결 › 진단 정보 복사 pasted in (versions and recent errors; no chats, notes or keys),
 - a [feature request](https://github.com/LeeSwallow/petnudge/issues/new?template=feature.yml),
 - a [new character](https://github.com/LeeSwallow/petnudge/issues/new?template=character.yml): drawn by you, under a license that lets others use it,
 - a translation of the app (Korean today; English and Japanese next).

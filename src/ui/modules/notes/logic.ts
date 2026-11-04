@@ -1,0 +1,34 @@
+import { dateKeyOf, inBounds } from '../../../shared/dateFilter';
+import type { Note } from '../../../shared/types';
+import { formatDate, formatRelative, formatTime, t } from '../../i18n';
+
+// The notes tab's rules, apart from the screen (tested in logic.test.ts).
+
+type Bounds = { from: string | null; to: string | null };
+
+export const ago = (ms: number, now: number) => {
+  const minutes = Math.round((now - ms) / 60_000);
+  if (minutes < 1) return t('notes.justNow');
+  if (minutes < 60) return formatRelative(-minutes, 'minute');
+  if (minutes < 60 * 24) return formatRelative(-Math.round(minutes / 60), 'hour');
+  return formatDate(ms, { month: 'numeric', day: 'numeric' });
+};
+
+// Inside a day group the date is already in the header, so older notes show
+// the time of day instead of a date.
+export const when = (ms: number, todayKey: string, now: number) => {
+  if (dateKeyOf(ms) === todayKey) return ago(ms, now);
+  return formatTime(ms);
+};
+
+export const snippet = (body: string) => body.slice(0, 90);
+
+// Grouped by last edit (updatedAt), not creation: a note you just worked on
+// is one you'd look for under "오늘". Pinned notes stand apart, on top.
+export const visibleNotes = (notes: Note[], bounds: Bounds, pinnedOnly: boolean) => {
+  const shown = notes.filter((n) => (!pinnedOnly || n.pinned) && inBounds(dateKeyOf(n.updatedAt), bounds));
+  return { shown, pinned: shown.filter((n) => n.pinned), others: shown.filter((n) => !n.pinned) };
+};
+
+export const emptyText = (total: number, filtered: boolean, query: string) =>
+  total && filtered ? t('notes.noMatch') : query ? t('notes.noResults') : t('notes.first');

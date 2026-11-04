@@ -1,10 +1,12 @@
 import { formatRemaining, getRemainingMs } from '../domain/pomodoro/timer';
+import { logError } from '../ui/log';
 import { api } from './api';
 import { pack, setCharacter } from './character';
 import { data, updateSettings } from './data';
 import { music } from './music';
 import { runAction } from './pet/behavior';
-import { sayNow } from './pet/bubble';
+import { sayLine, sayNow } from './pet/bubble';
+import { bubbleText, speak } from '../ui/bubble/text';
 import { around } from './pet/mods';
 import { markActivity, scriptFace, scriptFx } from './pet/state';
 import { petStore } from './store';
@@ -12,6 +14,7 @@ import {
   PROVIDER_INFO, parseChatConfig,
   type ChatConfig, type ChatEvent, type ChatMessage, type ChatProvider, type ChatProviderInfo, type ChatToolInfo, type PetCommand
 } from '../shared/chat';
+import { formatDate, formatTime, localizedText, onLocaleChange, t } from '../i18n';
 
 // The pet chat in the renderer: conversations as sessions, one list per
 // character ("friend"), shared by the quick bar beside her (pet/chatbar.ts)
@@ -54,6 +57,10 @@ export const chatState: State = { config: parseChatConfig({}), providers: [], to
 const listeners = new Set<() => void>();
 export const onChat = (listener: () => void) => listeners.add(listener);
 const changed = () => listeners.forEach((listener) => listener());
+// A streamed delta only changes `live` (the reply so far), so it goes to its
+// own listeners: views redraw just the reply in progress, not everything.
+const liveListeners = new Set<() => void>();
+export const onChatLive = (listener: () => void) => liveListeners.add(listener);
 
 const saveSessions = () => {
   chatState.sessions = chatState.sessions.sort((a, b) => b.updatedAt - a.updatedAt).slice(0, MAX_SESSIONS);
@@ -61,7 +68,7 @@ const saveSessions = () => {
   void api.db.setKv(ACTIVE_KEY, JSON.stringify(chatState.active));
 };
 
-export const providerLabel = (provider: ChatProvider = chatState.config.provider) => PROVIDER_INFO[provider].label;
+export const providerLabel = (provider: ChatProvider = chatState.config.provider) => (provider === 'custom' ? t('ai.provider.custom') : PROVIDER_INFO[provider].label);
 export const chatAvailable = () => chatState.providers.find((p) => p.id === chatState.config.provider)?.available ?? false;
 
 // ---------- settings ----------
@@ -86,7 +93,7 @@ export const refreshChatTools = async () => {
 export const testChat = async () => {
   const started = Date.now();
   const reply = await api.sendChat(`test-${started}`, {
-    messages: [{ role: 'user', text: '연결 테스트야. "연결됐어!"라고만 답해 줘.' }], characterId: pack.id, character: pack.name, status: '연결 테스트'
+    messages: [{ role: 'user', text: t('chat.model.testPrompt') }], characterId: pack.id, character: pack.name, status: t('chat.model.testStatus')
   });
   return { reply, ms: Date.now() - started };
 };
@@ -98,7 +105,7 @@ export const sessionById = (id: string) => chatState.sessions.find((s) => s.id =
 
 export const newSession = (characterId = pack.id) => {
   const now = Date.now();
-  const session: ChatSession = { id: `s${now.toString(36)}${Math.random().toString(36).slice(2, 6)}`, characterId, title: '새 대화', createdAt: now, updatedAt: now, messages: [] };
+  const session: ChatSession = { id: `s${now.toString(36)}${Math.random().toString(36).slice(2, 6)}`, characterId, title: t('chat.newSession'), createdAt: now, updatedAt: now, messages: [] };
   chatState.sessions.unshift(session);
   chatState.active[characterId] = session.id;
   saveSessions();
@@ -145,20 +152,23 @@ export const clearAllSessions = () => {
 // ---------- members ----------
 
 let names: Record<string, string> = {};
+let personas: Record<string, string | undefined> = {};
 // Friends out on the desktop speak in their own bubbles (main/friends.ts).
 export const friendsOnScreen = new Set<string>();
 export const nameOf = (id: string) =>
   id.startsWith('guest:') ? id.slice(6) : id === pack.id ? pack.name : names[id] ?? id;
 export const membersOf = (session: ChatSession) => session.members ?? [session.characterId];
 export const refreshNames = async () => {
-  names = Object.fromEntries((await api.listCharacters().catch(() => [])).map((c) => [c.id, c.name]));
+  const list = await api.listCharacters().catch((error) => (logError('chat:characters', error, 'warn'), []));
+  names = Object.fromEntries(list.map((c) => [c.id, c.name]));
+  personas = Object.fromEntries(list.map((c) => [c.id, c.persona]));
 };
 
 export const inviteToSession = (id: string, characterId: string) => {
   const session = sessionById(id);
   if (!session || membersOf(session).includes(characterId)) return;
   session.members = [...membersOf(session), characterId];
-  session.messages.push({ role: 'tool', text: `👋 ${nameOf(characterId)} 초대됨`, at: Date.now() });
+  session.messages.push({ role: 'tool', text: `👋 ${t('chat.joined', { name: nameOf(characterId) })}`, at: Date.now() });
   session.updatedAt = Date.now();
   saveSessions();
   changed();
@@ -168,7 +178,7 @@ export const removeFromSession = (id: string, characterId: string) => {
   const session = sessionById(id);
   if (!session || characterId === session.characterId) return;
   session.members = membersOf(session).filter((m) => m !== characterId);
-  session.messages.push({ role: 'tool', text: `🚪 ${nameOf(characterId)} 나감`, at: Date.now() });
+  session.messages.push({ role: 'tool', text: `🚪 ${t('chat.left', { name: nameOf(characterId) })}`, at: Date.now() });
   saveSessions();
   changed();
 };
@@ -187,18 +197,33 @@ export const setMirror = (id: string, on: boolean) => {
 const status = () => {
   const { timer } = petStore.getState();
   const now = new Date();
-  const parts = [`${now.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })} ${now.toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' })}`];
-  if (timer.mode === 'focus') parts.push(`뽀모도로 집중 중 (남은 시간 ${formatRemaining(getRemainingMs(timer, Date.now()))})`);
-  else if (timer.mode === 'break') parts.push('휴식 시간');
-  else parts.push('타이머는 쉬는 중');
-  const todos = data.todos.filter((t) => !t.done).length;
-  parts.push(`남은 할 일 ${todos}개`);
+  const parts = [`${formatDate(now, { month: 'long', day: 'numeric', weekday: 'short' })} ${formatTime(now)}`];
+  if (timer.mode === 'focus') parts.push(t('chat.model.focusing', { left: formatRemaining(getRemainingMs(timer, Date.now())) }));
+  else if (timer.mode === 'break') parts.push(t('chat.model.onBreak'));
+  else parts.push(t('chat.model.timerIdle'));
+  const todos = data.todos.filter((todo) => !todo.done).length;
+  parts.push(t('chat.model.todosLeft', { count: todos }));
   const playing = music.nowPlaying;
-  if (playing?.state === 'playing' && playing.title) parts.push(`음악 "${playing.title}" 재생 중`);
+  if (playing?.state === 'playing' && playing.title) parts.push(t('chat.model.playing', { title: playing.title }));
   return parts.join(', ');
 };
 
-const short = (text: string) => (text.length > 120 ? `${text.slice(0, 118)}…` : text);
+// The bubble's "더 보기 ▸" opens a conversation in 기록 › 대화; renderer.ts
+// knows how (the panel), friend windows ask the main one (main/friends.ts).
+let openChatTab = (_sessionId: string) => {};
+export const onOpenChat = (open: (sessionId: string) => void) => (openChatTab = open);
+
+// The sentences of the reply in progress her bubble has shown (ui/bubble/text.ts).
+let said: string[] = [];
+const sayReply = (sessionId: string, reply: string, final: boolean) => {
+  const next = speak(said, reply, final);
+  if (next === said && !final) return;
+  said = next;
+  if (said.length) sayLine(said.join(' '), { holdMs: final ? 10_000 : 60_000, final, onMore: () => openChatTab(sessionId) });
+  else if (final) sayNow('', 0); // an empty reply: no "생각 중" left behind
+};
+const sayMirror = (sessionId: string, name: string, text: string, holdMs: number) =>
+  sayLine(bubbleText(`${name}: ${text}`), { holdMs, onMore: () => openChatTab(sessionId) });
 
 const toolLine = (session: ChatSession, event: Extract<ChatEvent, { type: 'tool' }>) => {
   const mark = event.ok === undefined ? '…' : event.ok ? '✓' : '✗';
@@ -213,7 +238,7 @@ const toolLine = (session: ChatSession, event: Extract<ChatEvent, { type: 'tool'
 // else's come in as "[이름] …" (merged, since models want turns to alternate).
 export const historyFor = (session: ChatSession, speaker: string) => {
   const group = membersOf(session).length > 1 || session.messages.some((m) => m.speaker?.startsWith('guest:'));
-  const user = data.settings.nickname || '사용자';
+  const user = data.settings.nickname || t('chat.model.user');
   const turns: { role: 'user' | 'pet'; text: string }[] = [];
   for (const m of session.messages) {
     if (m.role === 'tool') continue;
@@ -224,7 +249,7 @@ export const historyFor = (session: ChatSession, speaker: string) => {
     if (prev?.role === role) prev.text += `\n${text}`;
     else turns.push({ role, text });
   }
-  if (turns[turns.length - 1]?.role !== 'user') turns.push({ role: 'user', text: group ? '(대화를 자연스럽게 이어가 줘)' : '(계속해 줘)' });
+  if (turns[turns.length - 1]?.role !== 'user') turns.push({ role: 'user', text: group ? t('chat.model.goOnGroup') : t('chat.model.goOn') });
   return turns;
 };
 
@@ -242,8 +267,9 @@ const replyAs = async (session: ChatSession, speaker: string): Promise<boolean> 
   const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   chatState.pending = { id, sessionId: session.id, speaker };
   chatState.live = '';
+  said = [];
   changed();
-  if (mine) sayNow('음… 생각 중', 60_000);
+  if (mine) sayNow(t('bubble.thinking'), 60_000);
   let ok = true;
   try {
     await around('chat', async () => {
@@ -252,7 +278,7 @@ const replyAs = async (session: ChatSession, speaker: string): Promise<boolean> 
         messages: historyFor(session, speaker),
         characterId: speaker,
         character: nameOf(speaker),
-        packPersona: mine ? pack.persona : undefined,
+        packPersona: mine ? localizedText(pack.persona, pack.lang) : personas[speaker],
         nickname: data.settings.nickname || undefined,
         status: status(),
         members: members.length > 1 ? members.map(nameOf) : undefined
@@ -260,15 +286,15 @@ const replyAs = async (session: ChatSession, speaker: string): Promise<boolean> 
       // CLI providers only report a tool call starting; the reply means it ran.
       for (const m of session.messages) if (m.role === 'tool' && m.text.endsWith(' …')) m.text = `${m.text.slice(0, -2)} ✓`;
       session.messages.push({ role: 'pet', text: reply, speaker, at: Date.now() });
-      if (mine) sayNow(short(reply), 10_000);
-      else if (friendsOnScreen.has(speaker)) api.friendSay(speaker, short(reply), 10_000);
-      else if (mirror) sayNow(short(`${nameOf(speaker)}: ${reply}`), 10_000);
+      if (mine) sayReply(session.id, reply, true);
+      else if (friendsOnScreen.has(speaker)) api.friendSay(speaker, bubbleText(reply), 10_000, session.id);
+      else if (mirror) sayMirror(session.id, nameOf(speaker), reply, 10_000);
     });
   } catch (error) {
     ok = false;
     const reason = error instanceof Error ? error.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : String(error);
-    session.messages.push({ role: 'pet', speaker, text: `(대답하지 못했어요: ${reason})`, at: Date.now() });
-    if (mine) sayNow(reason === '멈췄어요' ? '알았어, 그만할게.' : '앗, 지금은 대답이 안 나와…', 3000);
+    session.messages.push({ role: 'pet', speaker, text: t('chat.failed', { reason }), at: Date.now() });
+    if (mine) sayNow(reason === t('error.chat.stopped') ? t('bubble.stopped') : t('bubble.noReply'), 3000);
   } finally {
     chatState.pending = null;
     chatState.live = '';
@@ -321,7 +347,7 @@ export const talkTogether = async (sessionId: string, turns: number, topic?: str
   const members = membersOf(session);
   if (members.length < 2) return;
   await refreshNames();
-  if (topic?.trim()) session.messages.push({ role: 'user', text: `(주제) ${topic.trim()}`, at: Date.now() });
+  if (topic?.trim()) session.messages.push({ role: 'user', text: t('chat.topic', { topic: topic.trim() }), at: Date.now() });
   const lastSpeaker = [...session.messages].reverse().find((m) => m.role === 'pet')?.speaker ?? session.characterId;
   const start = (members.indexOf(lastSpeaker) + 1) % members.length;
   await replies(session, Array.from({ length: turns }, (_, i) => members[(start + i) % members.length]));
@@ -334,7 +360,7 @@ export const meetupSession = (a: string, b: string) => {
   const session = newSession(a);
   session.members = [a, b];
   session.meetup = true;
-  session.title = `${nameOf(a)} & ${nameOf(b)} 수다`;
+  session.title = t('chat.meetupTitle', { a: nameOf(a), b: nameOf(b) });
   saveSessions();
   return session;
 };
@@ -347,7 +373,7 @@ const guestPost = async (sessionId: string, name: string, text: string, reply: b
   session.updatedAt = Date.now();
   saveSessions();
   changed();
-  if (session.mirror !== false && chatState.active[pack.id] === session.id) sayNow(short(`${name}: ${text}`), 8000);
+  if (session.mirror !== false && chatState.active[pack.id] === session.id) sayMirror(session.id, name, text, 8000);
   if (reply && !chatState.busy) {
     await refreshNames();
     await replies(session, respondersFor(session, text));
@@ -378,11 +404,19 @@ export const startChat = async () => {
     const pending = chatState.pending;
     if (pending?.id !== id) return;
     const session = sessionById(pending.sessionId);
-    if (event.type === 'delta') chatState.live = event.text;
-    else if (session) toolLine(session, event);
+    if (event.type === 'delta') {
+      chatState.live = event.text;
+      liveListeners.forEach((listener) => listener());
+      // her own reply shows in her bubble as it comes, a sentence at a time
+      if (pending.speaker === pack.id) sayReply(pending.sessionId, event.text, false);
+      return;
+    }
+    if (session) toolLine(session, event);
     changed();
   });
-  api.onPetCommand((command) => void runPetCommand(command).catch(() => undefined));
+  api.onPetCommand((command) => {
+    void runPetCommand(command).catch((error) => logError('chat:command', error, 'warn'));
+  });
   const read = async <T>(key: string, fallback: T): Promise<T> => {
     try { return JSON.parse((await api.db.getKv(key)) ?? 'null') ?? fallback; } catch { return fallback; }
   };
@@ -394,7 +428,7 @@ export const startChat = async () => {
   if (legacy.length && chatState.sessions.length === 0) {
     const session = newSession(pack.id);
     session.messages = legacy;
-    session.title = legacy.find((m) => m.role === 'user')?.text.slice(0, 24) ?? '이전 대화';
+    session.title = legacy.find((m) => m.role === 'user')?.text.slice(0, 24) ?? t('chat.legacyTitle');
     saveSessions();
     void api.db.removeKv('chat.history');
   }
@@ -408,4 +442,6 @@ export const startChat = async () => {
   api.onFriends(showFriends);
   showFriends(await api.listFriends());
   await Promise.all([refreshChatProviders(false), refreshChatTools(), refreshNames()]);
+  // tool labels and character personas come from main in its language
+  onLocaleChange(() => void Promise.all([refreshChatTools(), refreshNames()]).catch((error) => logError('chat:locale', error, 'warn')));
 };

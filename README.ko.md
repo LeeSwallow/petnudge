@@ -82,6 +82,14 @@ npm run dist:mac     # dist:win, dist:linux도 있음. release/에 설치 파일
 기능뿐입니다. 대화를 쓰면 내 메시지, 펫의 상황 정보(타이머, 할 일 개수, 재생
 중인 곡), 허용한 도구의 실행 결과가 내가 고른 제공자에게 전송됩니다.
 
+### 언어 / Language / 言語
+
+앱은 한국어, 영어, 일본어를 지원합니다. 처음에는 시스템 언어로 시작하고(한국어나
+일본어가 아니면 영어), 설정 › 프로필 › 언어에서 바꾸면 패널, 펫의 말풍선,
+트레이 메뉴가 바로 바뀝니다. AI 대화도 같은 언어로 답합니다. 기본 캐릭터의 대사는
+한국어이고, 캐릭터 팩은 언어별 대사와 성격을 담을 수 있습니다
+([캐릭터 가이드](assets/characters/README.md) 참고).
+
 ## 코딩 에이전트와 함께
 
 petnudge가 실행되는 동안 MCP(Model Context Protocol) 서버가 열립니다. 내
@@ -176,7 +184,7 @@ flowchart LR
 지금 가장 도움이 되는 건 하루 써 보고 무엇을 기대했는지 알려 주시는 것입니다.
 그 밖에는 이런 방법이 있습니다.
 
-- [버그 제보](https://github.com/LeeSwallow/petnudge/issues/new?template=bug.yml)
+- [버그 제보](https://github.com/LeeSwallow/petnudge/issues/new?template=bug.yml): 설정 › 문제 해결 › 진단 정보 복사로 버전과 최근 오류를 붙여 주세요 (대화·메모·키는 담기지 않아요)
 - [기능 제안](https://github.com/LeeSwallow/petnudge/issues/new?template=feature.yml)
 - [새 캐릭터](https://github.com/LeeSwallow/petnudge/issues/new?template=character.yml): 직접 그렸고, 다른 사람이 써도 되는 라이선스인 캐릭터
 - 앱 번역 (지금은 한국어, 다음은 영어와 일본어)

@@ -64,6 +64,41 @@ describe('check', () => {
     const missing = checkPack(pack, cellsOf(['outer.jacket']));
     expect(missing.errors.join('\n')).toMatch(/head[\s\S]*eye\.L\.closed[\s\S]*pose\.stretch/);
   });
+
+  it('warns, per selectable outfit, about a pose it cannot draw (#50)', () => {
+    const pack = makePack();
+    pack.layers.push({ id: 'headwear', from: 'slot' });
+    pack.slots.headwear = { label: 'h', variants: { cap: { label: 'c' }, none: { label: 'n' } } };
+    pack.poses = { ...pack.poses, walk1: { cell: 'pose.walk1', whole: true } };
+    pack.states.walk = { loop: [{ ms: 100, pose: 'walk1' }] };
+    const names = ['head', 'outer.jacket', 'eye.L.closed', 'pose.stretch', 'headwear.cap', 'pose.walk1', 'outer.jacket#walk1'];
+    const { errors, warnings } = checkPack(pack, cellsOf(names));
+    expect(errors).toEqual([]);
+    // the cap has no walk cell: every outfit with the cap is reported, with the state that walks
+    expect(warnings.filter((w) => w.startsWith('의상 조합'))).toEqual([
+      '의상 조합 outer.jacket + headwear.cap: 그릴 수 없는 자세 walk1 (동작 walk)',
+      '의상 조합 outer.none + headwear.cap: 그릴 수 없는 자세 walk1 (동작 walk)'
+    ]);
+    // outfit drawings of a whole pose count as used layers
+    pack.poses.walk1 = { cell: 'pose.walk1', whole: true, outfits: [{ when: { headwear: 'cap' }, cell: 'pose.walk1.cap' }] };
+    expect(checkPack(pack, cellsOf([...names, 'pose.walk1.cap'])).warnings).toEqual([]);
+  });
+
+  it('takes a standard @3 pack as it is: nothing missing, unused or discovered', async () => {
+    const { buildPack } = await import('../../src/domain/character/buildPack.ts');
+    const { fromLegacyDraft } = await import('../../src/domain/character/standard.ts');
+    const part = (x0, y0, x1, y1) => {
+      const data = new Uint32Array(96 * 112);
+      for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) data[y * 96 + x] = 0xff336699;
+      return { w: 96, h: 112, data };
+    };
+    const parts = { 'torso.chest': part(30, 50, 66, 80), head: part(28, 10, 68, 48), 'eye.L.open': part(36, 26, 40, 30), 'eye.L.closed': part(36, 28, 40, 29), 'mouth.closed': part(44, 38, 52, 40), 'mouth.open': part(44, 37, 52, 42), 'custom.bow': part(60, 8, 70, 14), 'leg.L': part(36, 80, 46, 108), 'leg.R': part(50, 80, 60, 108) };
+    const { pack, layers } = buildPack(fromLegacyDraft({ id: 'bean', name: '콩이', persona: '', lines: { pat: [], pokeChest: [], pokeBelly: [] }, parts, order: Object.keys(parts) }));
+    const names = layers.map((l) => l.name);
+    expect(checkLayers(pack, { width: 96, height: 112, frames: 1, layers: names.map((name) => ({ name, group: '' })) })).toEqual({ errors: [], warnings: [] });
+    expect(discover(pack, names)).toEqual([]);
+    expect(checkPack(pack, cellsOf(names))).toEqual({ errors: [], warnings: [] });
+  });
 });
 
 describe('pixelorama files', async () => {

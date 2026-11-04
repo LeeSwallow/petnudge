@@ -1,0 +1,58 @@
+import { describe, expect, it } from 'vitest';
+import type { ChatMessage } from '../../../shared/chat';
+import { setLocale } from '../../../i18n';
+import { followBottom, friendIds, isGroup, preview, when } from './logic';
+
+const now = new Date(2026, 10, 4, 15, 0).getTime();
+const session = (messages: ChatMessage[], members?: string[]) => ({ id: 's', characterId: 'lila', members, title: '', createdAt: 0, updatedAt: 0, messages });
+
+describe('chat logic', () => {
+  it('dates a conversation like a messenger', () => {
+    expect(when(new Date(2026, 10, 4, 9, 5).getTime(), now)).toMatch(/9:05/);
+    expect(when(new Date(2026, 9, 30, 9).getTime(), now)).toBe('10. 30.');
+    expect(when(new Date(2025, 0, 2).getTime(), now)).toBe('2025. 1. 2.');
+  });
+
+  it('dates a conversation in the chosen language (Intl)', () => {
+    setLocale('en');
+    expect(when(new Date(2026, 10, 4, 9, 5).getTime(), now)).toBe('9:05 AM');
+    expect(when(new Date(2026, 9, 30, 9).getTime(), now)).toBe('10/30');
+    setLocale('ja');
+    expect(when(new Date(2026, 10, 4, 9, 5).getTime(), now)).toBe('09:05');
+    expect(when(new Date(2025, 0, 2).getTime(), now)).toBe('2025/1/2');
+    setLocale('ko');
+  });
+
+  it('previews the last spoken line, skipping tool lines', () => {
+    expect(preview(session([{ role: 'user', text: '안녕' }, { role: 'tool', text: '🔧 할 일 ✓' }]))).toBe('나: 안녕');
+    expect(preview(session([{ role: 'pet', text: '반가워' }]))).toBe('반가워');
+    expect(preview(session([]))).toBe('아직 대화가 없어요');
+  });
+
+  it('lists the pet first, then friends, then anyone with a past conversation', () => {
+    expect(friendIds('lila', ['moa', 'lila'], ['maru', 'moa'])).toEqual(['lila', 'moa', 'maru']);
+  });
+
+  it('is a group talk with two members or a guest line', () => {
+    expect(isGroup(['lila'], [])).toBe(false);
+    expect(isGroup(['lila', 'moa'], [])).toBe(true);
+    expect(isGroup(['lila'], [{ role: 'pet', text: 'hi', speaker: 'guest:민' }])).toBe(true);
+  });
+
+  it('follows the bottom when the view is within the threshold of it', () => {
+    expect(followBottom(600, 1000, 400, 40)).toBe(true); // at the bottom
+    expect(followBottom(561, 1000, 400, 40)).toBe(true); // 39px above it
+    expect(followBottom(560, 1000, 400, 40)).toBe(true); // exactly 40px
+  });
+
+  it('stays put when the reader scrolled further up', () => {
+    expect(followBottom(559, 1000, 400, 40)).toBe(false);
+    expect(followBottom(0, 1000, 400, 40)).toBe(false);
+  });
+
+  it('follows when everything fits, and the threshold defaults to 40px', () => {
+    expect(followBottom(0, 300, 400)).toBe(true);
+    expect(followBottom(560, 1000, 400)).toBe(true);
+    expect(followBottom(559, 1000, 400)).toBe(false);
+  });
+});

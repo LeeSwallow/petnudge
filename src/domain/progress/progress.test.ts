@@ -3,20 +3,18 @@ import {
   EXP_PER_FOCUS_MINUTE,
   createInitialProgress,
   getLevel,
-  recordFocusSession,
-  unlockables
+  recordFocusSession
 } from './progress';
 
 describe('progress', () => {
-  it('starts with no exp, streak, or unlocks', () => {
+  it('starts with no exp or streak', () => {
     const progress = createInitialProgress();
 
     expect(progress).toEqual({
       exp: 0,
       completedSessions: 0,
       streakDays: 0,
-      lastSessionDate: null,
-      unlockedIds: []
+      lastSessionDate: null
     });
   });
 
@@ -50,20 +48,14 @@ describe('progress', () => {
     expect(progress.streakDays).toBe(1);
   });
 
-  it('unlocks the first place after enough completed sessions and reports it once', () => {
-    const first = unlockables[0];
-    let progress = createInitialProgress();
-    let newlyUnlocked: string[] = [];
+  // Unlocks were removed (#38): progress saved before still loads, and the
+  // old unlock list is dropped on the next session.
+  it('reads progress saved with the old unlock list and drops it', () => {
+    const saved = { ...createInitialProgress(), completedSessions: 11, unlockedIds: ['place-rain-cafe'] };
+    const { progress } = recordFocusSession(saved, 25, '2026-10-15');
 
-    for (let i = 0; i < first.requiredSessions; i += 1) {
-      ({ progress, newlyUnlocked } = recordFocusSession(progress, 25, '2026-10-15'));
-    }
-
-    expect(progress.unlockedIds).toContain(first.id);
-    expect(newlyUnlocked).toEqual([first.id]);
-
-    ({ newlyUnlocked } = recordFocusSession(progress, 25, '2026-10-15'));
-    expect(newlyUnlocked).toEqual([]);
+    expect(progress.completedSessions).toBe(12);
+    expect(progress).not.toHaveProperty('unlockedIds');
   });
 
   it('derives level from exp', () => {

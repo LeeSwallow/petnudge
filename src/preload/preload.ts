@@ -24,6 +24,8 @@ const petApi = {
   editCharacter: (id: string): Promise<void> => ipcRenderer.invoke('characters:edit', id),
   rebuildCharacter: (id: string): Promise<CharacterAsset> => ipcRenderer.invoke('characters:rebuild', id),
   cloneCharacter: (from: string, name: string): Promise<string> => ipcRenderer.invoke('characters:clone', from, name),
+  // The character editor window (main/editorWindow.ts); focuses it when open.
+  openEditor: (): Promise<void> => ipcRenderer.invoke('editor:open'),
   onCharacterError: (listener: (id: string, message: string) => void) => {
     ipcRenderer.on('characters:error', (_event, id: string, message: string) => listener(id, message));
   },
@@ -57,6 +59,13 @@ const petApi = {
   resetPosition: () => ipcRenderer.send('reset-position'),
   reportPetLayout: (size: { petAreaHeight: number; petWidth: number }) => ipcRenderer.send('pet-layout', size),
   setPanelOpen: (open: boolean) => ipcRenderer.send('panel-open', open),
+  // The tray menu (main/tray.ts) and the chat shortcut ask the pet window to act.
+  onTogglePanel: (listener: () => void) => {
+    ipcRenderer.on('panel:toggle', () => listener());
+  },
+  onOpenQuickChat: (listener: () => void) => {
+    ipcRenderer.on('chat:open-quick', () => listener());
+  },
   onLayout: (listener: (layout: { below: boolean; petDx: number; panelHeight: number }) => void) => {
     ipcRenderer.on('layout', (_event, layout) => listener(layout));
   },
@@ -87,7 +96,8 @@ const petApi = {
   listFriends: (): Promise<string[]> => ipcRenderer.invoke('friends:list'),
   openFriend: (id: string): Promise<void> => ipcRenderer.invoke('friends:open', id),
   closeFriend: (id?: string) => ipcRenderer.send('friends:close', id),
-  friendSay: (id: string, text: string, ms = 6000) => ipcRenderer.send('friends:say', id, text, ms),
+  // `sessionId`: the conversation the line is from (its "더 보기 ▸" opens it).
+  friendSay: (id: string, text: string, ms = 6000, sessionId?: string) => ipcRenderer.send('friends:say', id, text, ms, sessionId),
   friendHold: (id: string, ms: number, faceDx: number) => ipcRenderer.send('friends:hold', id, ms, faceDx),
   onFriends: (listener: (ids: string[]) => void) => {
     ipcRenderer.on('friends:list', (_event, ids) => listener(ids));
@@ -95,13 +105,24 @@ const petApi = {
   onFriendNear: (listener: (info: { id: string; near: boolean; dx: number; since: number }) => void) => {
     ipcRenderer.on('friend-near', (_event, info) => listener(info));
   },
-  onFriendSay: (listener: (text: string, ms: number) => void) => {
-    ipcRenderer.on('friend-say', (_event, text, ms) => listener(text, ms));
+  onFriendSay: (listener: (text: string, ms: number, sessionId?: string) => void) => {
+    ipcRenderer.on('friend-say', (_event, text, ms, sessionId) => listener(text, ms, sessionId));
+  },
+  // A friend's "더 보기 ▸": the main window opens that conversation.
+  openChatSession: (sessionId: string) => ipcRenderer.send('friends:open-chat', sessionId),
+  onOpenChatSession: (listener: (sessionId: string) => void) => {
+    ipcRenderer.on('chat:open-session', (_event, sessionId) => listener(sessionId));
   },
   onFriendHold: (listener: (ms: number, faceDx: number) => void) => {
     ipcRenderer.on('friend-hold', (_event, ms, faceDx) => listener(ms, faceDx));
   },
-  quit: () => ipcRenderer.send('quit')
+  quit: () => ipcRenderer.send('quit'),
+  // The app log (main/logIpc.ts): level is error | warn | info | debug.
+  log: (level: string, scope: string, message: string, detail?: string) => ipcRenderer.send('log', level, scope, message, detail),
+  openLogs: (): Promise<void> => ipcRenderer.invoke('logs:open'),
+  diagnostics: (): Promise<string> => ipcRenderer.invoke('logs:diagnostics'),
+  // A chat link, after the user agreed; main opens only http and https.
+  openLink: (url: string): Promise<boolean> => ipcRenderer.invoke('link:open', url)
 };
 
 export type PetApi = typeof petApi;

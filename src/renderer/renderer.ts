@@ -3,129 +3,61 @@ import { getRemainingMs, type TimerState } from '../domain/pomodoro/timer';
 import { api } from './api';
 import { data, onData, refreshAll, refreshNotes, refreshSettings, refreshStats, refreshTodos, type DataKind } from './data';
 import { confetti, enter, pop } from './fx';
-import { chatModule, showActiveSession } from './modules/chat';
-import { startChat } from './chat';
+import { onOpenChat, startChat } from './chat';
 import { installChatBar } from './pet/chatbar';
-import { startFriends } from './pet/friends';
-import { holdStill } from './pet/behavior';
-import { sayNow } from './pet/bubble';
+import { nearestFriend, onNearChange, startFriends } from './pet/friends';
+import { holdStill, pauseWalking } from './pet/behavior';
+import { sayLine } from './pet/bubble';
 import { faceToward } from './pet/gaze';
-import { dashboardModule } from './modules/dashboard';
-import type { ModuleId, PanelModule } from './modules/module';
-import { notesModule } from './modules/notes';
-import { playlistModule } from './modules/playlist';
-import { pomodoroModule, renderPomodoroClock } from './modules/pomodoro';
-import { settingsModule } from './modules/settings';
-import { todoModule } from './modules/todo';
 import { handleModeChange, handleNowPlaying, music, onMusic } from './music';
 import { installPetInput, isDragging, markActivity, react, renderBubble, resizePet, startPetLoop } from './pet';
 import { cancelMods, emit as emitMod } from './pet/mods';
 import { petStore, whenHydrated } from './store';
 import { installTooltip } from './tooltip';
-import { pixelIcon } from './icons';
 import { characterReady, pack, setCharacter } from './character';
+import { createPanel, type PanelController } from '../ui/panel/controller';
+import type { Cause } from '../ui/state/bridge';
+import { restoreModule } from '../ui/panel/groups';
+import type { ModuleId } from '../ui/modules/module';
+import { MODULES } from '../ui/modules/registry';
+import { showActiveSession, showSession } from '../ui/modules/chat';
+import { bump } from '../ui/state/revision.svelte';
+import { installTokens } from '../ui/theme/install';
+import { installErrorLogging, logError } from '../ui/log';
+import { mountDock, type DockController } from '../ui/dock/mount';
+import { formatDate, getLocale, intlLocale, onLocaleChange, t } from '../i18n';
 
 const TRANSITION_STEP_MS = 1200;
-const MODULES: PanelModule[] = [todoModule, pomodoroModule, dashboardModule, playlistModule, notesModule, chatModule, settingsModule];
+
+// What the page says about itself in the current language.
+const labelPage = () => {
+  document.documentElement.lang = intlLocale(getLocale());
+  document.getElementById('pet')?.setAttribute('aria-label', t('bubble.petLabel'));
+};
+onLocaleChange(labelPage);
+labelPage();
+// The UI checks (scripts/ui-check) read the wording of the active language here.
+(window as unknown as { petnudgeI18n: unknown }).petnudgeI18n = { t, getLocale, formatDate };
 
 const panel = document.getElementById('panel')!;
-const tabs = document.getElementById('tabs')!;
-const host = document.getElementById('module-host')!;
-const bodies = new Map<ModuleId, HTMLElement>();
-let active: ModuleId = 'pomodoro';
+let panelUi: PanelController | null = null;
+let dock: DockController | null = null;
 
 const visible = () => !panel.hidden;
-const activeModule = () => MODULES.find((m) => m.id === active)!;
 
-const renderActive = (cause: DataKind | 'session' | 'clock' | 'music') => {
-  if (!visible()) return;
-  const module = activeModule();
-  if (module.watches.includes(cause)) module.render();
-};
-
-// ---------- dock navigation ----------
-
-const buildDock = () => {
-  tabs.innerHTML = MODULES.map(
-    (m) => `<button class="tab" role="tab" type="button" data-module="${m.id}" aria-selected="false"><span class="tab-icon">${pixelIcon(m.icon)}</span>${m.label}</button>`
-  ).join('') + `<button class="dock-quit" type="button" data-quit aria-label="펫 종료" data-tip="펫 종료">${pixelIcon('power')}<span>나가기</span></button>`;
-  tabs.style.setProperty('--tab-count', String(MODULES.length));
-  for (const module of MODULES) {
-    const body = document.createElement('div');
-    body.className = 'tab-body';
-    body.setAttribute('role', 'tabpanel');
-    body.hidden = true;
-    host.append(body);
-    module.mount(body);
-    bodies.set(module.id, body);
-  }
-  tabs.addEventListener('click', (event) => {
-    if (event.target instanceof Element && event.target.closest('[data-quit]')) return api.quit();
-    const button = event.target instanceof Element ? (event.target.closest('[data-module]') as HTMLElement | null) : null;
-    if (button) showModule(button.dataset.module as ModuleId);
-  });
-  tabs.addEventListener('keydown', (event) => {
-    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
-    const buttons = [...tabs.querySelectorAll<HTMLButtonElement>('.tab')];
-    const index = buttons.indexOf(document.activeElement as HTMLButtonElement);
-    if (index < 0) return;
-    event.preventDefault();
-    const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1 :
-      (index + (event.key === 'ArrowRight' ? 1 : -1) + buttons.length) % buttons.length;
-    buttons[next].focus();
-    showModule(buttons[next].dataset.module as ModuleId);
-  });
-};
-
-const showModule = (id: ModuleId, animate = true) => {
-  active = id;
-  void api.db.setKv('ui.module', id);
-  tabs.querySelectorAll<HTMLElement>('.tab').forEach((tab) => {
-    const selected = tab.dataset.module === id;
-    tab.setAttribute('aria-selected', String(selected));
-    tab.tabIndex = selected ? 0 : -1;
-    if (selected) tab.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-    if (selected && animate) pop(tab);
-  });
-  bodies.forEach((body, key) => (body.hidden = key !== id));
-  const body = bodies.get(id)!;
-  activeModule().render();
-  if (animate) enter(body, 'settle');
-};
+// Svelte modules follow these counters (src/ui/state).
+const renderActive = (cause: Cause) => bump(cause);
+const showModule = (id: ModuleId, animate = true) => panelUi?.show(id, animate);
 
 const togglePanel = () => {
   panel.hidden = !panel.hidden;
   if (!panel.hidden) cancelMods();
   emitMod(panel.hidden ? 'panelClose' : 'panelOpen', 'after');
   api.setPanelOpen(visible());
-  if (visible()) activeModule().render();
+  dock?.setPanelOpen(visible());
+  if (visible()) bump('shown');
   renderBubble(visible());
 };
-
-// ---------- now-playing strip ----------
-
-const strip = document.getElementById('player-strip')!;
-const renderStrip = () => {
-  const track = music.nowPlaying;
-  strip.hidden = !track;
-  if (!track) return;
-  const queueList = music.queue ? data.playlists.find((p) => p.id === music.queue!.playlistId) : null;
-  const badge = document.getElementById('player-badge')!;
-  const mode = petStore.getState().timer.mode;
-  badge.textContent = queueList ? queueList.name : track.player === 'Local' ? '내 음악' : track.player.toUpperCase();
-  badge.className = `badge ${queueList ? (mode === 'break' ? 'break' : 'focus') : ''}`;
-  const title = document.getElementById('player-title')!;
-  const label = `${track.title}${track.artist ? ` — ${track.artist}` : ''}`;
-  if (title.textContent !== label) {
-    title.textContent = label;
-    title.classList.toggle('scroll', label.length > 26);
-  }
-  const toggle = document.getElementById('player-toggle')!;
-  toggle.innerHTML = pixelIcon(track.state === 'playing' ? 'pause' : 'play');
-  toggle.setAttribute('aria-label', track.state === 'playing' ? '일시정지' : '재생');
-};
-document.getElementById('player-toggle')!.addEventListener('click', () => void music.toggle());
-document.getElementById('player-next')!.addEventListener('click', () => void music.next());
 
 // ---------- session bookkeeping on timer transitions ----------
 
@@ -159,7 +91,7 @@ const watchSession = () => {
       if (before === 'focus' && after === 'break') {
         void recordFocus(previous.timer, true, previous.pauseCount, previous.activeTodoId);
         react('celebrate', 2500);
-        const tab = tabs.querySelector('[data-module="pomodoro"]');
+        const tab = panel.querySelector('[data-module="pomodoro"]') ?? panel.querySelector('[data-group="focus"]');
         if (tab) void confetti(tab);
       }
       if (before === 'focus' && after === 'idle') void recordFocus(previous.timer, false, previous.pauseCount, previous.activeTodoId);
@@ -170,7 +102,6 @@ const watchSession = () => {
     }
     renderActive('session');
     renderBubble(visible());
-    renderStrip();
   });
 };
 
@@ -182,6 +113,7 @@ const installLayoutSync = () => {
   const report = () => api.reportPetLayout({ petAreaHeight: petArea.offsetHeight, petWidth: pet.offsetWidth });
   new ResizeObserver(report).observe(petArea);
   api.onLayout(({ below, petDx, panelHeight }) => {
+    dock?.setLayout(petDx, pet.offsetWidth);
     document.body.classList.toggle('below', below);
     document.body.style.setProperty('--pet-dx', `${petDx}px`);
     document.body.style.setProperty('--panel-height', panelHeight > 0 ? `${panelHeight}px` : 'none');
@@ -205,13 +137,14 @@ const installClickThrough = () => {
 // ---------- boot ----------
 
 const boot = async () => {
-  document.getElementById('player-next')!.innerHTML = pixelIcon('next');
+  installErrorLogging();
+  installTokens();
   installTooltip();
   await Promise.all([refreshAll(), whenHydrated(), characterReady]);
   try {
     await setCharacter(await api.getCharacter(data.settings.characterId));
   } catch (error) {
-    console.error('캐릭터를 불러오지 못해 기본 캐릭터를 사용합니다', error);
+    logError('character', error, 'warn'); // falls back to the default character
     data.settings = await api.db.updateSettings({ characterId: 'lila' });
   }
   api.onCharacterChanged(async (id) => {
@@ -219,15 +152,25 @@ const boot = async () => {
     try {
       await setCharacter(await api.getCharacter(id));
     } catch (error) {
-      console.error('다시 내보낸 캐릭터를 불러오지 못했어요', error);
+      logError('character:reload', error, 'warn');
     }
   });
   petStore.getState().applySettings(data.settings);
   music.setVolume(data.settings.musicVolume);
 
-  buildDock();
-  const saved = (await api.db.getKv('ui.module')) as ModuleId | null;
-  showModule(saved && MODULES.some((m) => m.id === saved) ? saved : 'pomodoro', false);
+  panelUi = createPanel(panel, MODULES, {
+    onQuit: () => api.quit(),
+    onShow: (id, body, tab, animate) => {
+      bump('shown');
+      void api.db.setKv('ui.module', id);
+      tab?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      if (animate) {
+        if (tab) pop(tab);
+        enter(body, 'settle');
+      }
+    }
+  });
+  panelUi.show(restoreModule(MODULES, (await api.db.getKv('ui.module')) as string | null), false);
 
   onData((kind) => {
     if (kind === 'settings') {
@@ -237,10 +180,7 @@ const boot = async () => {
     }
     renderActive(kind);
   });
-  onMusic(() => {
-    renderStrip();
-    renderActive('music');
-  });
+  onMusic(() => renderActive('music'));
   api.onNowPlaying((nowPlaying) => void handleNowPlaying(nowPlaying));
 
   // Commands and edits coming from AI assistants over MCP.
@@ -260,16 +200,42 @@ const boot = async () => {
     if (kind === 'settings') void refreshSettings();
   });
 
+  // The dock beside her (src/ui/dock): the talk button and a few widgets.
+  const petArea = document.getElementById('pet-area')!;
+  const petUnit = document.getElementById('pet-unit')!;
+  const canvas = document.getElementById('pet')!;
+  dock = mountDock(document.getElementById('pet-body')!, {
+    windowWidth: window.innerWidth,
+    onhover: pauseWalking,
+    onheight: (px) => {
+      // the window keeps room for a dock taller than she is, and what is over
+      // her head (bubble, quick chat) stays as narrow as she is beside it
+      petArea.style.minHeight = px > 0 ? `${px}px` : '';
+      if (px > canvas.offsetHeight) petUnit.style.setProperty('--head-width', `${canvas.offsetWidth}px`);
+      else petUnit.style.removeProperty('--head-width');
+    }
+  });
+  onNearChange(() => dock?.setFriend(nearestFriend()?.dx ?? null));
+
   watchSession();
   installClickThrough();
   installLayoutSync();
   installPetInput(togglePanel);
   startFriends();
-  installChatBar(() => {
-    showActiveSession();
+  // 기록 › 대화 on a conversation: the quick bar's 크게 보기 (her current one)
+  // and a bubble's "더 보기 ▸", hers or a friend's (the one the line is from).
+  const openChat = (sessionId?: string) => {
+    if (sessionId) showSession(sessionId);
+    else showActiveSession();
     if (!visible()) togglePanel();
     showModule('chat');
-  });
+  };
+  onOpenChat(openChat);
+  api.onOpenChatSession(openChat);
+  const chatBar = installChatBar(() => openChat(), document.getElementById('dock-talk')!);
+  // The tray menu and the chat shortcut (main/tray.ts, main.ts).
+  api.onTogglePanel(togglePanel);
+  api.onOpenQuickChat(chatBar.openInput);
   void startChat();
   startPetLoop();
 
@@ -288,12 +254,13 @@ const boot = async () => {
       lockedSince = null;
     }
     if (data.todayKey !== toDateKey(new Date(now))) void refreshStats();
-    if (visible() && active === 'pomodoro') renderPomodoroClock();
+    // the pomodoro tab, the home board's timer widget and the dock show the clock
+    const active = panelUi?.active();
+    if (!visible() || active === 'pomodoro' || active === 'home') bump('clock');
     renderBubble(visible());
   }, 250);
 
   renderBubble(false);
-  renderStrip();
 };
 
 // A friend pet window (main/friends.ts): just the character, wandering and
@@ -310,8 +277,8 @@ const bootFriend = async (id: string) => {
   startPetLoop();
   const bubble = document.getElementById('bubble')!;
   let clear: ReturnType<typeof setTimeout> | undefined;
-  api.onFriendSay((text, ms) => {
-    sayNow(text, ms);
+  api.onFriendSay((text, ms, sessionId) => {
+    sayLine(text, { holdMs: ms, onMore: sessionId ? () => api.openChatSession(sessionId) : undefined });
     clearTimeout(clear);
     clear = setTimeout(() => (bubble.textContent = ''), ms + text.length * 60);
   });

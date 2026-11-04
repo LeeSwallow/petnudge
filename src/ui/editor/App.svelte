@@ -1,0 +1,232 @@
+<script lang="ts">
+  import { onMount } from 'svelte';
+  import { Button, EmptyState, Tabs } from '../components';
+  import { editorApi, logEditorError } from './api';
+  import { DEFAULT_ZOOM, GUIDES, ZOOMS, type Guides, type Zoom } from './canvas';
+  import Canvas from './Canvas.svelte';
+  import CanvasSize from './CanvasSize.svelte';
+  import CharacterDialog from './CharacterDialog.svelte';
+  import { importImage } from './cutout.svelte';
+  import CutoutBar from './CutoutBar.svelte';
+  import { editor, redo, replaceDraft, undo } from './draft.svelte';
+  import { importLayered, imports } from './imports.svelte';
+  import LayerPanel from './LayerPanel.svelte';
+  import PartProps from './PartProps.svelte';
+  import { notice } from './pictures.svelte';
+  import { fromTemplate, TEMPLATES, type TemplateId } from '../../domain/character/standard';
+
+  // The editor's frame (#26 C): top bar, 부위/캐릭터 tabs, and three panes —
+  // 부위 목록, 캔버스, 미리보기. Placing parts and undo are #58 (draft.svelte.ts);
+  // bringing pictures in is #57 (불러오기, 새로 만들기); free parts, the part
+  // properties, the canvas size and the starter templates are #71; opening,
+  // preview and saving come in later issues, their buttons disabled until then.
+
+  const TABS = [
+    { id: 'parts', label: '부위' },
+    { id: 'character', label: '캐릭터' }
+  ];
+  let tab = $state('parts');
+  let characterCount = $state<number | null>(null);
+  let zoom = $state<Zoom>(DEFAULT_ZOOM);
+  let guides = $state<Guides>({ border: true, feet: true, head: true });
+  // 새로 만들기: a starter template (an empty list of parts on a canvas of its
+  // proportions), or an existing character.
+  let newMenu = $state(false);
+  const startTemplate = (id: TemplateId) => {
+    newMenu = false;
+    replaceDraft(fromTemplate(id));
+    notice.text = '';
+  };
+  const startFromCharacter = () => {
+    newMenu = false;
+    imports.characterPick = 'start';
+  };
+
+  // ⌘Z / Ctrl+Z undoes, with Shift redoes; a text field keeps its own undo.
+  const onkeydown = (e: KeyboardEvent) => {
+    if (!(e.metaKey || e.ctrlKey) || e.altKey || e.key.toLowerCase() !== 'z') return;
+    if (e.target instanceof Element && e.target.closest('input, textarea, [contenteditable]')) return;
+    e.preventDefault();
+    if (e.shiftKey) redo();
+    else undo();
+  };
+
+  onMount(async () => {
+    const result = await editorApi.listCharacters();
+    if (result.ok) characterCount = result.value.length;
+    else logEditorError('editor', result);
+  });
+</script>
+
+<svelte:window {onkeydown} />
+
+<div class="editor-root">
+  <header class="topbar">
+    <h1>캐릭터 에디터</h1>
+    <div class="actions" role="toolbar" aria-label="파일">
+      <span class="menu-anchor">
+        <Button data-action="new" aria-expanded={newMenu} onclick={() => (newMenu = !newMenu)}>새로 만들기</Button>
+        {#if newMenu}
+          <span class="menu" role="menu" data-new-menu>
+            {#each TEMPLATES as t (t.id)}
+              <button type="button" role="menuitem" data-new={t.id} onclick={() => startTemplate(t.id)}>{t.label} <small>{t.hint}</small></button>
+            {/each}
+            <button type="button" role="menuitem" data-new="character" onclick={startFromCharacter}>기존 캐릭터에서 시작…</button>
+          </span>
+        {/if}
+      </span>
+      <Button disabled data-action="open" title="다음 업데이트에서 열려요">열기</Button>
+      <Button variant="primary" disabled data-action="save" title="다음 업데이트에서 열려요">저장</Button>
+    </div>
+    <div class="actions" role="toolbar" aria-label="불러오기">
+      <Button variant="ghost" data-import="image" onclick={importImage} title="PNG 한 장을 원본으로 불러와 부위를 오려 내요">그림 불러오기</Button>
+      <Button variant="ghost" data-import="layered" onclick={importLayered} title=".pxo 또는 .aseprite의 레이어를 부위로 넣어요">레이어 파일</Button>
+      <Button variant="ghost" data-import="character" onclick={() => (imports.characterPick = 'parts')} title="다른 캐릭터의 부위를 골라 가져와요">다른 캐릭터에서</Button>
+    </div>
+    <div class="actions" role="toolbar" aria-label="편집">
+      <Button variant="ghost" data-history="undo" disabled={!editor.canUndo} onclick={undo} title="실행 취소 (⌘Z)">되돌리기</Button>
+      <Button variant="ghost" data-history="redo" disabled={!editor.canRedo} onclick={redo} title="다시 실행 (⇧⌘Z)">다시</Button>
+    </div>
+    <div class="toggles" role="group" aria-label="확대">
+      {#each ZOOMS as z (z)}
+        <button type="button" class="toggle" data-zoom-option={z} aria-pressed={zoom === z} onclick={() => (zoom = z)}>{z}×</button>
+      {/each}
+    </div>
+    <div class="toggles" role="group" aria-label="안내선">
+      {#each GUIDES as g (g.id)}
+        <button type="button" class="toggle" data-guide={g.id} aria-pressed={guides[g.id]} onclick={() => (guides[g.id] = !guides[g.id])}>{g.label}</button>
+      {/each}
+    </div>
+    <span class="count" data-character-count>{characterCount === null ? '' : `캐릭터 ${characterCount}개`}</span>
+  </header>
+
+  <Tabs items={TABS} selected={tab} onselect={(id) => (tab = id)} variant="sub" key="editor-tab" label="에디터 화면" />
+
+  {#if tab === 'parts'}
+    <main class="panes">
+      <section class="pane slots" data-pane="slots" aria-labelledby="slots-title">
+        <h2 id="slots-title">레이어</h2>
+        <div class="pane-scroll"><LayerPanel /></div>
+        <PartProps />
+      </section>
+
+      <section class="pane stage" data-pane="canvas" aria-labelledby="canvas-title">
+        <h2 id="canvas-title">캔버스 <small>{editor.draft.canvas.w}×{editor.draft.canvas.h} · {zoom}배</small></h2>
+        <CanvasSize />
+        <div class="stage-well">
+          <Canvas {zoom} {guides} />
+        </div>
+        {#if editor.underlay}<CutoutBar />{/if}
+        <p class="notice" role="status" data-notice>{notice.text}</p>
+      </section>
+
+      <section class="pane preview" data-pane="preview" aria-labelledby="preview-title">
+        <h2 id="preview-title">미리보기</h2>
+        <div class="preview-frame" data-preview-frame>
+          <EmptyState text="부위를 넣으면 여기서 움직여요" />
+        </div>
+      </section>
+    </main>
+  {:else}
+    <main class="panes single">
+      <section class="pane" data-pane="character" aria-labelledby="character-title">
+        <h2 id="character-title">캐릭터</h2>
+        <EmptyState text="이름, 성격, 반응 대사는 다음 업데이트에서 여기서 정해요" />
+      </section>
+    </main>
+  {/if}
+</div>
+
+<CharacterDialog />
+
+<style>
+  .editor-root { display: flex; flex-direction: column; height: 100%; }
+
+  .topbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    background: var(--color-well);
+    border-bottom: var(--stroke-panel) solid var(--color-edge);
+  }
+  h1 { margin: 0; font: bold var(--type-body) var(--font); color: var(--color-goal); }
+  .actions { display: flex; gap: var(--space-2); }
+  .menu-anchor { position: relative; }
+  .menu {
+    position: absolute;
+    top: calc(100% + var(--space-1));
+    left: 0;
+    z-index: 10;
+    display: grid;
+    min-width: 240px;
+    background: var(--color-panel);
+    border: var(--stroke-frame) solid var(--color-edge);
+    box-shadow: var(--shadow-md) var(--shadow-md) 0 var(--color-shadow);
+  }
+  .menu button {
+    font: var(--type-body) var(--font);
+    color: var(--color-ink);
+    text-align: left;
+    background: none;
+    border: none;
+    padding: var(--space-1) var(--space-2);
+    cursor: pointer;
+  }
+  .menu small { color: var(--color-muted); font: var(--type-small) var(--font-small); }
+  .menu button:hover, .menu button:focus-visible { background: var(--color-well); outline: none; }
+  .toggles { display: flex; }
+  .toggle {
+    font: var(--type-small) var(--font-small);
+    color: var(--color-ink-2);
+    background: var(--color-panel);
+    border: var(--stroke-frame) solid var(--color-shadow);
+    border-radius: 0;
+    padding: 2px var(--space-1);
+    cursor: pointer;
+  }
+  .toggle + .toggle { border-left: none; }
+  .toggle[aria-pressed='true'] { color: var(--color-well); background: var(--color-focus); }
+  .toggle:focus-visible { outline: var(--stroke-frame) solid var(--color-goal); outline-offset: -2px; }
+  .count { margin-left: auto; font: var(--type-small) var(--font-small); color: var(--color-muted); }
+
+  .panes {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 220px 1fr 200px;
+    gap: var(--space-2);
+    padding: var(--space-2);
+  }
+  .panes.single { grid-template-columns: 1fr; }
+  .pane {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    background: var(--color-panel);
+    border: var(--stroke-frame) solid var(--color-edge);
+    box-shadow: var(--shadow-md) var(--shadow-md) 0 var(--color-shadow);
+  }
+  h2 {
+    margin: 0;
+    padding: var(--space-1) var(--space-2);
+    font: var(--type-body) var(--font);
+    color: var(--color-ink);
+    border-bottom: var(--stroke-frame) solid var(--color-edge-lo);
+  }
+  h2 small { font: var(--type-small) var(--font-small); color: var(--color-muted); }
+
+  .pane-scroll { flex: 1; min-height: 0; overflow-y: auto; }
+  .notice { margin: 0; min-height: 1.5em; padding: 0 var(--space-2); font: var(--type-small) var(--font-small); color: var(--color-focus); }
+  .stage-well { flex: 1; min-height: 0; display: grid; place-items: center; overflow: auto; background: var(--color-well); }
+
+  .preview-frame {
+    flex: 1;
+    margin: var(--space-2);
+    display: grid;
+    place-items: center;
+    background: var(--color-well);
+    border: var(--stroke-frame) dashed var(--color-edge-lo);
+  }
+</style>

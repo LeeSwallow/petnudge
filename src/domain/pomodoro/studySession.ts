@@ -9,16 +9,13 @@ export type StudySession = {
   progress: ProgressState;
   timer: TimerState;
   scene: SceneState;
-  // Unlock ids earned but not yet shown to the user.
-  pendingUnlocks: string[];
 };
 
 export const createInitialSession = (): StudySession => ({
   planner: createEmptyPlannerState(),
   progress: createInitialProgress(),
   timer: createIdleTimer(),
-  scene: createInitialSceneState(),
-  pendingUnlocks: []
+  scene: createInitialSceneState()
 });
 
 export const beginFocus = (session: StudySession, now: number): StudySession => ({
@@ -31,7 +28,7 @@ export const finishFocusIfDue = (session: StudySession, now: number, todayKey: s
   if (session.timer.mode !== 'focus' || !isTimerDone(session.timer, now)) return session;
 
   const settings = session.planner.timer;
-  const { progress, newlyUnlocked } = recordFocusSession(session.progress, settings.focusMinutes, todayKey);
+  const { progress } = recordFocusSession(session.progress, settings.focusMinutes, todayKey);
   const isLongBreak =
     settings.longBreakMinutes !== undefined &&
     settings.longBreakEvery !== undefined &&
@@ -43,8 +40,7 @@ export const finishFocusIfDue = (session: StudySession, now: number, todayKey: s
     progress,
     // The break starts when focus was due, not when the app noticed it.
     timer: startTimer('break', breakSettings, session.timer.endsAt ?? now),
-    scene: completeFocus(session.scene),
-    pendingUnlocks: [...session.pendingUnlocks, ...newlyUnlocked]
+    scene: completeFocus(session.scene)
   };
 };
 

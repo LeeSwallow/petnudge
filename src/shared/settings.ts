@@ -1,4 +1,6 @@
+import { closestOutfit } from '../domain/character/outfits';
 import type { Avatar, CharacterPack } from './characterPack';
+import { isLocale, type AnyLocale } from '../i18n';
 
 export type AppSettings = {
   characterId: string;
@@ -19,12 +21,17 @@ export type AppSettings = {
   // Wander around the screen now and then (not during focus sessions).
   walkAround: boolean;
   reduceMotion: boolean;
+  // ⌘/Ctrl+Alt+C opens the quick chat from anywhere. Off by default: a global
+  // shortcut takes the keys away from every other app.
+  chatShortcut: boolean;
   nickname: string;
-  // Character customisation: variant ids of the active character pack's slots.
-  avatarHair: string;
+  // The app's language (#77). Main fills it in from the OS on first run
+  // (app.getLocale(): ko, ja, else en); `xx` is the checks' pseudo-locale.
+  locale: AnyLocale;
+  // Lila's outfit before per-character avatars (characterAvatars); hair and
+  // glow colours were removed with the colour slots (#50).
   avatarOutfit: string;
   avatarHeadwear: string;
-  avatarLed: string;
 };
 
 export const defaultSettings: AppSettings = {
@@ -45,25 +52,28 @@ export const defaultSettings: AppSettings = {
   eyesFollowCursor: true,
   walkAround: true,
   reduceMotion: false,
+  chatShortcut: false,
   nickname: '',
-  avatarHair: 'lavender',
+  locale: 'en',
   avatarOutfit: 'jacket',
-  avatarHeadwear: 'catphones',
-  avatarLed: 'violet'
+  avatarHeadwear: 'catphones'
 };
 
 // Which setting holds the chosen variant of each character pack slot.
 export const avatarSettingFor: Record<string, keyof AppSettings> = {
-  hair: 'avatarHair',
   outer: 'avatarOutfit',
-  headwear: 'avatarHeadwear',
-  glow: 'avatarLed'
+  headwear: 'avatarHeadwear'
 };
 
-export const avatarFor = (pack: CharacterPack, settings: AppSettings): Avatar =>
-  settings.characterAvatars[pack.id] ?? (pack.id === 'lila'
+// The outfit she wears: the saved one, or the closest combination every
+// pose has a drawing for (#50). Saved slots the pack no longer has (old
+// colour choices) are ignored.
+export const avatarFor = (pack: CharacterPack, settings: AppSettings): Avatar => {
+  const saved = settings.characterAvatars[pack.id] ?? (pack.id === 'lila'
     ? Object.fromEntries(Object.entries(avatarSettingFor).map(([slot, key]) => [slot, String(settings[key])]))
     : {});
+  return closestOutfit(pack, saved) ?? Object.fromEntries(Object.entries(saved).filter(([slot]) => pack.slots[slot]));
+};
 
 const ranges: Partial<Record<keyof AppSettings, [number, number]>> = {
   focusMinutes: [1, 120],
@@ -98,6 +108,8 @@ export const normalizeSettings = (input: unknown): AppSettings => {
       result[key] = value;
     } else if (key.startsWith('avatar')) {
       if (typeof value === 'string' && /^[a-z][a-z0-9-]{0,23}$/.test(value)) result[key] = value;
+    } else if (key === 'locale') {
+      if (isLocale(value)) result[key] = value;
     } else if (key === 'nickname') {
       result[key] = typeof value === 'string' ? value.trim().slice(0, 16) : '';
     } else if (key === 'focusPlaylistId' || key === 'breakPlaylistId') {

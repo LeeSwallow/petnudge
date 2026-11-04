@@ -11,6 +11,10 @@ import { around, connectTalk, emit, fireMod } from './mods';
 
 const TALK_HOLD_MS = 180_000;
 const near = new Map<string, { dx: number; since: number }>();
+const nearListeners = new Set<() => void>();
+
+// Called whenever a friend comes near, moves while near, or leaves.
+export const onNearChange = (listener: () => void) => nearListeners.add(listener);
 
 export const nearestFriend = () =>
   [...near].sort((a, b) => Math.abs(a[1].dx) - Math.abs(b[1].dx)).map(([id, info]) => ({ id, ...info }))[0];
@@ -50,5 +54,6 @@ export const startFriends = () => {
       was.dx = dx;
       fireMod({ type: 'friend', phase: 'stay', id, nearMs: Date.now() - since, visit: since });
     }
+    if (isNear || was) nearListeners.forEach((listener) => listener());
   });
 };

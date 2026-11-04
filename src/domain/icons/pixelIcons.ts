@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 // Shared source pixels: desktop SVGs and mobile views use the same palette.
 const palette: Record<string, string> = {
   o: '#473462', w: '#fff3df', y: '#ffd078', s: '#e7a65a', r: '#df6074',
@@ -39,4 +40,5 @@ export const pixelIcons = {
 export type PixelIconName = keyof typeof pixelIcons;
 export const pixelPalette = palette;
 export const moodIcons: PixelIconName[] = ['tired', 'unsure', 'steady', 'happy', 'fire'];
-export const moodLabels = ['많이 지쳤어요', '집중이 어려웠어요', '괜찮았어요', '잘 집중했어요', '아주 몰입했어요'];
+// The five moods' names in the current language (src/i18n).
+export const moodLabels = (): string[] => [t('pomodoro.mood.1'), t('pomodoro.mood.2'), t('pomodoro.mood.3'), t('pomodoro.mood.4'), t('pomodoro.mood.5')];

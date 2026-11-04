@@ -249,6 +249,8 @@ export const createRepository = (db: DatabaseSync) => {
 
     // ---------- settings & key-value ----------
     getSettings,
+    // Whether a setting was ever saved (its default is not the same thing).
+    hasSetting: (key: string) => db.prepare('SELECT 1 FROM settings WHERE key = ?').get(key) !== undefined,
 
     updateSettings: (patch: unknown): AppSettings => {
       const next = normalizeSettings({ ...getSettings(), ...(typeof patch === 'object' && patch !== null ? patch : {}) });

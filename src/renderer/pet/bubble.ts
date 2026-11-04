@@ -1,19 +1,16 @@
-import { unlockables } from '../../domain/progress/progress';
 import { formatRemaining, getRemainingMs, isTimerPaused } from '../../domain/pomodoro/timer';
 import { api } from '../api';
 import { data } from '../data';
-import { typewrite } from '../fx';
+import { stopTyping, typewrite } from '../fx';
+import { fitBubble, linePx, moreLabel } from '../../ui/bubble/text';
+import { onLocaleChange, t } from '../../i18n';
 import { petStore } from '../store';
 import { activeAction, currentReaction, pet } from './state';
 
-// The speech bubble above her: action lines, unlocks, break dialogue, the
+// The speech bubble above her: action lines, break dialogue, the
 // timer, sleep, or a hint. She moves her mouth while a line is typed.
 
-const dialogueLines = [
-  '...수고했어! 이번 세션 진짜 집중 잘하더라.',
-  '잠깐 기지개 켜고, 물도 한 모금 마시자.',
-  '다음엔 뭐부터 할지 같이 정해볼까?'
-];
+const dialogueLines = () => [t('bubble.dialogue.1'), t('bubble.dialogue.2'), t('bubble.dialogue.3')];
 
 const bubble = document.getElementById('bubble') as HTMLDivElement;
 let lastBubbleKey = '';
@@ -34,11 +31,64 @@ export const sayNow = (line: string, holdMs = 2500) => {
   holdUntil = talkUntil + holdMs;
 };
 
+// The widest the bubble gets: her width while a tall dock stands beside her
+// (--head-width), else the window's.
+const bubbleWidth = () => {
+  const unit = bubble.parentElement!;
+  const head = parseFloat(getComputedStyle(unit).getPropertyValue('--head-width'));
+  const area = unit.parentElement?.clientWidth || window.innerWidth;
+  return Number.isFinite(head) ? Math.min(head, area) : area;
+};
+
+// A chat line (plain text, ui/bubble/text.ts): at most three lines, cut with
+// "… 더 보기 ▸" (which calls `onMore`) when longer. While a reply streams
+// (`final` false) each call passes the line so far; when it only grew, the
+// typing goes on from what is shown instead of starting over.
+export const sayLine = (line: string, { holdMs, final = true, onMore }: { holdMs: number; final?: boolean; onMore?: () => void }) => {
+  const fit = fitBubble(line, linePx(bubbleWidth()), { final });
+  let text = bubble.querySelector<HTMLSpanElement>(':scope > .bubble-text');
+  const said = text?.dataset.say ?? '';
+  const chat = text !== null && lastBubbleKey.startsWith('chat:');
+  if (chat && fit.text === said) {
+    holdUntil = Math.max(talkUntil, Date.now()) + holdMs;
+    return;
+  }
+  // what was said, less a "…" that cut it
+  const base = bubble.querySelector('.bubble-more') ? said.replace(/…$/, '') : said;
+  const grows = chat && fit.text.startsWith(base);
+  if (!grows || !text) {
+    lastBubbleKey = `chat:${Date.now()}`;
+    bubble.classList.remove('clickable');
+    stopTyping(bubble); // a line typed into the bubble itself ("음… 생각 중") would type over it
+    bubble.textContent = '';
+    text = document.createElement('span');
+    text.className = 'bubble-text';
+    bubble.append(text);
+  }
+  text.dataset.say = fit.text;
+  const button = bubble.querySelector('.bubble-more');
+  if (!fit.more) button?.remove();
+  if (fit.more && onMore && !button) {
+    const more = document.createElement('button');
+    more.type = 'button';
+    more.className = 'bubble-more';
+    more.textContent = moreLabel();
+    more.addEventListener('click', (event) => {
+      event.stopPropagation();
+      onMore();
+    });
+    bubble.append(' ', more);
+  }
+  const typed = text.textContent ?? '';
+  const from = grows && fit.text.startsWith(typed) ? typed.length : grows ? Math.min(typed.length, base.length) : 0;
+  talkUntil = Date.now() + typewrite(text, fit.text, from);
+  holdUntil = talkUntil + holdMs;
+};
+
 export const renderBubble = (panelOpen: boolean) => {
   pet.panelShown = panelOpen;
-  const { scene, timer, pendingUnlocks } = petStore.getState();
+  const { scene, timer } = petStore.getState();
   const acting = activeAction();
-  const unlock = unlockables.find((u) => u.id === pendingUnlocks[0]);
   let key: string;
   let render: () => void;
   if (Date.now() < holdUntil) return;
@@ -49,15 +99,12 @@ export const renderBubble = (panelOpen: boolean) => {
     key = `action:${acting.startedAt}`;
     const line = acting.line;
     render = () => say(line);
-  } else if (unlock) {
-    key = `unlock:${unlock.id}`;
-    render = () => say(`해금! ${unlock.kind === 'place' ? '새 장소' : '새 옷'}: ${unlock.title} ✨`);
   } else if (scene.phase === 'break_dialogue_active') {
     key = `dialogue:${scene.dialogueTurn}`;
-    render = () => say(dialogueLines[Math.min(scene.dialogueTurn, dialogueLines.length - 1)]);
+    render = () => say(dialogueLines()[Math.min(scene.dialogueTurn, dialogueLines().length - 1)]);
   } else if (timer.mode !== 'idle') {
     const paused = isTimerPaused(timer) ? ' ❚❚' : '';
-    const label = timer.mode === 'focus' ? '집중' : '휴식';
+    const label = timer.mode === 'focus' ? t('pomodoro.phase.focus') : t('music.break');
     key = 'timer';
     bubble.innerHTML = `${label} <span class="digits">${formatRemaining(getRemainingMs(timer, Date.now()))}</span>${paused}`;
     lastBubbleKey = key;
@@ -65,21 +112,27 @@ export const renderBubble = (panelOpen: boolean) => {
     return;
   } else if (currentReaction() === 'sleepy') {
     key = 'sleepy';
-    render = () => (bubble.textContent = 'Zzz… (쓰다듬어 깨우기)');
+    render = () => (bubble.textContent = t('bubble.sleepy'));
   } else {
     key = panelOpen ? 'empty' : 'hint';
     render = () =>
-      panelOpen ? (bubble.textContent = '') : say(data.settings.nickname ? `${data.settings.nickname}, 공부할 준비 됐어?` : '나를 눌러봐! 공부 같이 하자');
+      panelOpen ? (bubble.textContent = '') : say(data.settings.nickname ? t('bubble.hintNamed', { name: data.settings.nickname }) : t('bubble.hint'));
   }
 
-  bubble.classList.toggle('clickable', key.startsWith('unlock') || key.startsWith('dialogue'));
+  bubble.classList.toggle('clickable', key.startsWith('dialogue'));
   if (key === lastBubbleKey) return;
   lastBubbleKey = key;
   render();
 };
 
+// A change of language says the current line again in the new one.
+onLocaleChange(() => {
+  if (Date.now() < holdUntil) return;
+  lastBubbleKey = '';
+  renderBubble(pet.panelShown);
+});
+
 bubble.addEventListener('click', () => {
   const state = petStore.getState();
-  if (state.pendingUnlocks.length > 0) state.dismissUnlock();
-  else if (state.scene.phase === 'break_dialogue_active') state.advanceDialogue();
+  if (state.scene.phase === 'break_dialogue_active') state.advanceDialogue();
 });

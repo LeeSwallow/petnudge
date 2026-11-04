@@ -18,7 +18,8 @@ npm run typecheck && npm test
 
 Both must pass. The tests are the specification: change a test only when
 the behaviour is meant to change, and say so. For a visible change, also run
-`npm start` and look at the pet.
+`npm start` and look at the pet. For a UI change, also run
+`npm run check:ui -- --changed` (the scenarios covering what changed).
 
 ## Rules
 

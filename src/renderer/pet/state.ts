@@ -1,3 +1,4 @@
+import { localizedLines } from '../../i18n';
 import { pack } from '../character';
 import { pickLine } from '../character/actions';
 import type { Reaction } from '../sprite';
@@ -46,7 +47,7 @@ export const react = (kind: Reaction, ms: number) => {
 export const startAction = (id: string) => {
   const action = pack.actions?.[id];
   if (!action) return false;
-  const line = pickLine(action.lines, pet.lastLine);
+  const line = pickLine(localizedLines(action.lines, pack.lang), pet.lastLine);
   pet.lastLine = line ?? pet.lastLine;
   pet.reaction = { kind: 'action', startedAt: pet.frame, until: Date.now() + action.ms, action: id, line };
   markActivity();

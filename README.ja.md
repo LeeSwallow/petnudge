@@ -81,6 +81,14 @@ npm run dist:mac     # dist:win、dist:linuxも。release/にインストーラ�
 チャットだけです。チャットを使うと、メッセージ、ペットの状況（タイマー、ToDoの
 件数、再生中の曲）、許可したツールの実行結果が、選んだプロバイダーに送られます。
 
+### 언어 / Language / 言語
+
+アプリは韓国語・英語・日本語に対応しています。最初はシステムの言語で起動し（韓国語・
+日本語以外は英語）、設定 › プロフィール › 言語で切り替えると、パネル、ペットの吹き出し、
+トレイメニューがすぐに変わります。AI チャットも同じ言語で答えます。標準キャラクターの
+セリフは韓国語で、キャラクターパックには言語ごとのセリフと性格を入れられます
+（[キャラクターガイド](assets/characters/README.md)を参照）。
+
 ## コーディングエージェントと一緒に
 
 petnudgeの起動中は、MCP（Model Context Protocol）サーバーが動きます。自分の
@@ -175,7 +183,7 @@ flowchart LR
 いま一番ありがたいのは、1日使ってみて、何を期待したかを教えてもらうことです。
 ほかにも次の方法があります。
 
-- [バグ報告](https://github.com/LeeSwallow/petnudge/issues/new?template=bug.yml)
+- [バグ報告](https://github.com/LeeSwallow/petnudge/issues/new?template=bug.yml)：設定 › 문제 해결 › 진단 정보 복사 でバージョンと最近のエラーを貼ってください（会話・メモ・キーは含まれません）
 - [機能リクエスト](https://github.com/LeeSwallow/petnudge/issues/new?template=feature.yml)
 - [新しいキャラクター](https://github.com/LeeSwallow/petnudge/issues/new?template=character.yml)：自分で描き、他の人も使えるライセンスのもの
 - アプリの翻訳（現在は韓国語、次は英語と日本語）

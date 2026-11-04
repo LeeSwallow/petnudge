@@ -23,7 +23,7 @@ type Deps = {
 
 export const createFriends = (deps: Deps) => {
   const friends = new Map<string, Friend>();
-  // Quitting closes every window; that shouldn't forget who was out.
+  // Quitting closes every window; no need to announce each one going.
   let quitting = false;
   app.on('before-quit', () => { quitting = true; });
 
@@ -93,7 +93,7 @@ export const createFriends = (deps: Deps) => {
     return { x: point.x - x, y: point.y - y };
   };
 
-  const say = (id: string, text: string, ms: number) => friends.get(id)?.win.webContents.send('friend-say', text, ms);
+  const say = (id: string, text: string, ms: number, sessionId?: string) => friends.get(id)?.win.webContents.send('friend-say', text, ms, sessionId);
   const hold = (id: string, ms: number, faceDx: number) => friends.get(id)?.win.webContents.send('friend-hold', ms, faceDx);
 
   // How far each friend is from the main pet, every few hundred ms.

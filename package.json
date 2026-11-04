@@ -34,7 +34,11 @@
     "dist:win": "node build.mjs && electron-builder --win nsis",
     "build:character": "node scripts/build-character.mjs lila",
     "watch:character": "node scripts/build-character.mjs lila --watch",
+    "build:tray-icon": "node scripts/tray-icon.mjs",
     "dist:linux": "node build.mjs && electron-builder --linux AppImage",
+    "check:ui": "node build.mjs && node scripts/ui-check.mjs",
+    "check:editor": "node build.mjs && node scripts/editor-check.mjs",
+    "check:ui:changed": "node build.mjs && node scripts/ui-check.mjs --changed",
     "demo:shots": "node scripts/demo-shots.mjs && node scripts/compose-images.mjs"
   },
   "devDependencies": {
@@ -45,7 +49,9 @@
     "electron": "^44.7.0",
     "electron-builder": "^26.15.3",
     "esbuild": "0.28.2",
+    "esbuild-svelte": "^0.9.5",
     "galmuri": "^2.40.3",
+    "svelte": "^5.57.3",
     "typescript": "~7.0.2",
     "vitest": "^5.0.4",
     "zod": "^4.6.7",

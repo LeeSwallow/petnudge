@@ -1,4 +1,8 @@
+import { localeFromTag, setLocale, t } from '../i18n';
 import { BrowserWindow, app, dialog, globalShortcut, ipcMain, net, protocol, screen, shell } from 'electron';
+import os from 'node:os';
+import { createLogger } from '../infra/logger';
+import { describeThrown, installLogIpc } from './logIpc';
 import { execFile } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, watch } from 'node:fs';
 import path from 'node:path';
@@ -20,6 +24,13 @@ import { installChat } from './chatIpc';
 import { createFriends } from './friends';
 import { startEngine, type EngineHandle } from '../infra/runtime';
 import { bridgePower } from '../infra/electron/power';
+import { installLinks } from '../infra/electron/links';
+import { createTray } from './tray';
+import { CHAT_SHORTCUT, RESET_SHORTCUT, type TrayAction } from './trayMenu';
+import { createEditorWindow } from './editorWindow';
+import { installEditorIpc } from './editorIpc';
+import { characterDraft, imageFromPng, layersFromBytes, layersFromFile, MAX_IMAGE_BYTES } from './editorImport';
+import { OPEN_EDITOR_CHANNEL } from '../domain/character-editor/ipc';
 const NOW_PLAYING_POLL_MS = 2000;
 
 const AUDIO_EXTENSIONS = ['mp3', 'm4a', 'aac', 'wav', 'ogg', 'oga', 'flac', 'opus', 'webm'];
@@ -34,6 +45,28 @@ protocol.registerSchemesAsPrivileged([
 // points a run at another folder (demo screenshots, trying things out).
 app.setName('Study Companion Pet');
 app.setPath('userData', process.env.PETNUDGE_PROFILE ? path.resolve(process.env.PETNUDGE_PROFILE) : path.join(app.getPath('appData'), 'Study Companion Pet'));
+// The app log (userData/logs/petnudge.log); see src/infra/logger.ts.
+const logger = createLogger(path.join(app.getPath('userData'), 'logs'));
+// Electron's own handler (a dialog, then carry on) goes away once we listen,
+// so we keep its behaviour: write it down, print it, and tell the user once
+// per message. A rejection only warns, as Electron does.
+const shownErrors = new Set<string>();
+process.on('uncaughtException', (thrown) => {
+  const { message, detail } = describeThrown(thrown);
+  logger.log('error', 'main', `uncaught: ${message}`, detail);
+  process.stderr.write(`${detail ?? message}\n`);
+  if (app.isReady() && !shownErrors.has(message)) {
+    shownErrors.add(message);
+    dialog.showErrorBox(t('dialog.crash.title'), t('dialog.crash.body', { message }));
+  }
+});
+process.on('unhandledRejection', (reason) => {
+  const { message, detail } = describeThrown(reason);
+  logger.log('error', 'main', `unhandled rejection: ${message}`, detail);
+  process.stderr.write(`unhandled rejection: ${detail ?? message}\n`);
+});
+installLogIpc(logger, { app: app.getVersion(), electron: process.versions.electron, os: `${process.platform} ${os.release()}` });
+installLinks();
 // Dev (npm start) reads the built-in characters straight from assets/, so a
 // re-export (npm run watch:character) reloads the pet without a rebuild.
 const builtinCharacters = app.isPackaged ? path.join(__dirname, 'characters') : path.resolve(__dirname, '..', 'assets', 'characters');
@@ -96,14 +129,15 @@ const openDatabase = () => {
   migrate(db);
   repository = createRepository(db);
   database = db;
+  // First run: the language the OS prefers (ko, ja, else en), saved once.
+  if (!repository.hasSetting('locale')) repository.updateSettings({ locale: localeFromTag(app.getPreferredSystemLanguages()[0] ?? app.getLocale()) });
+  setLocale(repository.getSettings().locale);
   // Stop the scheduler loop before the database it reads goes away.
   app.on('will-quit', () => {
     void engine?.dispose();
     db.close();
   });
 };
-
-const RESET_SHORTCUT = 'CommandOrControl+Alt+P';
 
 // Window geometry follows the pet's feet (the anchor); see layout.ts. The
 // renderer reports how big the pet area is and whether the panel is open.
@@ -143,6 +177,48 @@ const resetPosition = () => {
   view.anchor = homeAnchor();
   applyLayout();
   win?.showInactive();
+};
+
+// The tray and the chat shortcut act from another app: bring the pet's window
+// forward with keyboard focus so the quick chat input can take typing.
+const summon = () => {
+  if (!win) return;
+  if (process.platform === 'darwin') app.focus({ steal: true });
+  win.show();
+  win.focus();
+};
+const togglePanel = () => {
+  summon();
+  win?.webContents.send('panel:toggle');
+};
+const openQuickChat = () => {
+  summon();
+  win?.webContents.send('chat:open-quick');
+};
+
+let tray: ReturnType<typeof createTray> | null = null;
+const runTrayAction = (action: TrayAction) => {
+  if (action === 'panel') togglePanel();
+  if (action === 'chat') openQuickChat();
+  if (action === 'reset') resetPosition();
+  if (action === 'quit') app.quit();
+};
+
+// ⌘/Ctrl+Alt+C, only while Settings › 펫 turns it on. register() fails when
+// another app holds the keys; the tray's 말 걸기 still works then.
+let chatShortcutOn = false;
+const syncChatShortcut = () => {
+  // the language too: the tray menu below is built in it
+  setLocale(repository.getSettings().locale);
+  const wanted = repository.getSettings().chatShortcut;
+  if (wanted && !chatShortcutOn) {
+    chatShortcutOn = globalShortcut.register(CHAT_SHORTCUT, openQuickChat);
+    if (!chatShortcutOn) logger.log('warn', 'shortcut', `${CHAT_SHORTCUT} is taken by another app`);
+  } else if (!wanted && chatShortcutOn) {
+    globalShortcut.unregister(CHAT_SHORTCUT);
+    chatShortcutOn = false;
+  }
+  tray?.refresh();
 };
 
 const createWindow = () => {
@@ -194,7 +270,10 @@ ipcMain.handle('db', (_event, method: unknown, ...args: unknown[]) => {
   if (!isDbMethod(method)) throw new Error(`unknown db method ${String(method)}`);
   const fn = repository[method] as (...a: unknown[]) => unknown;
   const result = fn(...args);
-  if (method === 'updateSettings') applyAlwaysOnTop(repository.getSettings().alwaysOnTop);
+  if (method === 'updateSettings') {
+    applyAlwaysOnTop(repository.getSettings().alwaysOnTop);
+    syncChatShortcut();
+  }
   return result;
 });
 
@@ -249,6 +328,7 @@ ipcMain.on('pet-layout', (event, size: unknown) => {
 ipcMain.on('panel-open', (_event, open: unknown) => {
   view.panelOpen = open === true;
   applyLayout();
+  tray?.refresh();
 });
 
 ipcMain.on('reset-position', resetPosition);
@@ -260,14 +340,12 @@ const friends = createFriends({
   alwaysOnTop: () => repository.getSettings().alwaysOnTop,
   mainAnchor: () => view.anchor,
   mainContents: () => win?.webContents,
-  onListChange: (ids) => {
-    repository.setKv('friends.out', JSON.stringify(ids));
-    win?.webContents.send('friends:list', ids);
-  }
+  // Not saved: each launch starts with the main pet alone (캐릭터 tab).
+  onListChange: (ids) => win?.webContents.send('friends:list', ids)
 });
 ipcMain.handle('friends:list', () => friends.list());
 ipcMain.handle('friends:open', async (_event, id: unknown) => {
-  if (typeof id !== 'string' || !(await characters.list()).some((c) => c.id === id)) throw new Error('없는 캐릭터예요');
+  if (typeof id !== 'string' || !(await characters.list()).some((c) => c.id === id)) throw new Error(t('error.character.unknown'));
   friends.open(id);
 });
 ipcMain.on('friends:close', (event, id: unknown) => {
@@ -275,8 +353,14 @@ ipcMain.on('friends:close', (event, id: unknown) => {
   if (self) return self.win.close(); // a friend closing itself
   if (typeof id === 'string') friends.close(id);
 });
-ipcMain.on('friends:say', (_event, id: unknown, text: unknown, ms: unknown) => {
-  if (typeof id === 'string' && typeof text === 'string') friends.say(id, text.slice(0, 300), typeof ms === 'number' ? ms : 6000);
+ipcMain.on('friends:say', (_event, id: unknown, text: unknown, ms: unknown, sessionId: unknown) => {
+  if (typeof id === 'string' && typeof text === 'string') friends.say(id, text.slice(0, 300), typeof ms === 'number' ? ms : 6000, typeof sessionId === 'string' ? sessionId : undefined);
+});
+// A friend's bubble "더 보기 ▸": the main pet opens that conversation.
+ipcMain.on('friends:open-chat', (_event, sessionId: unknown) => {
+  if (typeof sessionId !== 'string') return;
+  summon();
+  win?.webContents.send('chat:open-session', sessionId);
 });
 ipcMain.on('friends:hold', (_event, id: unknown, ms: unknown, faceDx: unknown) => {
   if (typeof id === 'string' && typeof ms === 'number') friends.hold(id, Math.min(ms, 300_000), typeof faceDx === 'number' ? faceDx : 0);
@@ -306,9 +390,9 @@ ipcMain.handle('music-play-item', async (_event, player: unknown, ref: unknown) 
 ipcMain.handle('pick-audio-files', async () => {
   if (!win) return [];
   const result = await dialog.showOpenDialog(win, {
-    title: '플레이리스트에 추가할 음악',
+    title: t('dialog.pickAudio'),
     properties: ['openFile', 'multiSelections'],
-    filters: [{ name: '오디오', extensions: AUDIO_EXTENSIONS }]
+    filters: [{ name: t('dialog.audioFiles'), extensions: AUDIO_EXTENSIONS }]
   });
   return result.canceled ? [] : result.filePaths.filter((file) => isValidMusicRef('Local', file));
 });
@@ -329,7 +413,7 @@ let pendingImport: Backup | null = null;
 ipcMain.handle('data:export', async () => {
   if (!win) return null;
   const { canceled, filePath } = await dialog.showSaveDialog(win, {
-    title: '데이터 내보내기',
+    title: t('dialog.exportData'),
     defaultPath: path.join(app.getPath('documents'), `study-pet-backup-${toDateKey(new Date())}.json`),
     filters: [{ name: 'JSON', extensions: ['json'] }]
   });
@@ -344,22 +428,23 @@ ipcMain.handle('data:import', async (_event, step: unknown) => {
     return null;
   }
   if (step === 'apply') {
-    if (!pendingImport) throw new Error('가져올 파일을 먼저 골라주세요');
+    if (!pendingImport) throw new Error(t('error.backup.pickFirst'));
     const session = restoreBackup(database, pendingImport);
     pendingImport = null;
     applyAlwaysOnTop(repository.getSettings().alwaysOnTop);
+    syncChatShortcut();
     for (const kind of ['todos', 'notes', 'stats'] as const) win?.webContents.send('data-changed', kind);
     return { session };
   }
   if (!win) return null;
   pendingImport = null;
   const { canceled, filePaths } = await dialog.showOpenDialog(win, {
-    title: '백업 파일 가져오기',
+    title: t('dialog.importData'),
     properties: ['openFile'],
     filters: [{ name: 'JSON', extensions: ['json'] }]
   });
   if (canceled || !filePaths[0]) return null;
-  if ((await stat(filePaths[0])).size > MAX_BACKUP_BYTES) throw new Error('파일이 너무 커요 (100MB 이하만 가져올 수 있어요)');
+  if ((await stat(filePaths[0])).size > MAX_BACKUP_BYTES) throw new Error(t('error.backup.tooBig'));
   const backup = parseBackup(await readFile(filePaths[0], 'utf8'));
   pendingImport = backup;
   return { file: path.basename(filePaths[0]), ...summarizeBackup(backup) };
@@ -372,7 +457,7 @@ ipcMain.handle('mods:create', async () => {
   return file;
 });
 ipcMain.handle('mods:open', async (_event, file: unknown) => {
-  if (!insideMods(file)) throw new Error('모드 폴더 밖의 파일은 열 수 없어요');
+  if (!insideMods(file)) throw new Error(t('error.mod.outside'));
   const error = await shell.openPath(file);
   if (error) shell.showItemInFolder(file);
 });
@@ -390,7 +475,7 @@ ipcMain.handle('characters:list', () => characters.list());
 ipcMain.handle('characters:get', (_event, id: unknown) => characters.load(id));
 ipcMain.handle('characters:import', async () => {
   if (!win) return null;
-  const selected = await dialog.showOpenDialog(win, { title: '캐릭터 팩 폴더 가져오기', properties: ['openDirectory'] });
+  const selected = await dialog.showOpenDialog(win, { title: t('dialog.importCharacter'), properties: ['openDirectory'] });
   return selected.canceled ? null : characters.importFolder(selected.filePaths[0]);
 });
 // Pixelorama doesn't register .pxo with the OS, so it is opened by name on
@@ -399,7 +484,7 @@ ipcMain.handle('characters:import', async () => {
 const openInEditor = async (file: string) => {
   if (file.endsWith('.pxo') && process.platform === 'darwin') {
     const target = process.env.PIXELORAMA ?? (existsSync('/Applications/Pixelorama.app') ? '/Applications/Pixelorama.app' : path.join(app.getPath('home'), 'Applications', 'Pixelorama.app'));
-    if (!existsSync(target)) throw new Error('Pixelorama를 찾지 못했어요. 응용 프로그램 폴더에 설치해주세요');
+    if (!existsSync(target)) throw new Error(t('error.character.noPixelorama'));
     await new Promise<void>((resolve, reject) => execFile('open', ['-a', target, file], (error) => (error ? reject(error) : resolve())));
     return;
   }
@@ -436,13 +521,59 @@ ipcMain.handle('characters:edit', async (_event, id: unknown) => {
 ipcMain.handle('characters:clone', (_event, from: unknown, name: unknown) => characters.clone(from, name));
 ipcMain.handle('characters:rebuild', (_event, id: unknown) => characters.rebuild(id));
 
+// The character editor (#26): its own window, preload and editor:* channels.
+// PETNUDGE_EDITOR_TEST=1 (set by scripts/editor-check.mjs) opens it with its
+// dev-only test hooks (src/ui/editor/testHooks.ts); never in a normal run.
+const editor = createEditorWindow({
+  page: path.join(__dirname, 'editor', 'index.html'),
+  preload: path.join(__dirname, 'editor-preload.js'),
+  testHooks: process.env.PETNUDGE_EDITOR_TEST === '1'
+});
+// A file picked in a dialog over the editor window, or null when cancelled.
+const pickForEditor = async (title: string, filters: Electron.FileFilter[]) => {
+  const parent = editor.current();
+  const options: Electron.OpenDialogOptions = { title, properties: ['openFile'], filters };
+  const { canceled, filePaths } = parent ? await dialog.showOpenDialog(parent, options) : await dialog.showOpenDialog(options);
+  return canceled || !filePaths[0] ? null : filePaths[0];
+};
+const editorTest = process.env.PETNUDGE_EDITOR_TEST === '1';
+installEditorIpc({
+  listCharacters: () => characters.list(),
+  closeEditor: () => editor.close(),
+  importImage: async () => {
+    const file = await pickForEditor(t('dialog.importImage'), [{ name: t('dialog.pngImages'), extensions: ['png'] }]);
+    if (!file) return null;
+    if ((await stat(file)).size > MAX_IMAGE_BYTES) throw new Error(t('error.editor.imageFile'));
+    return imageFromPng(path.basename(file), await readFile(file));
+  },
+  importLayered: async () => {
+    const file = await pickForEditor(t('dialog.importLayers'), [{ name: t('dialog.layerFiles'), extensions: ['pxo', 'aseprite', 'ase'] }]);
+    return file ? { name: path.basename(file), layers: await layersFromFile(file) } : null;
+  },
+  importCharacter: async (id) => characterDraft(await characters.sourceOf(id)),
+  // The editor check's door: the same imports from bytes, never in a normal run.
+  testImport: editorTest
+    ? async (kind, name, bytes) => {
+        if (typeof name !== 'string' || !(bytes instanceof Uint8Array)) throw new Error('test import: name and bytes expected');
+        if (kind === 'image') return imageFromPng(name, bytes);
+        if (kind === 'layered') return { name, layers: await layersFromBytes(name, bytes) };
+        throw new Error(`test import: unknown kind ${String(kind)}`);
+      }
+    : undefined,
+  editorContents: () => editor.current()?.webContents ?? null,
+  logger
+});
+ipcMain.handle(OPEN_EDITOR_CHANNEL, () => {
+  editor.open();
+});
+
 ipcMain.on('quit', () => app.quit());
 
 const startMcp = async () => {
   try {
     mcpInfo = await startMcpServer(app.getPath('userData'), repository, chat.bridge);
   } catch (error) {
-    console.error('MCP server failed to start', error);
+    logger.log('error', 'mcp', 'MCP server failed to start', error instanceof Error ? error.stack ?? error.message : String(error));
   }
 };
 
@@ -453,22 +584,24 @@ app.whenReady().then(() => {
       engine = handle;
       bridgePower((reason) => void handle.wake(reason));
     })
-    .catch((error) => console.error('engine failed to start', error));
+    .catch((error) => logger.log('error', 'engine', 'engine failed to start', error instanceof Error ? error.stack ?? error.message : String(error)));
   serveAudio();
   createWindow();
   if (!app.isPackaged) watchBuiltinCharacter();
   mods.watchUser(() => win?.webContents.send('mods:changed'));
   globalShortcut.register(RESET_SHORTCUT, resetPosition);
+  tray = createTray({
+    iconDir: path.join(__dirname, 'tray'),
+    state: () => ({ panelOpen: view.panelOpen, chatShortcut: chatShortcutOn }),
+    run: runTrayAction
+  });
+  syncChatShortcut();
   // Monitors added/removed/rearranged: pull the pet back on screen.
   screen.on('display-removed', applyLayout);
   screen.on('display-metrics-changed', applyLayout);
   pollNowPlaying();
   void startMcp();
   friends.watchProximity();
-  // Friends who were out last time come back.
-  win?.webContents.once('did-finish-load', () => {
-    try { for (const id of JSON.parse(repository.getKv('friends.out') ?? '[]')) friends.open(String(id)); } catch { /* none */ }
-  });
 });
 
 app.on('will-quit', () => {

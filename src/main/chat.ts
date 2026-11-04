@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { execFile, spawn, type ChildProcess } from 'node:child_process';
 import { existsSync, mkdirSync } from 'node:fs';
 import os from 'node:os';
@@ -45,8 +46,9 @@ const locate = async (provider: CliProvider): Promise<string | null> => {
 const conversation = (request: ChatRequest) => {
   const messages = [...request.messages];
   const last = messages.pop();
-  const history = messages.map((m) => `${m.role === 'user' ? '사용자' : '너'}: ${m.text}`).join('\n');
-  return `${history ? `지금까지의 대화:\n${history}\n\n` : ''}사용자: ${last?.text ?? ''}`;
+  const user = t('chat.model.user');
+  const history = messages.map((m) => `${m.role === 'user' ? user : t('chat.model.you')}: ${m.text}`).join('\n');
+  return `${history ? `${t('chat.model.history')}\n${history}\n\n` : ''}${user}: ${last?.text ?? ''}`;
 };
 
 type Mcp = { url: string; token: string } | null;
@@ -97,7 +99,7 @@ const readLine = (provider: CliProvider, line: string, tools: PetTool[]): { text
     const name = String(m.item.tool ?? '');
     return { tool: { type: 'tool', name, label: labelOf(tools, name), ok: !m.item.error, detail: m.item.error?.message } };
   }
-  if (m.type === 'error' || m.type === 'turn.failed') return { error: String(m.message ?? m.error?.message ?? '실패했어요') };
+  if (m.type === 'error' || m.type === 'turn.failed') return { error: String(m.message ?? m.error?.message ?? t('error.chat.failed')) };
   return {};
 };
 
@@ -130,7 +132,7 @@ export const createChat = ({ workDir, config, tools, mcp, apiKey }: Deps) => {
 
   const runCli = async (id: string, provider: CliProvider, model: string, request: ChatRequest, onEvent: (event: ChatEvent) => void) => {
     const binary = await locate(provider);
-    if (!binary) throw new Error(`${PROVIDER_INFO[provider].label} CLI를 찾지 못했어요. 설치하고 한 번 로그인해 주세요.`);
+    if (!binary) throw new Error(t('error.chat.noCli', { provider: PROVIDER_INFO[provider].label }));
     const cfg = config();
     const usable = allowedTools(tools(), cfg);
     const server = mcp();
@@ -147,7 +149,7 @@ export const createChat = ({ workDir, config, tools, mcp, apiKey }: Deps) => {
       let turnHasText = false;
       let failure: string | undefined;
       let stderr = '';
-      const timer = setTimeout(() => { failure = '답이 너무 오래 걸려서 멈췄어요'; child.kill(); }, TIMEOUT_MS);
+      const timer = setTimeout(() => { failure = t('error.chat.timeout'); child.kill(); }, TIMEOUT_MS);
       child.stdout!.setEncoding('utf8').on('data', (chunk: string) => {
         buffer += chunk;
         const lines = buffer.split('\n');
@@ -171,10 +173,10 @@ export const createChat = ({ workDir, config, tools, mcp, apiKey }: Deps) => {
         clearTimeout(timer);
         running.delete(id);
         const answer = shown.trim();
-        if (signal && !failure) return reject(new Error('멈췄어요'));
+        if (signal && !failure) return reject(new Error(t('error.chat.stopped')));
         if (answer && !failure) return resolve(answer);
-        const hint = /log ?in|auth|credential|401/i.test(stderr + (failure ?? '')) ? ' (터미널에서 한 번 로그인해 주세요)' : '';
-        reject(new Error(`${failure ?? (stderr.trim().split('\n').pop() || `종료 코드 ${code}`)}${hint}`));
+        const hint = /log ?in|auth|credential|401/i.test(stderr + (failure ?? '')) ? t('error.chat.loginHint') : '';
+        reject(new Error(`${failure ?? (stderr.trim().split('\n').pop() || t('error.chat.exitCode', { code: String(code) }))}${hint}`));
       });
     });
   };
@@ -193,12 +195,12 @@ export const createChat = ({ workDir, config, tools, mcp, apiKey }: Deps) => {
         signal: abort.signal,
         onEvent
       });
-      if (!answer) throw new Error('빈 대답이 왔어요');
+      if (!answer) throw new Error(t('error.chat.empty'));
       return answer;
     } catch (error) {
-      if (abort.signal.aborted) throw new Error('멈췄어요');
+      if (abort.signal.aborted) throw new Error(t('error.chat.stopped'));
       const message = error instanceof Error ? error.message : String(error);
-      throw new Error(/401|invalid.*key|authentication/i.test(message) ? `API 키를 확인해 주세요 (${message.slice(0, 120)})` : message.slice(0, 300));
+      throw new Error(/401|invalid.*key|authentication/i.test(message) ? t('error.chat.checkKey', { message: message.slice(0, 120) }) : message.slice(0, 300));
     } finally {
       clearTimeout(timer);
       running.delete(id);
