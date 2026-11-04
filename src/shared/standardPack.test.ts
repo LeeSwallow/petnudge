@@ -60,6 +60,24 @@ describe('standard pack @3', () => {
     expect(() => validatePack(pack)).toThrow(/unsupported format/);
   });
 
+  it('accepts lines and persona per language, and plain ones (#77)', () => {
+    const built = buildPack(filled('lila'));
+    const pack = JSON.parse(JSON.stringify(built.pack));
+    const pat = Object.keys(pack.actions)[0];
+    const size = [built.layers.length * pack.frame.w, pack.frame.h] as const;
+    pack.lang = 'ko';
+    pack.persona = { ko: '느긋한 친구', en: 'A laid-back friend' };
+    pack.actions[pat].lines = { ko: ['헤헤'], en: ['Hehe'], ja: ['えへへ'] };
+    const imported = validateImportedPack(pack, ...size);
+    expect(imported.persona).toEqual({ ko: '느긋한 친구', en: 'A laid-back friend' });
+    expect(imported.actions![pat].lines).toEqual({ ko: ['헤헤'], en: ['Hehe'], ja: ['えへへ'] });
+    pack.persona = '느긋한 친구';
+    pack.actions[pat].lines = ['헤헤'];
+    expect(() => validateImportedPack(pack, ...size)).not.toThrow();
+    pack.actions[pat].lines = { english: ['Hehe'] };
+    expect(() => validateImportedPack(pack, ...size)).toThrow();
+  });
+
   it('round-trips a draft with a re-parented part, a new part and a moved pivot', () => {
     const d = filled('chibi');
     d.parts = d.parts.map((p) => (p.id === 'hair.front' ? { ...p, parent: 'root', pivot: [40, 10] as [number, number] } : p));

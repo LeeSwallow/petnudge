@@ -3,19 +3,21 @@
   import { api } from '../../../renderer/api';
   import { progressRing, tomatoRow } from '../../../renderer/charts';
   import { data, refreshStats } from '../../../renderer/data';
-  import { moodIcons, moodLabels, pixelIcon } from '../../../renderer/icons';
+  import { moodIcons, pixelIcon } from '../../../renderer/icons';
   import { petStore } from '../../../renderer/store';
-  import { formatMinutes } from '../../../shared/stats';
+  import { formatMinutes, locale, t } from '../../i18n';
   import TextInput from '../../components/TextInput.svelte';
+  import type { MessageKey } from '../../i18n';
   import { revision } from '../../state/revision.svelte';
   import { intentText, PHASE_COLOR, phaseOf, reflectionStarts, untilLongBreak, type PhaseKind } from './logic';
 
-  const CHIPS: [PhaseKind, string][] = [
-    ['focus', '집중'],
-    ['break', '짧은 휴식'],
-    ['long', '긴 휴식']
+  const CHIPS: [PhaseKind, MessageKey][] = [
+    ['focus', 'pomodoro.phase.focus'],
+    ['break', 'pomodoro.phase.break'],
+    ['long', 'pomodoro.phase.long']
   ];
 
+  const moodLabel = (i: number) => t(`pomodoro.mood.${i + 1}` as MessageKey);
   let mood = $state<number | null>(null);
   let note = $state('');
 
@@ -35,7 +37,7 @@
   });
 
   const session = $derived.by(() => {
-    void revision.session, revision.settings, revision.stats;
+    void revision.session, revision.settings, revision.stats, locale();
     const { timer, awaitingReflection, progress } = petStore.getState();
     const today = data.daily.find((d) => d.dateKey === data.todayKey) ?? { minutes: 0, sessions: 0 };
     return { mode: timer.mode, awaitingReflection, today, untilLong: untilLongBreak(progress.completedSessions, data.settings.longBreakEvery) };
@@ -62,7 +64,7 @@
 
 <div class="mode-chips">
   {#each CHIPS as [phase, label] (phase)}
-    <span class="chip" class:active={phase === (clock.phase === 'idle' ? 'focus' : clock.phase)} data-phase={phase} style:--chip-color={PHASE_COLOR[phase]}>{label}</span>
+    <span class="chip" class:active={phase === (clock.phase === 'idle' ? 'focus' : clock.phase)} data-phase={phase} style:--chip-color={PHASE_COLOR[phase]}>{t(label)}</span>
   {/each}
 </div>
 <div class="timer-stage">
@@ -71,32 +73,32 @@
 </div>
 <div class="controls" id="controls">
   {#if session.mode === 'idle'}
-    <button class="primary" type="button" onclick={() => store().startFocus()}>{@html pixelIcon('play')} 집중 시작</button>
+    <button class="primary" type="button" onclick={() => store().startFocus()}>{@html pixelIcon('play')} {t('pomodoro.start')}</button>
   {:else if session.mode === 'focus'}
-    <button class="primary" type="button" onclick={() => store().togglePause()}>{@html pixelIcon(clock.paused ? 'play' : 'pause')} {clock.paused ? '재개' : '일시정지'}</button>
-    <button type="button" data-tip="기록은 '중단'으로 남아요" onclick={() => store().abandonFocus()}>{@html pixelIcon('stop')} 그만두기</button>
+    <button class="primary" type="button" onclick={() => store().togglePause()}>{@html pixelIcon(clock.paused ? 'play' : 'pause')} {clock.paused ? t('pomodoro.resume') : t('pomodoro.pause')}</button>
+    <button type="button" data-tip={t('pomodoro.abandonTip')} onclick={() => store().abandonFocus()}>{@html pixelIcon('stop')} {t('pomodoro.abandon')}</button>
   {:else}
-    <button type="button" onclick={() => store().togglePause()}>{@html pixelIcon(clock.paused ? 'play' : 'pause')} {clock.paused ? '재개' : '일시정지'}</button>
-    <button class="primary" type="button" onclick={() => store().skipBreak()}>{@html pixelIcon('next')} 휴식 건너뛰기</button>
+    <button type="button" onclick={() => store().togglePause()}>{@html pixelIcon(clock.paused ? 'play' : 'pause')} {clock.paused ? t('pomodoro.resume') : t('pomodoro.pause')}</button>
+    <button class="primary" type="button" onclick={() => store().skipBreak()}>{@html pixelIcon('next')} {t('pomodoro.skipBreak')}</button>
   {/if}
 </div>
 <div class="frame reflection" id="reflection" hidden={!session.awaitingReflection}>
   {#if session.awaitingReflection}
-    <div class="section-title">이번 세션 어땠어? <small>선택 사항</small></div>
-    <div class="mood" role="group" aria-label="집중도">
+    <div class="section-title">{t('pomodoro.reflection.title')} <small>{t('pomodoro.reflection.optional')}</small></div>
+    <div class="mood" role="group" aria-label={t('pomodoro.mood')}>
       {#each moodIcons as face, i (face)}
-        <button type="button" class:selected={mood === i + 1} aria-pressed={mood === i + 1} aria-label="집중도 {i + 1}: {moodLabels[i]}" data-tip={moodLabels[i]} onclick={() => (mood = i + 1)}>{@html pixelIcon(face)}</button>
+        <button type="button" class:selected={mood === i + 1} aria-pressed={mood === i + 1} aria-label={t('pomodoro.moodN', { n: i + 1, label: moodLabel(i) })} data-tip={moodLabel(i)} onclick={() => (mood = i + 1)}>{@html pixelIcon(face)}</button>
       {/each}
     </div>
     <div class="row">
-      <span class="grow"><TextInput id="reflection-note" maxlength={280} placeholder="한 줄 회고 (Enter 저장)" bind:value={note} onenter={saveReflection} /></span>
-      <button type="button" onclick={saveReflection}>저장</button>
+      <span class="grow"><TextInput id="reflection-note" maxlength={280} placeholder={t('pomodoro.reflection.placeholder')} bind:value={note} onenter={saveReflection} /></span>
+      <button type="button" onclick={saveReflection}>{t('common.save')}</button>
     </div>
   {/if}
 </div>
 <div class="divider"></div>
 <div id="today">
-  <div class="section-title">오늘 <small>{formatMinutes(session.today.minutes)} · 목표 {data.settings.dailyGoalSessions}개 중 {session.today.sessions}개</small></div>
+  <div class="section-title">{t('pomodoro.today')} <small>{formatMinutes(session.today.minutes)} · {t('pomodoro.goalProgress', { done: session.today.sessions, goal: data.settings.dailyGoalSessions })}</small></div>
   <div>{@html tomatoRow(session.today.sessions, data.settings.dailyGoalSessions)}</div>
 </div>
-<div class="hint" id="cycle">긴 휴식까지 {@html pixelIcon('tomato')} {session.untilLong}개 · {data.settings.focusMinutes}분 집중 / {data.settings.breakMinutes}분 휴식</div>
+<div class="hint" id="cycle">{t('pomodoro.untilLong')} {@html pixelIcon('tomato')} {t('common.count', { count: session.untilLong })} · {t('pomodoro.cycle', { focus: data.settings.focusMinutes, rest: data.settings.breakMinutes })}</div>

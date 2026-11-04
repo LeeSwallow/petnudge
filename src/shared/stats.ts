@@ -1,4 +1,5 @@
 import type { DailyFocus, HourlyFocus } from './types';
+import { formatMinutes as formatMinutesIn } from '../i18n';
 
 const parseKey = (key: string) => {
   const [year, month, day] = key.split('-').map(Number);
@@ -57,9 +58,5 @@ export const heatLevel = (minutes: number, goalMinutes: number): number => {
   return 4;
 };
 
-export const formatMinutes = (minutes: number): string => {
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  if (hours === 0) return `${rest}분`;
-  return rest === 0 ? `${hours}시간` : `${hours}시간 ${rest}분`;
-};
+// "1시간 5분" / "1 hr 5 min" / "1時間5分", in the current language.
+export const formatMinutes = (minutes: number): string => formatMinutesIn(minutes);

@@ -1,4 +1,4 @@
-import { formatMinutes } from '../../../shared/stats';
+import { formatMinutes, formatTime, t } from '../../i18n';
 
 // The dashboard's arithmetic and wording, apart from the screen (tested in logic.test.ts).
 
@@ -17,10 +17,7 @@ export type SessionRow = {
   dateKey: string;
 };
 
-export const clock = (ms: number) => {
-  const d = new Date(ms);
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-};
+export const clock = (ms: number) => formatTime(ms);
 
 // The "today" tile: 45m, 1h, 1h35.
 export const shortMinutes = (n: number) => (n >= 60 ? `${Math.floor(n / 60)}h${n % 60 ? n % 60 : ''}` : `${n}m`);
@@ -41,8 +38,8 @@ export const logSummary = (shown: SessionRow[]) => {
   if (!shown.length) return '';
   const done = shown.filter((s) => s.completed);
   const minutes = done.reduce((sum, s) => sum + s.minutes, 0);
-  return `${shown.length}회 · 완료 ${done.length} / 중단 ${shown.length - done.length} · 집중 ${formatMinutes(minutes)}`;
+  return t('dashboard.summary', { count: shown.length, done: done.length, abandoned: shown.length - done.length, time: formatMinutes(minutes) });
 };
 
 export const emptyLogText = (fetched: number, filtered: boolean) =>
-  fetched || filtered ? '조건에 맞는 기록이 없어요' : '첫 뽀모도로를 끝내면 여기에 기록돼요';
+  fetched || filtered ? t('dashboard.noMatch') : t('dashboard.empty');

@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { ipcMain, safeStorage, type BrowserWindow } from 'electron';
 import path from 'node:path';
 import { toDateKey } from '../domain/progress/progress';
@@ -60,13 +61,13 @@ export const installChat = (deps: Deps) => {
     return tools().filter((t) => !t.mcpOnly).map((t) => ({ name: t.name, label: t.label, group: t.group, write: t.write, description: t.description, allowed: allowed.has(t.name) }));
   });
   ipcMain.handle('chat:set-key', (_event, provider: unknown, key: unknown) => {
-    if (!isChatProvider(provider) || PROVIDER_INFO[provider].kind !== 'api' || typeof key !== 'string' || key.length > 400) throw new Error('잘못된 요청이에요');
+    if (!isChatProvider(provider) || PROVIDER_INFO[provider].kind !== 'api' || typeof key !== 'string' || key.length > 400) throw new Error(t('error.badRequest'));
     if (!key.trim()) return deps.repository().removeKv(secretKey(provider));
-    if (!safeStorage.isEncryptionAvailable()) throw new Error('이 컴퓨터에서는 키를 안전하게 저장할 수 없어요');
+    if (!safeStorage.isEncryptionAvailable()) throw new Error(t('error.chat.noSafeStorage'));
     deps.repository().setKv(secretKey(provider), safeStorage.encryptString(key.trim()).toString('base64'));
   });
   ipcMain.handle('chat:send', (event, id: unknown, request: unknown, provider: unknown) => {
-    if (typeof id !== 'string' || (provider !== undefined && !isChatProvider(provider))) throw new Error('잘못된 요청이에요');
+    if (typeof id !== 'string' || (provider !== undefined && !isChatProvider(provider))) throw new Error(t('error.badRequest'));
     return chat.send(id, parseChatRequest(request), (chatEvent) => event.sender.send('chat:event', id, chatEvent), provider);
   });
   ipcMain.on('chat:cancel', (_event, id: unknown) => { if (typeof id === 'string') chat.cancel(id); });

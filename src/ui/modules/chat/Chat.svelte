@@ -6,7 +6,9 @@
     cancelChat, chatAvailable, chatState, deleteSession, friendsOnScreen, inviteToSession, membersOf, nameOf, newSession,
     onChat, onChatLive, openSession, providerLabel, removeFromSession, renameSession, sendChat, sessionById, sessionsFor, setMirror, talkTogether
   } from '../../../renderer/chat';
-  import { PROVIDER_INFO, routeFor, type ChatMessage } from '../../../shared/chat';
+  import { routeFor, type ChatMessage } from '../../../shared/chat';
+  import { t } from '../../i18n';
+  import { providerLabel as providerName } from '../settings/logic';
   import type { CharacterChoice } from '../../../shared/characterImport';
   import TextInput from '../../components/TextInput.svelte';
   import { logError } from '../../log';
@@ -200,7 +202,7 @@
 {/snippet}
 
 <div id="chat-list-view" hidden={Boolean(view.session)}>
-  <div class="row chat-top"><span class="hint grow">친구를 펼쳐서 대화를 골라요</span></div>
+  <div class="row chat-top"><span class="hint grow">{t('chat.pickHint')}</span></div>
   <ul class="chat-friends" id="chat-friends">
     {#if !view.session}
       {#each view.friends as f (f.id)}
@@ -208,8 +210,8 @@
         <li class="chat-friend" class:open={isOpen}>
           <button type="button" class="chat-friend-head" aria-expanded={isOpen} data-id={f.id} onclick={() => fold(f.id)}>
             <span class="chat-caret">{isOpen ? '▾' : '▸'}</span>
-            <span class="chat-friend-name">{f.name}{#if f.id === pack.id}&nbsp;<small>지금 펫</small>{/if}</span>
-            <span class="chat-friend-meta">{f.sessions.length ? `대화 ${f.sessions.length}` : ''}{f.sessions[0] ? ` · ${when(f.sessions[0].updatedAt, Date.now())}` : ''}</span>
+            <span class="chat-friend-name">{f.name}{#if f.id === pack.id}&nbsp;<small>{t('chat.currentPet')}</small>{/if}</span>
+            <span class="chat-friend-meta">{f.sessions.length ? t('chat.sessionCount', { count: f.sessions.length }) : ''}{f.sessions[0] ? ` · ${when(f.sessions[0].updatedAt, Date.now())}` : ''}</span>
           </button>
           {#if isOpen}
             <ul class="chat-sessions">
@@ -217,10 +219,10 @@
                 <li class="chat-session-row">
                   <button type="button" class="chat-session" onclick={() => open(s.id)}><b>{s.title}</b><span>{s.preview}</span></button>
                   <span class="chat-session-when">{when(s.updatedAt, Date.now())}</span>
-                  <button type="button" class="icon-button ghost" aria-label="대화 삭제" onclick={() => askDelete(s.id)}>{confirmDelete === s.id ? '?' : '×'}</button>
+                  <button type="button" class="icon-button ghost" aria-label={t('chat.deleteSession')} onclick={() => askDelete(s.id)}>{confirmDelete === s.id ? '?' : '×'}</button>
                 </li>
               {/each}
-              <li><button type="button" class="chat-new" onclick={() => startNew(f.id)}>+ 새 대화</button></li>
+              <li><button type="button" class="chat-new" onclick={() => startNew(f.id)}>+ {t('chat.newSession')}</button></li>
             </ul>
           {/if}
         </li>
@@ -232,9 +234,9 @@
   {#if view.session}
     {@const session = view.session}
     <div class="row chat-top">
-      <button type="button" class="icon-button" aria-label="목록으로" onclick={() => (chatView.open = null)}>‹</button>
+      <button type="button" class="icon-button" aria-label={t('chat.backToList')} onclick={() => (chatView.open = null)}>‹</button>
       <div class="chat-title grow" id="chat-title">
-        <input type="text" id="chat-title-input" value={session.title} maxlength="40" aria-label="대화 제목" onchange={(e) => renameSession(session.id, e.currentTarget.value)} />
+        <input type="text" id="chat-title-input" value={session.title} maxlength="40" aria-label={t('chat.sessionTitle')} onchange={(e) => renameSession(session.id, e.currentTarget.value)} />
         <small>{view.name} · {providerLabel()}</small>
       </div>
     </div>
@@ -242,26 +244,26 @@
       <div class="chat-member-list">
         {#each view.members as id (id)}
           {@const route = routeFor(chatState.config, id)}
-          <span class="chat-member" data-tip="{PROVIDER_INFO[route.provider].label}{route.model ? ` · ${route.model}` : ''}">
-            {nameOf(id)}<small>{PROVIDER_INFO[route.provider].label}</small>
-            {#if id !== pack.id}<button type="button" class="ghost mini" onclick={() => desk(id)}>{friendsOnScreen.has(id) ? '돌려보내기' : '화면에 부르기'}</button>{/if}
-            {#if id !== session.characterId}<button type="button" class="ghost mini" aria-label="내보내기" onclick={() => removeFromSession(session.id, id)}>×</button>{/if}
+          <span class="chat-member" data-tip="{providerName(route.provider)}{route.model ? ` · ${route.model}` : ''}">
+            {nameOf(id)}<small>{providerName(route.provider)}</small>
+            {#if id !== pack.id}<button type="button" class="ghost mini" onclick={() => desk(id)}>{friendsOnScreen.has(id) ? t('friends.sendBack') : t('friends.call')}</button>{/if}
+            {#if id !== session.characterId}<button type="button" class="ghost mini" aria-label={t('chat.removeMember')} onclick={() => removeFromSession(session.id, id)}>×</button>{/if}
           </span>
         {/each}
       </div>
       <div class="row">
         {#if view.invitable.length}
-          <select id="chat-invite" aria-label="친구 초대" onchange={(e) => { if (e.currentTarget.value) inviteToSession(session.id, e.currentTarget.value); }}>
-            <option value="">＋ 친구 초대</option>
+          <select id="chat-invite" aria-label={t('chat.invite')} onchange={(e) => { if (e.currentTarget.value) inviteToSession(session.id, e.currentTarget.value); }}>
+            <option value="">＋ {t('chat.invite')}</option>
             {#each view.invitable as f (f.id)}<option value={f.id}>{f.name}</option>{/each}
           </select>
         {/if}
         {#if view.members.length > 1}
-          <select id="chat-turns" aria-label="몇 마디" bind:value={turns}>
-            {#each [4, 6, 10] as n (n)}<option value={n}>{n}마디</option>{/each}
+          <select id="chat-turns" aria-label={t('chat.turns')} bind:value={turns}>
+            {#each [4, 6, 10] as n (n)}<option value={n}>{t('chat.turnsN', { count: n })}</option>{/each}
           </select>
-          <button type="button" disabled={view.anyBusy} data-tip="입력칸 내용을 주제로, 비어 있으면 자유롭게" onclick={together}>서로 대화</button>
-          <label class="toggle mini">말풍선<input type="checkbox" id="chat-mirror" checked={session.mirror !== false} onchange={(e) => setMirror(session.id, e.currentTarget.checked)} /></label>
+          <button type="button" disabled={view.anyBusy} data-tip={t('chat.togetherTip')} onclick={together}>{t('chat.together')}</button>
+          <label class="toggle mini">{t('chat.mirror')}<input type="checkbox" id="chat-mirror" checked={session.mirror !== false} onchange={(e) => setMirror(session.id, e.currentTarget.checked)} /></label>
         {/if}
       </div>
     </div>
@@ -270,17 +272,17 @@
       {#each session.messages as m, i (`${i}:${m.text}`)}{@render bubble(m, '', view.group)}{/each}
       {#if view.pending}{@render bubble({ role: 'pet', text: live || '…', speaker: view.pendingSpeaker }, live ? '' : 'thinking', view.group)}{/if}
       {#if !session.messages.length && !view.pending}
-        <li class="chat-bubble system">{view.name}에게 말을 걸어 봐요. 할 일 추가, 메모 정리, 타이머도 부탁할 수 있어요.</li>
+        <li class="chat-bubble system">{t('chat.intro', { name: view.name })}</li>
       {/if}
     </ul>
-    {#if newBelow}<button type="button" class="mini chat-new-below" id="chat-new-below" onclick={toBottom}>새 메시지 ↓</button>{/if}
+    {#if newBelow}<button type="button" class="mini chat-new-below" id="chat-new-below" onclick={toBottom}>{t('chat.newBelow')}</button>{/if}
     {#if askLink}
-      <div class="chat-link-confirm" id="chat-link-confirm" role="alertdialog" aria-label="링크 열기">
-        <span>브라우저에서 열까요?</span>
+      <div class="chat-link-confirm" id="chat-link-confirm" role="alertdialog" aria-label={t('chat.openLink')}>
+        <span>{t('chat.openLinkAsk')}</span>
         <span class="chat-link-url">{askLink}</span>
         <div class="row">
-          <button type="button" class="mini primary" id="chat-link-open" onclick={openLink}>열기</button>
-          <button type="button" class="mini ghost" id="chat-link-cancel" onclick={() => (askLink = null)}>취소</button>
+          <button type="button" class="mini primary" id="chat-link-open" onclick={openLink}>{t('settings.mods.open')}</button>
+          <button type="button" class="mini ghost" id="chat-link-cancel" onclick={() => (askLink = null)}>{t('common.cancel')}</button>
         </div>
       </div>
     {/if}
@@ -288,9 +290,9 @@
     <div class="row">
       <span class="grow" bind:this={input}>
         <TextInput id="chat-input" maxlength={2000} bind:value={message} onenter={send} disabled={view.anyBusy || view.none}
-          placeholder={view.none ? '설정 › AI 대화 설정에서 연결해 주세요' : view.members.length > 1 ? '모두에게 · @이름 으로 한 명만' : `${view.name}에게 메시지`} />
+          placeholder={view.none ? t('chat.noProvider') : view.members.length > 1 ? t('chat.toAll') : t('chat.toOne', { name: view.name })} />
       </span>
-      <button type="button" id="chat-send" onclick={send}>{view.busy ? '멈춤' : '보내기'}</button>
+      <button type="button" id="chat-send" onclick={send}>{view.busy ? t('chat.stop') : t('chat.send')}</button>
     </div>
   {/if}
 </div>

@@ -1,3 +1,4 @@
+import { localizedLines, localizedText, packLanguage } from '../../i18n';
 import type { CharacterPack, Expression, LayerDef, Recolor, Variant } from './pack';
 import { blank, bounds, clipTo, hexToPixel, over, recolor, type Pixels } from './pixels';
 import type { CharacterDraft } from './parts';
@@ -144,11 +145,13 @@ export const convertPack = (pack: CharacterPack, layers: SourceLayer[], meta: Co
 
   // Empty merges (an empty `armfront.L`) are no part.
   const kept = [...parts].filter(([, px]) => bounds(px));
-  const linesOf = (id: keyof DraftLines) => [...(pack.actions?.[id]?.lines ?? [])];
+  // The editor edits the pack's own language (per-language lines keep only it).
+  const lang = packLanguage(pack);
+  const linesOf = (id: keyof DraftLines) => [...(localizedLines(pack.actions?.[id]?.lines, lang, lang) ?? [])];
   const legacy: LegacyDraft = {
     id: meta.id ?? pack.id,
     name: meta.name ?? pack.name,
-    persona: (meta.persona ?? pack.persona ?? '').slice(0, 600),
+    persona: (meta.persona ?? localizedText(pack.persona, lang, lang) ?? '').slice(0, 600),
     lines: meta.lines ? { pat: [...meta.lines.pat], pokeChest: [...meta.lines.pokeChest], pokeBelly: [...meta.lines.pokeBelly] } : { pat: linesOf('pat'), pokeChest: linesOf('pokeChest'), pokeBelly: linesOf('pokeBelly') },
     parts: Object.fromEntries(kept),
     order: kept.map(([name]) => name)

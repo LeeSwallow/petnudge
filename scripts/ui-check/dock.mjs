@@ -1,5 +1,5 @@
 // The dock beside her (src/ui/dock): the talk button and the docked widgets.
-import { check } from './lib.mjs';
+import { check, T, TS } from './lib.mjs';
 
 export default {
   name: 'dock',
@@ -10,7 +10,7 @@ export default {
     check('dock: the music widget is in it by default, the old strip is gone', `return [docked(), await window.petApi.db.getKv('widgets.dock'), $('#player-strip'), $('#dock [data-dock-widget=music]').hasAttribute('data-hit')];`, [['music:quiet'], null, null, true]),
     check('dock: beside her on the right, inside the window', `const d = $('#dock').getBoundingClientRect(), c = $('#pet').getBoundingClientRect(); return [$('#dock').dataset.side, d.left >= c.right, d.right <= innerWidth, Math.round(d.bottom) === Math.round(c.bottom)];`, ['right', true, true, true]),
     check('dock: the pointer over it pauses walking', `const before = petDebug().free; $('#dock').dispatchEvent(new PointerEvent('pointerenter')); const over = petDebug().free; $('#dock').dispatchEvent(new PointerEvent('pointerleave')); return [over, petDebug().free === before];`, [false, true]),
-    check('dock: the talk button opens the quick chat, and closes it', `$('#chat-toggle').click(); await wait(100); const open = [!$('#chat-bar').hidden, document.activeElement?.id, $('#chat-toggle').getAttribute('aria-label')]; $('#chat-toggle').click(); await wait(100); return [open, $('#chat-bar').hidden];`, [[true, 'chat-quick', '입력창 닫기'], true]),
+    check('dock: the talk button opens the quick chat, and closes it', `$('#chat-toggle').click(); await wait(100); const open = [!$('#chat-bar').hidden, document.activeElement?.id, $('#chat-toggle').getAttribute('aria-label')]; $('#chat-toggle').click(); await wait(100); return [open, $('#chat-bar').hidden];`, [[true, 'chat-quick', T('chatbar.closeInput')], true]),
     // A friend appears 300px to her left (main/friends.ts); moving her 450px left
     // puts the friend near on her right, then back again.
     check('dock: flips away from a friend near her, and back when it leaves', `const dock = $('#dock'); dock.dispatchEvent(new PointerEvent('pointerenter')); await window.petApi.openFriend('maru'); await wait(1500); window.petApi.friendHold('maru', 60000, 0); window.petApi.moveBy(-450, 0); const flipped = await until(() => dock.dataset.side === 'left', 4000); const d = dock.getBoundingClientRect(), c = $('#pet').getBoundingClientRect(); window.petApi.moveBy(450, 0); const back = await until(() => dock.dataset.side === 'right', 4000); window.petApi.closeFriend('maru'); dock.dispatchEvent(new PointerEvent('pointerleave')); await wait(800); return [flipped, d.right <= c.left, d.left >= 0, back];`, [true, true, true, true]),

@@ -1,4 +1,5 @@
 import { parseMarkdown, type Inline } from '../modules/chat/markdown';
+import { t } from '../i18n';
 
 // What a chat reply looks like in the speech bubble above her: plain text
 // (Markdown markers dropped), revealed a sentence at a time while it streams,
@@ -85,7 +86,8 @@ export const bubbleText = (reply: string) => speak([], reply, true).join(' ');
 // screen. A line is the bubble's widest less padding and border (2 × 12px):
 // 356px in the 380px window, about 29 Hangul letters; three lines in all.
 export const MAX_LINES = 3;
-export const MORE_LABEL = '더 보기 ▸';
+// "더 보기 ▸" in the current language
+export const moreLabel = () => t('bubble.more');
 const SPACE = 5;
 const NARROW = new Set([...".,:;'!|il`"]);
 
@@ -137,7 +139,8 @@ export const lineCount = (text: string, max: number, keep: string[] = []) => {
 // for "… 더 보기 ▸" is kept, so the text shown only ever grows; a finished
 // reply that just fits is shown whole.
 export const fitBubble = (text: string, max: number, { final = false } = {}): { text: string; more: boolean } => {
-  const fits = (t: string) => lineCount(`${t}… ${MORE_LABEL}`, max, [MORE_LABEL]) <= MAX_LINES;
+  const more = moreLabel();
+  const fits = (text: string) => lineCount(`${text}… ${more}`, max, [more]) <= MAX_LINES;
   if (fits(text) || (final && lineCount(text, max) <= MAX_LINES)) return { text, more: false };
   const chars = [...text];
   // nothing past three full lines can fit

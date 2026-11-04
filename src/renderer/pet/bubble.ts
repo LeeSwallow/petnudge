@@ -2,18 +2,15 @@ import { formatRemaining, getRemainingMs, isTimerPaused } from '../../domain/pom
 import { api } from '../api';
 import { data } from '../data';
 import { stopTyping, typewrite } from '../fx';
-import { fitBubble, linePx, MORE_LABEL } from '../../ui/bubble/text';
+import { fitBubble, linePx, moreLabel } from '../../ui/bubble/text';
+import { onLocaleChange, t } from '../../i18n';
 import { petStore } from '../store';
 import { activeAction, currentReaction, pet } from './state';
 
 // The speech bubble above her: action lines, break dialogue, the
 // timer, sleep, or a hint. She moves her mouth while a line is typed.
 
-const dialogueLines = [
-  '...수고했어! 이번 세션 진짜 집중 잘하더라.',
-  '잠깐 기지개 켜고, 물도 한 모금 마시자.',
-  '다음엔 뭐부터 할지 같이 정해볼까?'
-];
+const dialogueLines = () => [t('bubble.dialogue.1'), t('bubble.dialogue.2'), t('bubble.dialogue.3')];
 
 const bubble = document.getElementById('bubble') as HTMLDivElement;
 let lastBubbleKey = '';
@@ -75,7 +72,7 @@ export const sayLine = (line: string, { holdMs, final = true, onMore }: { holdMs
     const more = document.createElement('button');
     more.type = 'button';
     more.className = 'bubble-more';
-    more.textContent = MORE_LABEL;
+    more.textContent = moreLabel();
     more.addEventListener('click', (event) => {
       event.stopPropagation();
       onMore();
@@ -104,10 +101,10 @@ export const renderBubble = (panelOpen: boolean) => {
     render = () => say(line);
   } else if (scene.phase === 'break_dialogue_active') {
     key = `dialogue:${scene.dialogueTurn}`;
-    render = () => say(dialogueLines[Math.min(scene.dialogueTurn, dialogueLines.length - 1)]);
+    render = () => say(dialogueLines()[Math.min(scene.dialogueTurn, dialogueLines().length - 1)]);
   } else if (timer.mode !== 'idle') {
     const paused = isTimerPaused(timer) ? ' ❚❚' : '';
-    const label = timer.mode === 'focus' ? '집중' : '휴식';
+    const label = timer.mode === 'focus' ? t('pomodoro.phase.focus') : t('music.break');
     key = 'timer';
     bubble.innerHTML = `${label} <span class="digits">${formatRemaining(getRemainingMs(timer, Date.now()))}</span>${paused}`;
     lastBubbleKey = key;
@@ -115,11 +112,11 @@ export const renderBubble = (panelOpen: boolean) => {
     return;
   } else if (currentReaction() === 'sleepy') {
     key = 'sleepy';
-    render = () => (bubble.textContent = 'Zzz… (쓰다듬어 깨우기)');
+    render = () => (bubble.textContent = t('bubble.sleepy'));
   } else {
     key = panelOpen ? 'empty' : 'hint';
     render = () =>
-      panelOpen ? (bubble.textContent = '') : say(data.settings.nickname ? `${data.settings.nickname}, 공부할 준비 됐어?` : '나를 눌러봐! 공부 같이 하자');
+      panelOpen ? (bubble.textContent = '') : say(data.settings.nickname ? t('bubble.hintNamed', { name: data.settings.nickname }) : t('bubble.hint'));
   }
 
   bubble.classList.toggle('clickable', key.startsWith('dialogue'));
@@ -127,6 +124,13 @@ export const renderBubble = (panelOpen: boolean) => {
   lastBubbleKey = key;
   render();
 };
+
+// A change of language says the current line again in the new one.
+onLocaleChange(() => {
+  if (Date.now() < holdUntil) return;
+  lastBubbleKey = '';
+  renderBubble(pet.panelShown);
+});
 
 bubble.addEventListener('click', () => {
   const state = petStore.getState();

@@ -5,6 +5,7 @@
   import EmptyState from '../../components/EmptyState.svelte';
   import WidgetFrame from '../../components/WidgetFrame.svelte';
   import { logError } from '../../log';
+  import { t, type MessageKey } from '../../i18n';
   import { WIDGETS } from '../../widgets/registry';
   import type { Widget } from '../../widgets/widget';
   import { MAX_DOCK, placementOf, placeWidget, type Placement } from '../../dock/logic';
@@ -23,10 +24,10 @@
   const offered = $derived(board ? addable(board, known).map(byId) : []);
 
   // Where each widget shows: the board, the dock beside the pet, or both.
-  const PLACES: { id: Placement; label: string }[] = [
-    { id: 'board', label: '보드에' },
-    { id: 'dock', label: '도크에' },
-    { id: 'both', label: '둘 다' }
+  const PLACES: { id: Placement; label: MessageKey }[] = [
+    { id: 'board', label: 'home.place.board' },
+    { id: 'dock', label: 'home.place.dock' },
+    { id: 'both', label: 'home.place.both' }
   ];
   const dockList = $derived(dock.list ?? []);
   const dockFull = $derived(dockList.length >= MAX_DOCK);
@@ -73,10 +74,10 @@
           <widget.component />
         </WidgetFrame>
         {#if menuFor === widget.id}
-          <div class="menu" role="menu" aria-label="{widget.label} 메뉴">
-            <button type="button" role="menuitem" data-widget-action="up" disabled={i === 0} onclick={() => board && save(moveWidget(board, widget.id, -1))}>위로</button>
-            <button type="button" role="menuitem" data-widget-action="down" disabled={i === widgets.length - 1} onclick={() => board && save(moveWidget(board, widget.id, 1))}>아래로</button>
-            <button type="button" role="menuitem" data-widget-action="remove" onclick={() => board && save(removeWidget(board, widget.id))}>빼기</button>
+          <div class="menu" role="menu" aria-label={t('home.menuLabel', { title: widget.label })}>
+            <button type="button" role="menuitem" data-widget-action="up" disabled={i === 0} onclick={() => board && save(moveWidget(board, widget.id, -1))}>{t('todo.moveUp')}</button>
+            <button type="button" role="menuitem" data-widget-action="down" disabled={i === widgets.length - 1} onclick={() => board && save(moveWidget(board, widget.id, 1))}>{t('todo.moveDown')}</button>
+            <button type="button" role="menuitem" data-widget-action="remove" onclick={() => board && save(removeWidget(board, widget.id))}>{t('home.remove')}</button>
             <div class="sep" role="separator"></div>
             {#each PLACES as p (p.id)}
               {@const here = placementOf(widget.id, board, dockList) === p.id}
@@ -86,22 +87,22 @@
                 aria-checked={here}
                 data-place={p.id}
                 disabled={!here && p.id !== 'board' && dockFull && !dockList.includes(widget.id)}
-                title={!here && p.id !== 'board' && dockFull && !dockList.includes(widget.id) ? `도크에는 ${MAX_DOCK}개까지 둘 수 있어요` : undefined}
-                onclick={() => place(widget.id, p.id)}>{here ? '✓ ' : ''}{p.label}</button>
+                title={!here && p.id !== 'board' && dockFull && !dockList.includes(widget.id) ? t('home.dockFull', { max: MAX_DOCK }) : undefined}
+                onclick={() => place(widget.id, p.id)}>{here ? '✓ ' : ''}{t(p.label)}</button>
             {/each}
           </div>
         {/if}
       </div>
     {:else}
-      <div class="cell wide"><EmptyState text="위젯을 추가해 보세요" /></div>
+      <div class="cell wide"><EmptyState text={t('home.empty')} /></div>
     {/each}
   </div>
   <div class="add" data-menu-root>
-    <Button variant="ghost" data-widget-add disabled={offered.length === 0} onclick={() => (adding = !adding)}>＋ 위젯 추가</Button>
+    <Button variant="ghost" data-widget-add disabled={offered.length === 0} onclick={() => (adding = !adding)}>＋ {t('home.add')}</Button>
     {#if adding}
-      <div class="menu" role="menu" aria-label="추가할 위젯" data-widget-add-menu>
+      <div class="menu" role="menu" aria-label={t('home.addMenu')} data-widget-add-menu>
         {#each offered as widget (widget.id)}
-          <button type="button" role="menuitem" data-add={widget.id} onclick={() => board && save(addWidget(board, widget.id))}>{widget.label}{dockList.includes(widget.id) ? ' (도크에 있음)' : ''}</button>
+          <button type="button" role="menuitem" data-add={widget.id} onclick={() => board && save(addWidget(board, widget.id))}>{widget.label}{dockList.includes(widget.id) ? t('home.inDock') : ''}</button>
         {/each}
       </div>
     {/if}

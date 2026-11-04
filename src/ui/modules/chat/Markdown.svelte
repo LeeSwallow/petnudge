@@ -1,5 +1,6 @@
 <script lang="ts">
   import { logError } from '../../log';
+  import { t } from '../../i18n';
   import { parseMarkdown, type Inline } from './markdown';
 
   // A pet's reply in the chat tab, drawn from the parsed tree (markdown.ts).
@@ -36,7 +37,7 @@
       <ol start={b.start}>{#each b.items as item, j (j)}<li>{@render inline(item)}</li>{/each}</ol>
     {:else}
       <div class="md-block">
-        <button type="button" class="ghost mini md-copy" aria-label="코드 복사" onclick={() => copy(i, b.v)}>{copied === i ? '복사됨' : '복사'}</button>
+        <button type="button" class="ghost mini md-copy" aria-label={t('chat.copyCode')} onclick={() => copy(i, b.v)}>{copied === i ? t('chat.copiedCode') : t('settings.copy')}</button>
         <pre><code>{b.v}</code></pre>
       </div>
     {/if}

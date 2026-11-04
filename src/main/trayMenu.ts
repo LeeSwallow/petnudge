@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 // What the tray (macOS menu bar) menu holds, apart from Electron so it can be
 // tested; tray.ts turns it into a Menu. Every action with a shortcut is here
 // too, so nothing needs the keys (spec 2026-11-04, "펫 곁 상호작용").
@@ -13,9 +14,9 @@ export type TrayItem =
   | { type: 'separator' };
 
 export const trayMenuItems = (state: { panelOpen: boolean; chatShortcut: boolean }): TrayItem[] => [
-  { type: 'item', action: 'panel', label: state.panelOpen ? '패널 닫기' : '패널 열기' },
-  state.chatShortcut ? { type: 'item', action: 'chat', label: '말 걸기', accelerator: CHAT_SHORTCUT } : { type: 'item', action: 'chat', label: '말 걸기' },
-  { type: 'item', action: 'reset', label: '위치 초기화', accelerator: RESET_SHORTCUT },
+  { type: 'item', action: 'panel', label: state.panelOpen ? t('tray.closePanel') : t('tray.openPanel') },
+  state.chatShortcut ? { type: 'item', action: 'chat', label: t('tray.chat'), accelerator: CHAT_SHORTCUT } : { type: 'item', action: 'chat', label: t('tray.chat') },
+  { type: 'item', action: 'reset', label: t('tray.resetPosition'), accelerator: RESET_SHORTCUT },
   { type: 'separator' },
-  { type: 'item', action: 'quit', label: '나가기' }
+  { type: 'item', action: 'quit', label: t('tray.quit') }
 ];

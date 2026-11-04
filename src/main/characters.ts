@@ -1,3 +1,4 @@
+import { localizedText, t } from '../i18n';
 import { existsSync } from 'node:fs';
 import { copyFile, lstat, mkdir, readFile, readdir, rename, rm, mkdtemp, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -9,16 +10,16 @@ import { validateImportedPack, type CharacterAsset, type CharacterChoice } from 
 const validId = (id: unknown): id is string => typeof id === 'string' && /^[a-z][a-z0-9-]{0,47}$/.test(id);
 const readLimited = async (file: string, limit: number) => {
   const info = await lstat(file);
-  if (!info.isFile() || info.size > limit) throw new Error('팩 파일의 종류 또는 크기를 확인해주세요');
+  if (!info.isFile() || info.size > limit) throw new Error(t('error.character.fileKind'));
   return readFile(file);
 };
 const exists = async (file: string) => lstat(file).then((s) => s.isFile()).catch(() => false);
 
 export const readCharacterAsset = async (dir: string): Promise<CharacterAsset> => {
   const [json, png] = await Promise.all([readLimited(path.join(dir, 'character.json'), 1024 * 1024), readLimited(path.join(dir, 'sheet.png'), 8 * 1024 * 1024)]);
-  if (png.length < 33 || png.subarray(0, 8).toString('hex') !== '89504e470d0a1a0a' || png.toString('ascii', 12, 16) !== 'IHDR') throw new Error('PNG 스프라이트 시트가 아니에요');
+  if (png.length < 33 || png.subarray(0, 8).toString('hex') !== '89504e470d0a1a0a' || png.toString('ascii', 12, 16) !== 'IHDR') throw new Error(t('error.character.notSheet'));
   const width = png.readUInt32BE(16), height = png.readUInt32BE(20);
-  if (width < 1 || height < 1 || width > 2048 || height > 2048) throw new Error('PNG는 최대 2048×2048까지 지원해요');
+  if (width < 1 || height < 1 || width > 2048 || height > 2048) throw new Error(t('error.character.pngTooBig'));
   return { pack: validateImportedPack(JSON.parse(json.toString('utf8')), width, height), sheetUrl: `data:image/png;base64,${png.toString('base64')}` };
 };
 
@@ -38,11 +39,11 @@ export const createCharacterLibrary = (root: string, builtinRoot: string, { edit
     const pack = JSON.parse((await readFile(manifest, 'utf8')));
     const names = pack.source ? [pack.source] : [`${id}.aseprite`, `${id}.pxo`];
     const source = names.map((n: string) => path.join(builtinDir(id), path.basename(n))).find((f: string) => existsSync(f));
-    if (!source) throw new Error('이 캐릭터에는 원본 파일이 없어요');
+    if (!source) throw new Error(t('error.character.noSource'));
     return { source, manifest };
   };
   const folder = (id: unknown) => {
-    if (!validId(id)) throw new Error('캐릭터 ID가 잘못됐어요');
+    if (!validId(id)) throw new Error(t('error.character.badId'));
     return path.join(root, id);
   };
   const sourcePaths = (dir: string, id: string, ext = '.aseprite') => {
@@ -54,7 +55,7 @@ export const createCharacterLibrary = (root: string, builtinRoot: string, { edit
     const runtime = path.join(dir, 'runtime');
     const builtin = await isBuiltin(id) && (editBuiltinInPlace || !await exists(path.join(runtime, 'character.json')));
     const asset = await readCharacterAsset(builtin ? builtinDir(String(id)) : runtime);
-    if (asset.pack.id !== id) throw new Error('폴더와 캐릭터 ID가 달라요');
+    if (asset.pack.id !== id) throw new Error(t('error.character.folderMismatch'));
     return asset;
   };
   const list = async (): Promise<CharacterChoice[]> => {
@@ -66,7 +67,7 @@ export const createCharacterLibrary = (root: string, builtinRoot: string, { edit
         const { pack } = await load(id);
         const files = sourcePaths(folder(id), id);
         const builtin = builtins.includes(id);
-        choices.push({ id, name: pack.name, persona: pack.persona, builtin, editable: builtin || await exists(files.source) && await exists(files.manifest) });
+        choices.push({ id, name: pack.name, persona: localizedText(pack.persona, pack.lang), builtin, editable: builtin || await exists(files.source) && await exists(files.manifest) });
       } catch { /* A broken custom pack must not prevent the default from loading. */ }
     }
     return choices;
@@ -83,7 +84,7 @@ export const createCharacterLibrary = (root: string, builtinRoot: string, { edit
       await copyFile(original.source, files.source);
       await copyFile(original.manifest, files.manifest);
     }
-    if (!await exists(files.source) || !await exists(files.manifest)) throw new Error('이 팩에는 원본(.aseprite/.pxo)과 편집 설정이 없어요');
+    if (!await exists(files.source) || !await exists(files.manifest)) throw new Error(t('error.character.packNoSource'));
     return files;
   };
   // The editor files behind a character, read only (nothing is copied): the
@@ -92,7 +93,7 @@ export const createCharacterLibrary = (root: string, builtinRoot: string, { edit
     const files = sourcePaths(folder(id), String(id));
     if (await exists(files.source) && await exists(files.manifest)) return files;
     if (await isBuiltin(id)) return builtinSource(String(id));
-    throw new Error('이 캐릭터에는 원본(.aseprite/.pxo)과 편집 설정이 없어요');
+    throw new Error(t('error.character.characterNoSource'));
   };
   const rebuild = async (id: unknown) => {
     const dir = folder(id);
@@ -107,7 +108,7 @@ export const createCharacterLibrary = (root: string, builtinRoot: string, { edit
     try {
       await exportCharacter(files.source, files.manifest, stage);
       const asset = await readCharacterAsset(stage);
-      if (asset.pack.id !== id) throw new Error('편집 설정의 캐릭터 ID를 바꾸지 말아주세요');
+      if (asset.pack.id !== id) throw new Error(t('error.character.idChanged'));
       // Stage and rename on the same volume; retain the previous runtime on failure.
       const pending = path.join(dir, `.runtime-${randomUUID()}`);
       const runtime = path.join(dir, 'runtime');
@@ -137,20 +138,20 @@ export const createCharacterLibrary = (root: string, builtinRoot: string, { edit
         await mkdir(path.join(stage, 'runtime'));
         for (const n of ['character.json', 'sheet.png']) await copyFile(path.join(input, n), path.join(stage, 'runtime', n));
       } else {
-        if (!manifestName) throw new Error('character.json + sheet.png 또는 ID.aseprite/ID.pxo + ID.pack.json 폴더를 선택해주세요');
+        if (!manifestName) throw new Error(t('error.character.pickFolder'));
         const manifest = JSON.parse((await readLimited(path.join(input, manifestName), 1024 * 1024)).toString('utf8'));
         id = manifest.id;
-        if (!validId(id)) throw new Error('캐릭터 ID가 잘못됐어요');
+        if (!validId(id)) throw new Error(t('error.character.badId'));
         const original = sourceIn(input, id, manifest);
         await readLimited(original, 32 * 1024 * 1024);
         await exportCharacter(original, path.join(input, manifestName), path.join(stage, 'runtime'));
         await readCharacterAsset(path.join(stage, 'runtime'));
       }
-      if (await isBuiltin(id) || await lstat(folder(id)).then(() => true).catch(() => false)) throw new Error('이미 있는 캐릭터예요. 팩 ID를 다른 이름으로 지정해주세요');
+      if (await isBuiltin(id) || await lstat(folder(id)).then(() => true).catch(() => false)) throw new Error(t('error.character.exists'));
       const manifest = manifestName ? JSON.parse((await readLimited(path.join(input, manifestName), 1024 * 1024)).toString('utf8')) : undefined;
       const original = manifest ? (() => { try { return sourceIn(input, id, manifest); } catch { return undefined; } })() : undefined;
       if (manifest && original) {
-        if (manifest.id !== id) throw new Error('원본 설정과 앱용 팩의 ID가 달라요');
+        if (manifest.id !== id) throw new Error(t('error.character.manifestMismatch'));
         const files = sourcePaths(stage, id, path.extname(original));
         await readLimited(original, 32 * 1024 * 1024);
         await copyFile(original, files.source);
@@ -163,7 +164,7 @@ export const createCharacterLibrary = (root: string, builtinRoot: string, { edit
   // A new user character from an existing one: same source and pack under a
   // new id and name, built right away.
   const clone = async (fromId: unknown, name: unknown) => {
-    if (typeof name !== 'string' || !name.trim() || name.length > 80) throw new Error('새 캐릭터 이름을 적어주세요');
+    if (typeof name !== 'string' || !name.trim() || name.length > 80) throw new Error(t('error.character.needName'));
     const from = await prepareSource(fromId);
     await mkdir(root, { recursive: true });
     const taken = new Set([...(await readdir(root).catch(() => [] as string[])), ...(await builtinIds())]);

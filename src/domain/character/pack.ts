@@ -1,3 +1,5 @@
+import type { Localized } from '../../i18n';
+
 // Character pack types ("study-pet-character@2" and the standard pack "@3").
 // Pure data shapes, so the domain (buildPack) can produce a pack; validation
 // and layer lookup stay in src/shared/characterPack.ts, which re-exports these.
@@ -72,7 +74,9 @@ export type ActionDef = {
   state: string;
   ms: number;
   fx?: Fx;
-  lines?: string[];
+  // What she says: one list in the pack's language (`lang`), or one per
+  // language ({ ko: [...], en: [...] }); see src/i18n localizedLines.
+  lines?: Localized<string[]>;
 };
 
 // `outfits`: in a whole pose, a cell drawn with the clothes on, used alone
@@ -97,8 +101,13 @@ export type CharacterPack = {
   editor?: EditorMeta;
   id: string;
   name: string;
-  // How she talks in chat (main/chat.ts), e.g. "밝고 장난기 많은 게이머".
-  persona?: string;
+  // The language `lines` and `persona` are written in when they are plain
+  // (not per language); the fallback for a language they do not have. Korean
+  // when absent (the built-in packs).
+  lang?: string;
+  // How she talks in chat (main/chat.ts), e.g. "밝고 장난기 많은 게이머";
+  // a string, or one per language like `lines`.
+  persona?: Localized<string>;
   frame: { w: number; h: number };
   feetY: number;
   sheet: string;

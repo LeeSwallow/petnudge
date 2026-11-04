@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { ipcMain, shell } from 'electron';
 import { mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -29,7 +30,7 @@ export const describeThrown = (thrown: unknown): { message: string; detail: stri
   thrown instanceof Error ? { message: thrown.message || thrown.name, detail: thrown.stack } : { message: String(thrown), detail: undefined };
 
 export const diagnosticsText = ({ app, electron, os, recent, home }: { app: string; electron: string; os: string; recent: string[]; home?: string }) => {
-  const text = [`petnudge ${app} · Electron ${electron} · ${os}`, recent.length ? `최근 경고·오류 ${recent.length}줄:` : '최근 경고·오류 없음', ...recent].join('\n');
+  const text = [`petnudge ${app} · Electron ${electron} · ${os}`, recent.length ? t('dialog.diagnostics.recent', { count: recent.length }) : t('dialog.diagnostics.none'), ...recent].join('\n');
   return home ? text.split(home).join('~') : text;
 };
 

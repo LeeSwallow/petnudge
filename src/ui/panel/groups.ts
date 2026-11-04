@@ -1,5 +1,6 @@
 import type { ModuleId } from '../modules/module';
 import type { PixelIconName } from '../../renderer/icons';
+import { t } from '../i18n';
 
 // The panel's big tabs (design: 큰 묶음 + 작은 탭). Which modules a group holds
 // is not listed here: each module names its group and order, and the registry
@@ -14,11 +15,11 @@ export type Group = { id: GroupId; label: string; icon: PixelIconName; hidden?: 
 export type Placed = { readonly id: ModuleId; readonly group: GroupId; readonly order: number };
 
 export const GROUPS: readonly Group[] = [
-  { id: 'home', label: '홈', icon: 'home' },
-  { id: 'focus', label: '집중', icon: 'tomato' },
-  { id: 'record', label: '기록', icon: 'note' },
-  { id: 'together', label: '함께', icon: 'happy', hidden: true },
-  { id: 'settings', label: '설정', icon: 'gear' }
+  { id: 'home', get label() { return t('panel.group.home'); }, icon: 'home' },
+  { id: 'focus', get label() { return t('panel.group.focus'); }, icon: 'tomato' },
+  { id: 'record', get label() { return t('panel.group.record'); }, icon: 'note' },
+  { id: 'together', get label() { return t('panel.group.together'); }, icon: 'happy', hidden: true },
+  { id: 'settings', get label() { return t('panel.group.settings'); }, icon: 'gear' }
 ];
 
 export const DEFAULT_MODULE: ModuleId = 'pomodoro';

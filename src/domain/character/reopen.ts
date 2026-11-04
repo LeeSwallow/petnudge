@@ -1,3 +1,4 @@
+import { localizedLines, localizedText, packLanguage } from '../../i18n';
 import type { Converted, Dropped, SourceLayer } from './convert';
 import type { CharacterPack } from './pack';
 import { isPartId, restVariant, ROLES, validCanvas, type CharacterDraft, type Part, type Role } from './parts';
@@ -10,11 +11,12 @@ import { fromLegacyDraft, LEGACY_FRAME, legacyPart, type LegacyDraft } from './s
 // parts like an old draft. Layers with no part come back in `dropped`.
 
 const BUILT_IN_FACES = new Set(['open', 'closed', 'talkA', 'smile', 'surprised']);
-const linesOf = (pack: CharacterPack, id: 'pat' | 'pokeChest' | 'pokeBelly') => [...(pack.actions?.[id]?.lines ?? [])];
+// The editor edits the pack's own language (#77): per-language lines keep only it.
+const linesOf = (pack: CharacterPack, id: 'pat' | 'pokeChest' | 'pokeBelly') => [...(localizedLines(pack.actions?.[id]?.lines, packLanguage(pack), packLanguage(pack)) ?? [])];
 
 export const draftFromPack = (pack: CharacterPack, layers: readonly SourceLayer[]): Converted => {
   const lines = { pat: linesOf(pack, 'pat'), pokeChest: linesOf(pack, 'pokeChest'), pokeBelly: linesOf(pack, 'pokeBelly') };
-  const identity = { id: pack.id, name: pack.name, persona: pack.persona ?? '', lines };
+  const identity = { id: pack.id, name: pack.name, persona: localizedText(pack.persona, packLanguage(pack), packLanguage(pack)) ?? '', lines };
   const pictures = new Map(layers.map((l) => [l.name, l.pixels]));
   const used = new Set<string>();
   const dropped: Dropped[] = [];

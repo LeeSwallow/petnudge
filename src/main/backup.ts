@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import type { DatabaseSync } from 'node:sqlite';
 import * as z from 'zod/v4';
 import { isSupportedPlayer, type PlayerName } from '../shared/music';
@@ -90,7 +91,7 @@ const playlistSchema = z.object({
     .array(
       z.object({
         id,
-        player: z.string().refine((value): value is PlayerName => isSupportedPlayer(value), '지원하지 않는 플레이어'),
+        player: z.string().refine((value): value is PlayerName => isSupportedPlayer(value), t('error.backup.player')),
         ref: z.string().min(1).max(1024),
         title: z.string().max(200),
         artist: z.string().max(200),
@@ -195,15 +196,15 @@ export const parseBackup = (text: string): Backup => {
   try {
     json = JSON.parse(text);
   } catch {
-    throw new Error('JSON 파일을 읽지 못했어요');
+    throw new Error(t('error.backup.json'));
   }
   if (!json || typeof json !== 'object' || (json as Row).format !== BACKUP_FORMAT) {
-    throw new Error('이 앱에서 내보낸 백업 파일이 아니에요');
+    throw new Error(t('error.backup.notOurs'));
   }
   const result = backupSchema.safeParse(json);
   if (!result.success) {
     const issue = result.error.issues[0];
-    throw new Error(`백업 파일 내용이 올바르지 않아요 (${issue.path.join('.') || '전체'})`);
+    throw new Error(t('error.backup.invalid', { path: issue.path.join('.') || t('error.backup.whole') }));
   }
   return result.data;
 };
@@ -279,7 +280,7 @@ export const restoreBackup = (db: DatabaseSync, backup: Backup) => {
     db.exec('COMMIT');
   } catch (error) {
     db.exec('ROLLBACK');
-    throw new Error(`가져오지 못했어요: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(t('error.backup.failed', { message: error instanceof Error ? error.message : String(error) }));
   }
   return (db.prepare('SELECT value FROM kv WHERE key = ?').get(SESSION_KEY) as Row | undefined)?.value as string | undefined ?? null;
 };

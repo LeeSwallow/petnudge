@@ -25,8 +25,19 @@ import { bump } from '../ui/state/revision.svelte';
 import { installTokens } from '../ui/theme/install';
 import { installErrorLogging, logError } from '../ui/log';
 import { mountDock, type DockController } from '../ui/dock/mount';
+import { formatDate, getLocale, intlLocale, onLocaleChange, t } from '../i18n';
 
 const TRANSITION_STEP_MS = 1200;
+
+// What the page says about itself in the current language.
+const labelPage = () => {
+  document.documentElement.lang = intlLocale(getLocale());
+  document.getElementById('pet')?.setAttribute('aria-label', t('bubble.petLabel'));
+};
+onLocaleChange(labelPage);
+labelPage();
+// The UI checks (scripts/ui-check) read the wording of the active language here.
+(window as unknown as { petnudgeI18n: unknown }).petnudgeI18n = { t, getLocale, formatDate };
 
 const panel = document.getElementById('panel')!;
 let panelUi: PanelController | null = null;

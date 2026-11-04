@@ -83,6 +83,15 @@ when you use it, your messages, the pet's context (timer, todo count, the
 song playing) and the results of the tools you allow go to the provider you
 picked.
 
+### 언어 / Language / 言語
+
+The app speaks Korean, English and Japanese. It starts in your system's
+language (anything other than Korean or Japanese gets English); change it
+in Settings › Profile › Language, and the panel, the pet's bubble and the
+tray menu switch at once. Chat replies follow the same language. Built-in
+characters' own lines are in Korean; a character pack can carry lines and a
+persona per language (see [the character guide](assets/characters/README.md)).
+
 ## Your coding agent
 
 While petnudge runs, it serves MCP (Model Context Protocol) on your machine

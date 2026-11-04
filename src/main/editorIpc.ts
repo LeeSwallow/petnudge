@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { ipcMain, type IpcMainInvokeEvent, type WebContents } from 'electron';
 import type { Wire } from '../core/errors';
 import {
@@ -50,8 +51,8 @@ export const editorHandlers = (deps: EditorDeps): Record<EditorChannel, Handler>
   [EDITOR_CHANNEL.importImage]: async () => editorOk(await deps.importImage()),
   [EDITOR_CHANNEL.importLayered]: async () => editorOk(await deps.importLayered()),
   [EDITOR_CHANNEL.importCharacter]: async (id: unknown) => editorOk(await deps.importCharacter(id)),
-  [EDITOR_CHANNEL.save]: () => notImplemented('저장'),
-  [EDITOR_CHANNEL.apply]: () => notImplemented('펫에 적용')
+  [EDITOR_CHANNEL.save]: () => notImplemented(t('editor.save')),
+  [EDITOR_CHANNEL.apply]: () => notImplemented(t('editor.apply'))
 });
 
 // Runs one handler: a throw becomes { ok: false, code: 'internal' } and a log line.
@@ -76,7 +77,7 @@ export const installEditorIpc = (deps: EditorDeps & { editorContents: () => WebC
     ipcMain.handle(channel, (event: IpcMainInvokeEvent, ...args: unknown[]) => {
       if (event.sender !== deps.editorContents()) {
         deps.logger.log('warn', 'editor', `${channel} from a window that is not the editor`);
-        return editorFailure('forbidden', '에디터 창에서만 쓸 수 있어요');
+        return editorFailure('forbidden', t('error.editor.forbidden'));
       }
       return runEditorHandler(channel, handler, args, deps.logger);
     });

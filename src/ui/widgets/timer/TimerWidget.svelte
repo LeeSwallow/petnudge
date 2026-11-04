@@ -4,6 +4,7 @@
   import { revision } from '../../state/revision.svelte';
   import { myTimer, type TimerFeed } from './feed';
   import { timerView } from './logic';
+  import { t, type MessageKey } from '../../i18n';
 
   let { feed = myTimer }: { feed?: TimerFeed } = $props();
 
@@ -14,7 +15,7 @@
 
   const act = () => (view.action === 'start' ? feed.start?.() : feed.togglePause?.());
   const can = $derived(view.action === 'start' ? !!feed.start : !!feed.togglePause);
-  const LABEL = { start: '집중 시작', pause: '일시정지', resume: '재개' } as const;
+  const LABEL: Record<'start' | 'pause' | 'resume', MessageKey> = { start: 'pomodoro.start', pause: 'pomodoro.pause', resume: 'pomodoro.resume' };
 </script>
 
 <div class="timer" data-phase={view.phase}>
@@ -23,7 +24,7 @@
     <span class="phase" style:color={PHASE_COLOR[view.phase]} data-timer-phase>{view.phaseLabel}</span>
   </div>
   {#if can}
-    <button type="button" class="act" data-timer-action={view.action} aria-label={LABEL[view.action]} data-tip={LABEL[view.action]} onclick={act}>
+    <button type="button" class="act" data-timer-action={view.action} aria-label={t(LABEL[view.action])} data-tip={t(LABEL[view.action])} onclick={act}>
       {@html pixelIcon(view.action === 'pause' ? 'pause' : 'play')}
     </button>
   {/if}

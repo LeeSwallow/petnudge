@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
+  import { t } from '../i18n';
   type Props = { title: string; onmenu?: () => void; children: Snippet };
   let { title, onmenu, children }: Props = $props();
 </script>
@@ -7,7 +8,7 @@
 <section class="ui-widget" aria-label={title}>
   <header>
     <span>{title}</span>
-    {#if onmenu}<button type="button" class="menu" aria-label="{title} 설정" onclick={onmenu}>⋯</button>{/if}
+    {#if onmenu}<button type="button" class="menu" aria-label={t('widgets.menuLabel', { title })} onclick={onmenu}>⋯</button>{/if}
   </header>
   {@render children()}
 </section>

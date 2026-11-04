@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { BrowserWindow } from 'electron';
 
 // The character editor (#26): one ordinary framed window, not on top of
@@ -29,7 +30,7 @@ export const createEditorWindow = ({ page, preload, testHooks = false }: { page:
     }
     const created = new BrowserWindow({
       ...EDITOR_SIZE,
-      title: '캐릭터 에디터',
+      title: t('editor.title'),
       backgroundColor: '#2a1d33', // --color-panel, so no white flash before the page paints
       show: false,
       webPreferences: { preload, contextIsolation: true, sandbox: true }
