@@ -86,6 +86,14 @@ export const createCharacterLibrary = (root: string, builtinRoot: string, { edit
     if (!await exists(files.source) || !await exists(files.manifest)) throw new Error('이 팩에는 원본(.aseprite/.pxo)과 편집 설정이 없어요');
     return files;
   };
+  // The editor files behind a character, read only (nothing is copied): the
+  // user's own source if there is one, else a built-in's.
+  const sourceOf = async (id: unknown) => {
+    const files = sourcePaths(folder(id), String(id));
+    if (await exists(files.source) && await exists(files.manifest)) return files;
+    if (await isBuiltin(id)) return builtinSource(String(id));
+    throw new Error('이 캐릭터에는 원본(.aseprite/.pxo)과 편집 설정이 없어요');
+  };
   const rebuild = async (id: unknown) => {
     const dir = folder(id);
     const files = await prepareSource(id);
@@ -176,5 +184,5 @@ export const createCharacterLibrary = (root: string, builtinRoot: string, { edit
     return id;
   };
 
-  return { load, list, importFolder, prepareSource, rebuild, clone };
+  return { load, list, importFolder, prepareSource, sourceOf, rebuild, clone };
 };

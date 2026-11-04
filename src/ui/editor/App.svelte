@@ -4,13 +4,20 @@
   import { editorApi, logEditorError } from './api';
   import { CANVAS, DEFAULT_ZOOM, GUIDES, ZOOMS, type Guides, type Zoom } from './canvas';
   import Canvas from './Canvas.svelte';
-  import { editor, redo, undo } from './draft.svelte';
+  import CharacterDialog from './CharacterDialog.svelte';
+  import { importImage } from './cutout.svelte';
+  import CutoutBar from './CutoutBar.svelte';
+  import { editor, redo, replaceDraft, undo } from './draft.svelte';
+  import { importLayered, imports } from './imports.svelte';
   import LayerPanel from './LayerPanel.svelte';
+  import LayeredDialog from './LayeredDialog.svelte';
   import { notice } from './pictures.svelte';
+  import { emptyDraft } from '../../domain/character/placement';
 
   // The editor's frame (#26 C): top bar, 부위/캐릭터 tabs, and three panes —
   // 부위 목록, 캔버스, 미리보기. Placing parts and undo are #58 (draft.svelte.ts);
-  // import, preview and saving come in later issues, their buttons disabled until then.
+  // bringing pictures in is #57 (불러오기, 새로 만들기); opening, preview and
+  // saving come in later issues, their buttons disabled until then.
 
   const TABS = [
     { id: 'parts', label: '부위' },
@@ -20,6 +27,17 @@
   let characterCount = $state<number | null>(null);
   let zoom = $state<Zoom>(DEFAULT_ZOOM);
   let guides = $state<Guides>({ border: true, feet: true, head: true });
+  // 새로 만들기's two choices.
+  let newMenu = $state(false);
+  const startBlank = () => {
+    newMenu = false;
+    replaceDraft(emptyDraft());
+    notice.text = '';
+  };
+  const startFromCharacter = () => {
+    newMenu = false;
+    imports.characterPick = 'start';
+  };
 
   // ⌘Z / Ctrl+Z undoes, with Shift redoes; a text field keeps its own undo.
   const onkeydown = (e: KeyboardEvent) => {
@@ -43,9 +61,22 @@
   <header class="topbar">
     <h1>캐릭터 에디터</h1>
     <div class="actions" role="toolbar" aria-label="파일">
-      <Button disabled data-action="new" title="다음 업데이트에서 열려요">새로 만들기</Button>
+      <span class="menu-anchor">
+        <Button data-action="new" aria-expanded={newMenu} onclick={() => (newMenu = !newMenu)}>새로 만들기</Button>
+        {#if newMenu}
+          <span class="menu" role="menu" data-new-menu>
+            <button type="button" role="menuitem" data-new="blank" onclick={startBlank}>빈 캐릭터</button>
+            <button type="button" role="menuitem" data-new="character" onclick={startFromCharacter}>기존 캐릭터에서 시작…</button>
+          </span>
+        {/if}
+      </span>
       <Button disabled data-action="open" title="다음 업데이트에서 열려요">열기</Button>
       <Button variant="primary" disabled data-action="save" title="다음 업데이트에서 열려요">저장</Button>
+    </div>
+    <div class="actions" role="toolbar" aria-label="불러오기">
+      <Button variant="ghost" data-import="image" onclick={importImage} title="PNG 한 장을 원본으로 불러와 부위를 오려 내요">그림 불러오기</Button>
+      <Button variant="ghost" data-import="layered" onclick={importLayered} title=".pxo 또는 .aseprite의 레이어를 칸에 넣어요">레이어 파일</Button>
+      <Button variant="ghost" data-import="character" onclick={() => (imports.characterPick = 'parts')} title="다른 캐릭터의 부위를 골라 가져와요">다른 캐릭터에서</Button>
     </div>
     <div class="actions" role="toolbar" aria-label="편집">
       <Button variant="ghost" data-history="undo" disabled={!editor.canUndo} onclick={undo} title="실행 취소 (⌘Z)">되돌리기</Button>
@@ -78,6 +109,7 @@
         <div class="stage-well">
           <Canvas {zoom} {guides} />
         </div>
+        {#if editor.underlay}<CutoutBar />{/if}
         <p class="notice" role="status" data-notice>{notice.text}</p>
       </section>
 
@@ -98,11 +130,15 @@
   {/if}
 </div>
 
+<LayeredDialog />
+<CharacterDialog />
+
 <style>
   .editor-root { display: flex; flex-direction: column; height: 100%; }
 
   .topbar {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--space-3);
     padding: var(--space-2) var(--space-3);
@@ -111,6 +147,28 @@
   }
   h1 { margin: 0; font: bold var(--type-body) var(--font); color: var(--color-goal); }
   .actions { display: flex; gap: var(--space-2); }
+  .menu-anchor { position: relative; }
+  .menu {
+    position: absolute;
+    top: calc(100% + var(--space-1));
+    left: 0;
+    z-index: 10;
+    display: grid;
+    min-width: 180px;
+    background: var(--color-panel);
+    border: var(--stroke-frame) solid var(--color-edge);
+    box-shadow: var(--shadow-md) var(--shadow-md) 0 var(--color-shadow);
+  }
+  .menu button {
+    font: var(--type-body) var(--font);
+    color: var(--color-ink);
+    text-align: left;
+    background: none;
+    border: none;
+    padding: var(--space-1) var(--space-2);
+    cursor: pointer;
+  }
+  .menu button:hover, .menu button:focus-visible { background: var(--color-well); outline: none; }
   .toggles { display: flex; }
   .toggle {
     font: var(--type-small) var(--font-small);

@@ -2,7 +2,8 @@
   import { tick } from 'svelte';
   import { drawOrder, isFilled } from '../../domain/character/placement';
   import { STANDARD_SLOTS, standardPart, type SlotId } from '../../domain/character/standard';
-  import { backward, editor, forward, layerForSlot, placeBeside, select, setHover, toggleHidden, toggleLocked } from './draft.svelte';
+  import { cutSelection, SELECTION_TYPE } from './cutout.svelte';
+  import { backward, editor, forward, layerForSlot, placeBeside, removeUnderlay, select, setHover, toggleHidden, toggleLocked, toggleUnderlay } from './draft.svelte';
   import { carriesFiles, droppedFile, dropPicture } from './pictures.svelte';
   import Thumb from './Thumb.svelte';
 
@@ -12,6 +13,9 @@
   // cannot be picked or moved on the canvas). Click a row to select its part;
   // drag a row (or Alt+↑/↓) to change the drawing order. Below the divider,
   // the slots with nothing yet ("빈 칸"). Drop a PNG on any row to fill it.
+  // Under the parts, the 원본 picture being cut up (#57) with its own eye; it
+  // is not a part and is not saved. Drop the canvas's pixel selection (the
+  // chip under the canvas) on a row to cut it into that slot.
 
   const slotOf = (layer: string) => STANDARD_SLOTS.find((s) => s.id === standardPart(layer)?.slot)!;
   const layers = $derived(drawOrder(editor.draft).filter((name) => isFilled(editor.draft, name)).reverse());
@@ -73,16 +77,21 @@
     list?.querySelector<HTMLElement>(`[data-layer="${CSS.escape(layer)}"] [data-pick]`)?.focus();
   };
 
-  // File drops onto rows.
+  // File and selection drops onto rows.
   let fileOver = $state<string | null>(null);
+  const carriesSelection = (e: DragEvent) => Boolean(e.dataTransfer?.types.includes(SELECTION_TYPE));
   const ondragover = (e: DragEvent, key: string) => {
-    if (!carriesFiles(e)) return;
+    if (!carriesFiles(e) && !carriesSelection(e)) return;
     e.preventDefault();
     fileOver = key;
   };
   const ondrop = (e: DragEvent, target: { layer: string } | { slot: SlotId }) => {
     e.preventDefault();
     fileOver = null;
+    if (carriesSelection(e)) {
+      cutSelection(target);
+      return;
+    }
     const file = droppedFile(e);
     if (file) void dropPicture(file, target);
   };
@@ -133,6 +142,21 @@
       </button>
     </li>
   {/each}
+  {#if editor.underlay}
+    <li class="row underlay" data-underlay data-hidden={!editor.underlayShown}>
+      <span class="pick static" title={editor.underlay.name}>
+        <Thumb pixels={editor.underlay.rest} />
+        <span class="label">
+          <span class="slot-label">원본</span>
+          <small>{editor.underlay.name}</small>
+        </span>
+      </span>
+      <button type="button" class="icon" data-eye aria-pressed={editor.underlayShown} aria-label="원본 {editor.underlayShown ? '숨기기' : '보이기'}" title={editor.underlayShown ? '숨기기' : '보이기'} onclick={toggleUnderlay}>
+        {editor.underlayShown ? '◉' : '－'}
+      </button>
+      <button type="button" class="icon" data-remove-underlay aria-label="원본 치우기" title="원본 치우기 (오려 낸 부위는 남아요)" onclick={removeUnderlay}>×</button>
+    </li>
+  {/if}
 </ol>
 
 <p class="divider">빈 칸 <small>PNG를 끌어다 놓아요</small></p>
@@ -183,6 +207,7 @@
     touch-action: none;
   }
   .empty .pick { cursor: pointer; padding: var(--space-1) var(--space-2); }
+  .underlay .pick.static { cursor: default; border-style: dashed; }
   .pick[aria-pressed='true'] { color: var(--color-ink); border-color: var(--color-focus); }
   .row[data-hidden='true'] .pick { opacity: 0.55; }
   button:focus-visible { outline: var(--stroke-frame) solid var(--color-goal); outline-offset: -2px; }
