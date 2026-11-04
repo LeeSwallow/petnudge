@@ -10,7 +10,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-const port = 9343;
+const port = Number(process.env.UI_CHECK_PORT ?? 9343); // set it to run checks side by side
 const profile = mkdtempSync(path.join(tmpdir(), 'petnudge-ui-check-'));
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const electron = createRequire(import.meta.url)('electron');
