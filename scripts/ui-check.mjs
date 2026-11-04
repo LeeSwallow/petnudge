@@ -103,6 +103,11 @@ check('notes: new note opens the editor', `$('#note-browser .primary').click(); 
 check('notes: autosave', `type('#note-body', '미적분 정리'); await wait(900); return text('#note-status');`, '저장됨');
 check('notes: pin, back, search, delete', `$('#note-pin').click(); await wait(400); const pin = text('#note-pin'); $('#note-editor .ghost').click(); await wait(200); const list = text('#note-list'); type('#note-search', '없는말'); await wait(400); const none = text('#note-list'); type('#note-search', ''); await wait(400); $('.note-card').click(); await wait(200); $('[aria-label="메모 삭제"]').click(); await wait(400); return [pin, list.startsWith('고정1개 새 메모'), none, text('#note-list')];`, ['고정됨', true, '검색 결과가 없어요', '첫 메모를 남겨보세요']);
 
+check('music: no lists yet', `await open_('focus', 'playlist'); return [text('#items'), text('#list-select')];`, ['위에서 새 플레이리스트를 만들어보세요', '플레이리스트 없음']);
+check('music: new list with Enter', `type('#new-list', '집중 음악'); key('#new-list', 'Enter'); await wait(400); return [$('#new-list').value, text('#list-select'), text('#items'), $$('#focus-list option').map((o) => o.textContent)];`, ['', '집중 음악', '곡을 추가해보세요', ['(없음 · 이어서 재생/일시정지)', '집중 음악 (0)']]);
+check('music: timer sync is saved', `$('#sync').click(); await wait(300); return $('#sync').checked;`, true);
+check('music: a wrong link is refused', `$('details.external').open = true; type('#link', 'https://example.com'); key('#link', 'Enter'); await wait(200); return text('#playlist-hint');`, 'Spotify 트랙/앨범/플레이리스트 링크만 지원해요');
+check('music: delete the list', `$('[aria-label="목록 삭제"]').click(); await wait(400); return text('#items');`, '위에서 새 플레이리스트를 만들어보세요');
 check('dashboard: tiles and empty log', `await open_('record', 'dashboard'); await wait(900); return [$$('#tiles .tile').length, text('#tile-today'), text('#tile-rate'), text('#log')];`, [4, '0m', '0%', '첫 뽀모도로를 끝내면 여기에 기록돼요']);
 check('dashboard: charts drawn', `return ['#week', '#hours', '#heat'].map((s) => $(s + ' svg') !== null);`, [true, true, true]);
 check('dashboard: log filter opens', `$('#log-funnel').click(); await wait(100); const shown = !$('#log-filter').hidden; $('#log-funnel').click(); return shown;`, true);
