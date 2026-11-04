@@ -2,16 +2,16 @@
   import { onMount, tick } from 'svelte';
   import { api } from '../../../renderer/api';
   import { pack, setCharacter } from '../../../renderer/character';
-  import { onChat } from '../../../renderer/chat';
+  import { chatState, onChat } from '../../../renderer/chat';
   import { data, updateSettings } from '../../../renderer/data';
   import { pixelIcon } from '../../../renderer/icons';
   import { modStatus, onModStatus } from '../../../renderer/pet/mods';
   import type { CharacterChoice } from '../../../shared/characterImport';
   import { avatarFor, type AppSettings } from '../../../shared/settings';
   import { revision } from '../../state/revision.svelte';
-  import { aiSummary, mountAiSettings, showAiSettings } from './aiSettings';
-  import { backupSection, mountBackup } from './backup';
-  import { stepperText, type BoolKey, type NumberKey } from './logic';
+  import AiSettings from './AiSettings.svelte';
+  import Backup from './Backup.svelte';
+  import { aiSummary, stepperText, type BoolKey, type NumberKey } from './logic';
 
   const STEPPERS: [NumberKey, string, number][] = [
     ['focusMinutes', '집중 시간', 5],
@@ -28,8 +28,6 @@
   ];
 
   let root: HTMLElement;
-  let backupBox: HTMLElement;
-  let aiPage: HTMLElement;
   let aiOpen = $state(false);
   let characters = $state<CharacterChoice[]>([]);
   let characterBusy = $state(false);
@@ -60,8 +58,6 @@
   });
 
   onMount(() => {
-    mountBackup(backupBox);
-    mountAiSettings(aiPage, () => showAiPage(false));
     // Listeners live as long as the panel; they return nothing (see Friends.svelte).
     onModStatus(() => {
       modsRev += 1;
@@ -128,7 +124,6 @@
   // The AI chat settings are a page of their own over the settings list.
   const showAiPage = async (show: boolean) => {
     aiOpen = show;
-    if (show) void showAiSettings();
     await tick();
     root.closest('.tab-body')?.scrollTo({ top: 0 });
   };
@@ -236,7 +231,7 @@
     <div class="hint">모드는 블록(JSON)으로 "언제 → 무엇을"을 적어요. 저장하면 바로 다시 불러와요.</div>
     <div class="hint" id="mod-problems" role="status" aria-live="polite">{mods.problems.map((p) => `⚠ ${p.path.split('/').slice(-2).join('/')}: ${p.error}`).join('\n')}</div>
   </div>
-  <div class="backup-host" bind:this={backupBox}>{@html backupSection}</div>
+  <Backup />
   <div class="section-title">프로필</div>
   <div class="frame well setting-group">
     <div class="row"><span style="width:52px">닉네임</span><input type="text" id="nickname" class="grow" maxlength="16" placeholder="방·랭킹에 표시될 이름" bind:value={nickname}
@@ -245,7 +240,7 @@
   <div class="section-title">AI 대화 <small>펫과 말하기</small></div>
   <div class="frame well setting-group">
     <button type="button" class="ai-open-button" id="ai-open" onclick={() => showAiPage(true)}>
-      <span class="grow"><b>AI 대화 설정 열기</b><small id="ai-summary">{(void chatRev, void revision.settings, aiSummary())}</small></span><span aria-hidden="true">›</span>
+      <span class="grow"><b>AI 대화 설정 열기</b><small id="ai-summary">{(void chatRev, void revision.settings, aiSummary(chatState.config, chatState.providers))}</small></span><span aria-hidden="true">›</span>
     </button>
     <div class="hint">연결할 AI(Claude Code·Codex·Anthropic·OpenAI·OpenRouter·로컬), 도구 권한, 캐릭터별 말투와 프롬프트를 정해요.</div>
   </div>
@@ -275,10 +270,9 @@
     <button class="ghost" type="button" onclick={() => api.quit()}>펫 종료</button>
   </div>
   <div class="hint">펫을 잃어버렸다면 ⌘/Ctrl + Alt + P 로 오른쪽 아래로 불러올 수 있어요.</div>
-  <div id="ai-page" hidden={!aiOpen} bind:this={aiPage}></div>
+  <div id="ai-page" hidden={!aiOpen}><AiSettings open={aiOpen} onBack={() => showAiPage(false)} /></div>
 </div>
 
 <style>
   .settings-root { display: contents; }
-  .backup-host { display: contents; }
 </style>
