@@ -144,3 +144,79 @@
 - 확대 배율 선택(2/4/6배).
 - 실행 취소 깊이(예: 100).
 - 템플릿 팩의 구체적인 상태 값(내장 팩의 `idle`, `patted` 등을 바탕으로).
+
+## 구조
+
+### 프로세스와 창
+
+```mermaid
+flowchart LR
+  subgraph main[main 프로세스]
+    EW[editorWindow.ts<br/>창 하나, 열기/닫기]
+    EI[editorIpc.ts<br/>파일 열기, 그림 읽기, 저장, 적용]
+    CL[characters.ts<br/>기존 라이브러리·exportCharacter]
+  end
+  subgraph pre[preload]
+    EP[editor preload<br/>editorApi만 노출]
+  end
+  subgraph ui[에디터 렌더러 · src/ui/editor]
+    APP[App.svelte<br/>부위 목록 · 캔버스 · 미리보기 · 캐릭터 탭]
+    ST[draft.svelte.ts<br/>초안 상태 + 실행 취소]
+    PV[미리보기<br/>앱과 같은 렌더러]
+  end
+  subgraph dom[src/domain/character · 순수]
+    STD[standard.ts 표준 칸]
+    CUT[cutout.ts 오려 내기]
+    PL[placement.ts 배치]
+    HI[history.ts 실행 취소]
+    BP[buildPack.ts 초안 → 팩]
+    CV[convert.ts @2 → 초안]
+    PX[pixels.ts]
+  end
+  APP --> ST --> dom
+  PV --> BP
+  APP <-->|IPC editor:*| EP <--> EI --> CL
+  EW --> APP
+```
+
+- **창:** `src/main/editorWindow.ts`가 BrowserWindow를 하나만 만든다. 이미 열려 있으면 앞으로 가져온다.
+- **preload:** 에디터 전용 `src/preload/editor.ts`가 `editorApi`만 노출한다. 펫 창의 `petApi`와 섞지 않는다.
+- **렌더러:** `src/ui/editor/`(Svelte)다. build.mjs의 세 번째 렌더러 진입점이고, 결과물은 `dist/editor/`다.
+- **도메인(순수, 테스트 대상):** `src/domain/character/`
+  - `pixels.ts`: `src/renderer/character/pixels.ts`를 옮긴다. 렌더러는 여기서 다시 내보낸다.
+  - `standard.ts`: 표준 칸 목록과 초안 타입
+  - `cutout.ts`: 상자 선택, 같은 색 영역 선택, 합치기와 빼기, 원래 좌표를 지키는 오려 내기
+  - `placement.ts`: 1px 이동과 범위 제한, 앞뒤 순서
+  - `history.ts`: 실행 취소와 다시 실행(불변 초안, 깊이 100)
+  - `buildPack.ts`: 초안을 팩(@3)과 레이어 목록으로 바꾼다. 영역, 누르는 영역, 표정, 템플릿 동작(걷기 반전 포함)을 자동으로 만든다.
+  - `convert.ts`: @2 팩의 레이어를 초안으로 바꾸고, 빠지는 목록을 함께 돌려준다.
+- **main의 일:** `src/main/editorIpc.ts`
+  - 파일 대화상자를 열고, 이미지와 레이어 파일을 RGBA로 읽는다(PNG는 `png.mjs`, .pxo는 `readPxo`, .aseprite는 CLI가 있을 때만).
+  - 초안을 저장한다: `userData/characters/<id>/source`에 `<id>.pxo` + `pack.json`(@3)을 쓰고, 기존 `exportCharacter`로 런타임을 만든다. 실패하면 이전 것을 그대로 둔다.
+  - 펫에 적용한다: 기존 캐릭터 전환 흐름을 쓴다.
+  - .psd 읽기는 새 의존성이 필요해서 나중에 한다.
+
+### 표준 팩 @3
+
+- `format: 'study-pet-character@3'`이다. @2와 같은 구조에 다음을 더한다.
+  - `editor: { version: 1 }` 표시
+  - 상태 프레임의 `flip: boolean`(좌우 반전)
+- 레이어 이름은 표준 칸 표의 이름만 쓴다.
+- 검증(`characterImport.ts`, `check.mjs`)과 렌더러는 @2와 @3을 모두 받는다. 렌더러에서 새로 하는 일은 `flip` 하나다. 반전할 때 L/R 부위는 이름을 바꾸지 않고 그림과 함께 뒤집는다.
+
+### 데이터 흐름
+
+1. 불러오기: main이 그림을 RGBA로 읽고 IPC로 넘긴다. 오려 내기, 배치, 실행 취소는 모두 렌더러의 초안에서 일어난다.
+2. 초안이 바뀔 때마다 `buildPack`이 미리보기용 팩과 시트를 메모리에서 만들고, 렌더러의 `setCharacter`로 그린다.
+3. 저장: 초안을 IPC로 main에 보낸다. main은 .pxo와 pack.json을 쓰고 export한 뒤 결과를 알려 준다.
+
+### 이슈 나누기 (순서와 병렬)
+
+| 이슈 | 내용 | 선행 |
+| --- | --- | --- |
+| A | 표준 팩 도메인: pixels 이동, `standard.ts`, `buildPack.ts`, @3 검증과 렌더러 `flip` | 없음 |
+| B | 변환기 `convert.ts`(lila, moa, maru로 테스트) | A |
+| C | 에디터 창 뼈대: 창, preload, 진입점, IPC 골격, 세 칸 화면, 설정에서 열기, `editor-check` 검사 | 없음 (A와 병렬) |
+| D | 그림 넣기: 한 장 + 오려 내기, 레이어 파일, 칸별 PNG, 다른 캐릭터 부위 | A, C |
+| E | 캔버스: 확대, 1px 배치, 앞뒤 순서, 안내선, 실행 취소 | A, C (D와 병렬) |
+| F | 미리보기, 캐릭터 탭, 저장과 적용 | A, C, (B) |
