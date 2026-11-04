@@ -86,13 +86,14 @@ describe('check', () => {
 
   it('takes a standard @3 pack as it is: nothing missing, unused or discovered', async () => {
     const { buildPack } = await import('../../src/domain/character/buildPack.ts');
+    const { fromLegacyDraft } = await import('../../src/domain/character/standard.ts');
     const part = (x0, y0, x1, y1) => {
       const data = new Uint32Array(96 * 112);
       for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) data[y * 96 + x] = 0xff336699;
       return { w: 96, h: 112, data };
     };
-    const parts = { 'torso.chest': part(30, 50, 66, 80), head: part(28, 10, 68, 48), 'eye.L.open': part(36, 26, 40, 30), 'eye.L.closed': part(36, 28, 40, 29), 'mouth.closed': part(44, 38, 52, 40), 'mouth.open': part(44, 37, 52, 42), 'custom.bow': part(60, 8, 70, 14) };
-    const { pack, layers } = buildPack({ id: 'bean', name: '콩이', persona: '', lines: { pat: [], pokeChest: [], pokeBelly: [] }, parts, order: Object.keys(parts) });
+    const parts = { 'torso.chest': part(30, 50, 66, 80), head: part(28, 10, 68, 48), 'eye.L.open': part(36, 26, 40, 30), 'eye.L.closed': part(36, 28, 40, 29), 'mouth.closed': part(44, 38, 52, 40), 'mouth.open': part(44, 37, 52, 42), 'custom.bow': part(60, 8, 70, 14), 'leg.L': part(36, 80, 46, 108), 'leg.R': part(50, 80, 60, 108) };
+    const { pack, layers } = buildPack(fromLegacyDraft({ id: 'bean', name: '콩이', persona: '', lines: { pat: [], pokeChest: [], pokeBelly: [] }, parts, order: Object.keys(parts) }));
     const names = layers.map((l) => l.name);
     expect(checkLayers(pack, { width: 96, height: 112, frames: 1, layers: names.map((name) => ({ name, group: '' })) })).toEqual({ errors: [], warnings: [] });
     expect(discover(pack, names)).toEqual([]);

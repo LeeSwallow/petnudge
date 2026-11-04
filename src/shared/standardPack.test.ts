@@ -1,58 +1,71 @@
 import { describe, expect, it } from 'vitest';
 import { buildPack } from '../domain/character/buildPack';
+import type { CharacterDraft, Part } from '../domain/character/parts';
 import { blank, hexToPixel, type Pixels } from '../domain/character/pixels';
-import type { CharacterDraft } from '../domain/character/standard';
+import { fromTemplate, TEMPLATES, type TemplateId } from '../domain/character/standard';
 import { validateImportedPack } from './characterImport';
 import { validatePack, type CharacterPack } from './characterPack';
 
-const rect = (x0: number, y0: number, x1: number, y1: number): Pixels => {
-  const px = blank(96, 112);
-  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) px.data[y * 96 + x] = hexToPixel('#884422');
-  return px;
+// Every template filled with synthetic boxes (in 1/16ths of the canvas), so
+// one table fits every proportion from the critter to the tall person.
+type Rect = [number, number, number, number];
+const ART: Record<string, Rect> = {
+  body: [5, 6, 11, 12], 'leg.l': [6, 12, 8, 15], 'leg.r': [8, 12, 10, 15], 'foot.l': [5, 12, 7, 15], 'foot.r': [9, 12, 11, 15],
+  'arm.l': [3, 6, 5, 10], 'arm.r': [11, 6, 13, 10], head: [4, 1, 12, 6], 'eye.l': [6, 3, 7, 4], 'eye.r': [9, 3, 10, 4], mouth: [7, 5, 9, 6],
+  'hair.back': [4, 1, 12, 5], 'hair.front': [4, 1, 12, 2]
 };
-
-const draft = (parts: Record<string, Pixels>): CharacterDraft => ({
-  id: 'bean', name: '콩이', persona: '', lines: { pat: [], pokeChest: [], pokeBelly: [] }, parts, order: Object.keys(parts)
-});
-
-const full = () => draft({
-  'hair.back': rect(24, 6, 72, 50), 'leg.L': rect(36, 80, 46, 108), 'leg.R': rect(50, 80, 60, 108),
-  'arm.L': rect(22, 50, 30, 76), 'arm.R': rect(66, 50, 74, 76), 'torso.chest': rect(30, 50, 66, 64), 'torso.belly': rect(32, 62, 64, 82),
-  head: rect(28, 10, 68, 48), 'eye.L.open': rect(36, 26, 40, 30), 'eye.L.closed': rect(36, 28, 40, 29), 'eye.R.open': rect(56, 26, 60, 30),
-  'eye.R.closed': rect(56, 28, 60, 29), 'mouth.closed': rect(44, 38, 52, 40), 'mouth.open': rect(44, 37, 52, 42), 'hair.front': rect(26, 6, 70, 20),
-  'custom.ribbon': rect(60, 8, 70, 14)
-});
+const filled = (template: TemplateId): CharacterDraft => {
+  const d = fromTemplate(template);
+  const { w, h } = d.canvas;
+  const rect = ([x0, y0, x1, y1]: Rect, dy = 0): Pixels => {
+    const px = blank(w, h);
+    const [a, b, c, e] = [Math.floor((x0 * w) / 16), Math.floor((y0 * h) / 16) + dy, Math.floor((x1 * w) / 16), Math.floor((y1 * h) / 16)];
+    for (let y = b; y < e; y++) for (let x = a; x < c; x++) px.data[y * w + x] = hexToPixel('#884422');
+    return px;
+  };
+  const variantsOf = (p: Part): Record<string, Pixels> | undefined =>
+    p.role === 'eye' ? { closed: rect(ART[p.id], 1) } : p.role === 'mouth' ? { open: rect(ART[p.id], -1) } : undefined;
+  const parts = d.parts.map((p): Part => ({ ...p, pixels: rect(ART[p.id]), ...(variantsOf(p) ? { variants: variantsOf(p) } : {}) }));
+  return { ...d, id: 'bean', name: '콩이', parts };
+};
 
 // buildPack's pack with its layers as one sheet row, as the importer sees it.
 const roundTrip = (d: CharacterDraft) => {
   const { pack, layers } = buildPack(d);
   const typed: CharacterPack = pack; // the domain pack is a CharacterPack
-  return validateImportedPack(JSON.parse(JSON.stringify(typed)), layers.length * 96, 112);
+  return validateImportedPack(JSON.parse(JSON.stringify(typed)), layers.length * d.canvas.w, d.canvas.h);
 };
 
 describe('standard pack @3', () => {
-  it('is accepted by both validators, with the editor mark and frame flips', () => {
-    const pack = JSON.parse(JSON.stringify(buildPack(full()).pack));
+  it.each(TEMPLATES.map((t) => t.id))('the %s template round-trips through both validators', (id) => {
+    const d = filled(id);
+    const pack = JSON.parse(JSON.stringify(buildPack(d).pack));
     expect(() => validatePack(pack)).not.toThrow();
-    const imported = validateImportedPack(pack, 16 * 96, 112);
+    const imported = roundTrip(d);
     expect(imported.format).toBe('study-pet-character@3');
-    expect(imported.editor).toEqual({ version: 1 });
+    expect(imported.frame).toEqual(d.canvas);
+    expect(imported.editor).toMatchObject({ version: 1, body: { kind: 'biped', merged: id === 'critter' } });
+    expect(imported.editor!.parts!.map((p) => p.id)).toEqual(d.parts.map((p) => p.id));
     expect(imported.states.walkR.loop[0].flip).toBe(true);
+    expect(Object.keys(imported.expressions!)).toContain('closed');
   });
 
   it('still accepts @2 and rejects other formats', () => {
-    const pack = JSON.parse(JSON.stringify(buildPack(full()).pack));
+    const pack = JSON.parse(JSON.stringify(buildPack(filled('lila')).pack));
     delete pack.editor;
     pack.format = 'study-pet-character@2';
-    expect(() => validateImportedPack(pack, 16 * 96, 112)).not.toThrow();
+    expect(() => validateImportedPack(pack, 20 * 96, 112)).not.toThrow();
     pack.format = 'study-pet-character@4';
-    expect(() => validateImportedPack(pack, 16 * 96, 112)).toThrow();
+    expect(() => validateImportedPack(pack, 20 * 96, 112)).toThrow();
     expect(() => validatePack(pack)).toThrow(/unsupported format/);
   });
 
-  it('round-trips a full draft and a body-only draft through the importer', () => {
-    expect(roundTrip(full()).id).toBe('bean');
-    expect(Object.keys(roundTrip(draft({ 'torso.chest': rect(30, 50, 66, 80) })).states)).toContain('walkR');
-    expect(Object.keys(roundTrip(draft({ 'torso.chest': rect(30, 50, 66, 80), 'eye.L.closed': rect(36, 28, 40, 29) })).expressions!)).toContain('closed');
+  it('round-trips a draft with a re-parented part, a new part and a moved pivot', () => {
+    const d = filled('chibi');
+    d.parts = d.parts.map((p) => (p.id === 'hair.front' ? { ...p, parent: 'root', pivot: [40, 10] as [number, number] } : p));
+    const tail = { id: 'tail', label: '꼬리', role: 'tail' as const, parent: 'body', pixels: d.parts.find((p) => p.id === 'arm.r')!.pixels };
+    const imported = roundTrip({ ...d, parts: [...d.parts, tail] });
+    expect(imported.layers.find((l) => l.id === 'tail')!.follow).toEqual(['body', 'tail']);
+    expect(imported.editor!.parts!.find((p) => p.id === 'hair.front')).toEqual({ id: 'hair.front', label: '앞머리', parent: 'root', role: 'hair', pivot: [40, 10] });
   });
 });

@@ -1,12 +1,14 @@
 import type { CharacterPack, Expression, LayerDef, Recolor, Variant } from './pack';
 import { blank, bounds, clipTo, hexToPixel, over, recolor, type Pixels } from './pixels';
-import { FRAME, type CharacterDraft, type DraftLines } from './standard';
+import type { CharacterDraft } from './parts';
+import { fromLegacyDraft, LEGACY_FRAME as FRAME, type DraftLines, type LegacyDraft } from './standard';
 
-// An @2 pack (lila, moa, maru) → a standard draft. Only the front view with
-// the default avatar is kept: each standard part is the @2 layers that draw
-// it there, merged back to front in the pack's layer order. Turned heads,
-// poses, other expressions and other outfits have no slot; they come back in
-// `dropped`, each with the reason, so the editor can show them first.
+// An @2 pack (lila, moa, maru) → a draft of parts. Only the front view with
+// the default avatar is kept: each part is the @2 layers that draw it there,
+// merged back to front in the pack's layer order (first under the fixed
+// names of #54, then as parts with roles and parents, standard.ts). Turned
+// heads, poses, other expressions and other outfits have no part; they come
+// back in `dropped`, each with the reason, so the editor can show them first.
 
 export type SourceLayer = { name: string; pixels: Pixels };
 export type Dropped = { name: string; reason: string };
@@ -143,7 +145,7 @@ export const convertPack = (pack: CharacterPack, layers: SourceLayer[], meta: Co
   // Empty merges (an empty `armfront.L`) are no part.
   const kept = [...parts].filter(([, px]) => bounds(px));
   const linesOf = (id: keyof DraftLines) => [...(pack.actions?.[id]?.lines ?? [])];
-  const draft: CharacterDraft = {
+  const legacy: LegacyDraft = {
     id: meta.id ?? pack.id,
     name: meta.name ?? pack.name,
     persona: (meta.persona ?? pack.persona ?? '').slice(0, 600),
@@ -151,5 +153,5 @@ export const convertPack = (pack: CharacterPack, layers: SourceLayer[], meta: Co
     parts: Object.fromEntries(kept),
     order: kept.map(([name]) => name)
   };
-  return { draft, dropped };
+  return { draft: fromLegacyDraft(legacy), dropped };
 };
