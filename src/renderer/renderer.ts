@@ -15,7 +15,6 @@ import { friendsModule } from './modules/friends';
 import type { ModuleId, PanelModule } from './modules/module';
 import { notesModule } from './modules/notes';
 import { playlistModule } from './modules/playlist';
-import { pomodoroModule, renderPomodoroClock } from './modules/pomodoro';
 import { settingsModule } from './modules/settings';
 import { handleModeChange, handleNowPlaying, music, onMusic } from './music';
 import { installPetInput, isDragging, markActivity, react, renderBubble, resizePet, startPetLoop } from './pet';
@@ -28,11 +27,12 @@ import { createPanel, type PanelController, type RenderCause } from '../ui/panel
 import { restoreModule } from '../ui/panel/groups';
 import type { AnyModule } from '../ui/modules/module';
 import { todoUi } from '../ui/modules/todo';
+import { pomodoroUi } from '../ui/modules/pomodoro';
 import { bump } from '../ui/state/revision.svelte';
 import { installTokens } from '../ui/theme/install';
 
 const TRANSITION_STEP_MS = 1200;
-const MODULES: AnyModule[] = [todoUi, pomodoroModule, dashboardModule, playlistModule, notesModule, chatModule, friendsModule, settingsModule];
+const MODULES: AnyModule[] = [todoUi, pomodoroUi, dashboardModule, playlistModule, notesModule, chatModule, friendsModule, settingsModule];
 
 const panel = document.getElementById('panel')!;
 let panelUi: PanelController | null = null;
@@ -251,7 +251,7 @@ const boot = async () => {
       lockedSince = null;
     }
     if (data.todayKey !== toDateKey(new Date(now))) void refreshStats();
-    if (visible() && panelUi?.active() === 'pomodoro') renderPomodoroClock();
+    if (visible() && panelUi?.active() === 'pomodoro') bump('clock');
     renderBubble(visible());
   }, 250);
 
