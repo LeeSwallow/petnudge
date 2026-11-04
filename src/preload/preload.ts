@@ -112,7 +112,9 @@ const petApi = {
   // The app log (main/logIpc.ts): level is error | warn | info | debug.
   log: (level: string, scope: string, message: string, detail?: string) => ipcRenderer.send('log', level, scope, message, detail),
   openLogs: (): Promise<void> => ipcRenderer.invoke('logs:open'),
-  diagnostics: (): Promise<string> => ipcRenderer.invoke('logs:diagnostics')
+  diagnostics: (): Promise<string> => ipcRenderer.invoke('logs:diagnostics'),
+  // A chat link, after the user agreed; main opens only http and https.
+  openLink: (url: string): Promise<boolean> => ipcRenderer.invoke('link:open', url)
 };
 
 export type PetApi = typeof petApi;

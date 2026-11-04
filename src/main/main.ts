@@ -23,6 +23,7 @@ import { installChat } from './chatIpc';
 import { createFriends } from './friends';
 import { startEngine, type EngineHandle } from '../infra/runtime';
 import { bridgePower } from '../infra/electron/power';
+import { installLinks } from '../infra/electron/links';
 import { createTray } from './tray';
 import { CHAT_SHORTCUT, RESET_SHORTCUT, type TrayAction } from './trayMenu';
 const NOW_PLAYING_POLL_MS = 2000;
@@ -60,6 +61,7 @@ process.on('unhandledRejection', (reason) => {
   process.stderr.write(`unhandled rejection: ${detail ?? message}\n`);
 });
 installLogIpc(logger, { app: app.getVersion(), electron: process.versions.electron, os: `${process.platform} ${os.release()}` });
+installLinks();
 // Dev (npm start) reads the built-in characters straight from assets/, so a
 // re-export (npm run watch:character) reloads the pet without a rebuild.
 const builtinCharacters = app.isPackaged ? path.join(__dirname, 'characters') : path.resolve(__dirname, '..', 'assets', 'characters');
