@@ -13,5 +13,7 @@ import characters from './characters.mjs';
 import settings from './settings.mjs';
 import logs from './logs.mjs';
 import chat from './chat.mjs';
+import locale from './locale.mjs';
+import overflow from './overflow.mjs';
 
-export const scenarios = [panel, dock, home, clock, todo, pomodoro, notes, music, dashboard, characters, settings, logs, chat];
+export const scenarios = [panel, dock, home, clock, todo, pomodoro, notes, music, dashboard, characters, settings, logs, chat, locale, overflow];
