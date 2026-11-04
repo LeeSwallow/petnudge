@@ -247,7 +247,9 @@ const boot = async () => {
       lockedSince = null;
     }
     if (data.todayKey !== toDateKey(new Date(now))) void refreshStats();
-    if (visible() && panelUi?.active() === 'pomodoro') bump('clock');
+    // the pomodoro tab and the home board's timer widget show the clock
+    const active = panelUi?.active();
+    if (visible() && (active === 'pomodoro' || active === 'home')) bump('clock');
     renderBubble(visible());
   }, 250);
 
