@@ -1,4 +1,7 @@
 import { BrowserWindow, app, dialog, globalShortcut, ipcMain, net, protocol, screen, shell } from 'electron';
+import os from 'node:os';
+import { createLogger } from '../infra/logger';
+import { installLogIpc } from './logIpc';
 import { execFile } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, watch } from 'node:fs';
 import path from 'node:path';
@@ -34,6 +37,11 @@ protocol.registerSchemesAsPrivileged([
 // points a run at another folder (demo screenshots, trying things out).
 app.setName('Study Companion Pet');
 app.setPath('userData', process.env.PETNUDGE_PROFILE ? path.resolve(process.env.PETNUDGE_PROFILE) : path.join(app.getPath('appData'), 'Study Companion Pet'));
+// The app log (userData/logs/petnudge.log); see src/infra/logger.ts.
+const logger = createLogger(path.join(app.getPath('userData'), 'logs'));
+process.on('uncaughtException', (error) => logger.log('error', 'main', `uncaught: ${error.message}`, error.stack));
+process.on('unhandledRejection', (reason) => logger.log('error', 'main', `unhandled rejection: ${reason instanceof Error ? reason.message : String(reason)}`, reason instanceof Error ? reason.stack : undefined));
+installLogIpc(logger, { app: app.getVersion(), electron: process.versions.electron, os: `${process.platform} ${os.release()}` });
 // Dev (npm start) reads the built-in characters straight from assets/, so a
 // re-export (npm run watch:character) reloads the pet without a rebuild.
 const builtinCharacters = app.isPackaged ? path.join(__dirname, 'characters') : path.resolve(__dirname, '..', 'assets', 'characters');
@@ -440,7 +448,7 @@ const startMcp = async () => {
   try {
     mcpInfo = await startMcpServer(app.getPath('userData'), repository, chat.bridge);
   } catch (error) {
-    console.error('MCP server failed to start', error);
+    logger.log('error', 'mcp', 'MCP server failed to start', error instanceof Error ? error.stack ?? error.message : String(error));
   }
 };
 
@@ -451,7 +459,7 @@ app.whenReady().then(() => {
       engine = handle;
       bridgePower((reason) => void handle.wake(reason));
     })
-    .catch((error) => console.error('engine failed to start', error));
+    .catch((error) => logger.log('error', 'engine', 'engine failed to start', error instanceof Error ? error.stack ?? error.message : String(error)));
   serveAudio();
   createWindow();
   if (!app.isPackaged) watchBuiltinCharacter();
