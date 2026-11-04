@@ -5,8 +5,8 @@ import { data, onData, refreshAll, refreshNotes, refreshSettings, refreshStats, 
 import { confetti, enter, pop } from './fx';
 import { startChat } from './chat';
 import { installChatBar } from './pet/chatbar';
-import { startFriends } from './pet/friends';
-import { holdStill } from './pet/behavior';
+import { nearestFriend, onNearChange, startFriends } from './pet/friends';
+import { holdStill, pauseWalking } from './pet/behavior';
 import { sayNow } from './pet/bubble';
 import { faceToward } from './pet/gaze';
 import { handleModeChange, handleNowPlaying, music, onMusic } from './music';
@@ -14,7 +14,6 @@ import { installPetInput, isDragging, markActivity, react, renderBubble, resizeP
 import { cancelMods, emit as emitMod } from './pet/mods';
 import { petStore, whenHydrated } from './store';
 import { installTooltip } from './tooltip';
-import { pixelIcon } from './icons';
 import { characterReady, pack, setCharacter } from './character';
 import { createPanel, type PanelController } from '../ui/panel/controller';
 import type { Cause } from '../ui/state/bridge';
@@ -25,11 +24,13 @@ import { showActiveSession } from '../ui/modules/chat';
 import { bump } from '../ui/state/revision.svelte';
 import { installTokens } from '../ui/theme/install';
 import { installErrorLogging, logError } from '../ui/log';
+import { mountDock, type DockController } from '../ui/dock/mount';
 
 const TRANSITION_STEP_MS = 1200;
 
 const panel = document.getElementById('panel')!;
 let panelUi: PanelController | null = null;
+let dock: DockController | null = null;
 
 const visible = () => !panel.hidden;
 
@@ -42,34 +43,10 @@ const togglePanel = () => {
   if (!panel.hidden) cancelMods();
   emitMod(panel.hidden ? 'panelClose' : 'panelOpen', 'after');
   api.setPanelOpen(visible());
+  dock?.setPanelOpen(visible());
   if (visible()) bump('shown');
   renderBubble(visible());
 };
-
-// ---------- now-playing strip ----------
-
-const strip = document.getElementById('player-strip')!;
-const renderStrip = () => {
-  const track = music.nowPlaying;
-  strip.hidden = !track;
-  if (!track) return;
-  const queueList = music.queue ? data.playlists.find((p) => p.id === music.queue!.playlistId) : null;
-  const badge = document.getElementById('player-badge')!;
-  const mode = petStore.getState().timer.mode;
-  badge.textContent = queueList ? queueList.name : track.player === 'Local' ? '내 음악' : track.player.toUpperCase();
-  badge.className = `badge ${queueList ? (mode === 'break' ? 'break' : 'focus') : ''}`;
-  const title = document.getElementById('player-title')!;
-  const label = `${track.title}${track.artist ? ` — ${track.artist}` : ''}`;
-  if (title.textContent !== label) {
-    title.textContent = label;
-    title.classList.toggle('scroll', label.length > 26);
-  }
-  const toggle = document.getElementById('player-toggle')!;
-  toggle.innerHTML = pixelIcon(track.state === 'playing' ? 'pause' : 'play');
-  toggle.setAttribute('aria-label', track.state === 'playing' ? '일시정지' : '재생');
-};
-document.getElementById('player-toggle')!.addEventListener('click', () => void music.toggle());
-document.getElementById('player-next')!.addEventListener('click', () => void music.next());
 
 // ---------- session bookkeeping on timer transitions ----------
 
@@ -114,7 +91,6 @@ const watchSession = () => {
     }
     renderActive('session');
     renderBubble(visible());
-    renderStrip();
   });
 };
 
@@ -126,6 +102,7 @@ const installLayoutSync = () => {
   const report = () => api.reportPetLayout({ petAreaHeight: petArea.offsetHeight, petWidth: pet.offsetWidth });
   new ResizeObserver(report).observe(petArea);
   api.onLayout(({ below, petDx, panelHeight }) => {
+    dock?.setLayout(petDx, pet.offsetWidth);
     document.body.classList.toggle('below', below);
     document.body.style.setProperty('--pet-dx', `${petDx}px`);
     document.body.style.setProperty('--panel-height', panelHeight > 0 ? `${panelHeight}px` : 'none');
@@ -151,7 +128,6 @@ const installClickThrough = () => {
 const boot = async () => {
   installErrorLogging();
   installTokens();
-  document.getElementById('player-next')!.innerHTML = pixelIcon('next');
   installTooltip();
   await Promise.all([refreshAll(), whenHydrated(), characterReady]);
   try {
@@ -193,10 +169,7 @@ const boot = async () => {
     }
     renderActive(kind);
   });
-  onMusic(() => {
-    renderStrip();
-    renderActive('music');
-  });
+  onMusic(() => renderActive('music'));
   api.onNowPlaying((nowPlaying) => void handleNowPlaying(nowPlaying));
 
   // Commands and edits coming from AI assistants over MCP.
@@ -216,6 +189,23 @@ const boot = async () => {
     if (kind === 'settings') void refreshSettings();
   });
 
+  // The dock beside her (src/ui/dock): the talk button and a few widgets.
+  const petArea = document.getElementById('pet-area')!;
+  const petUnit = document.getElementById('pet-unit')!;
+  const canvas = document.getElementById('pet')!;
+  dock = mountDock(document.getElementById('pet-body')!, {
+    windowWidth: window.innerWidth,
+    onhover: pauseWalking,
+    onheight: (px) => {
+      // the window keeps room for a dock taller than she is, and what is over
+      // her head (bubble, quick chat) stays as narrow as she is beside it
+      petArea.style.minHeight = px > 0 ? `${px}px` : '';
+      if (px > canvas.offsetHeight) petUnit.style.setProperty('--head-width', `${canvas.offsetWidth}px`);
+      else petUnit.style.removeProperty('--head-width');
+    }
+  });
+  onNearChange(() => dock?.setFriend(nearestFriend()?.dx ?? null));
+
   watchSession();
   installClickThrough();
   installLayoutSync();
@@ -225,7 +215,7 @@ const boot = async () => {
     showActiveSession();
     if (!visible()) togglePanel();
     showModule('chat');
-  });
+  }, document.getElementById('dock-talk')!);
   // The tray menu and the chat shortcut (main/tray.ts, main.ts).
   api.onTogglePanel(togglePanel);
   api.onOpenQuickChat(chatBar.openInput);
@@ -247,14 +237,13 @@ const boot = async () => {
       lockedSince = null;
     }
     if (data.todayKey !== toDateKey(new Date(now))) void refreshStats();
-    // the pomodoro tab and the home board's timer widget show the clock
+    // the pomodoro tab, the home board's timer widget and the dock show the clock
     const active = panelUi?.active();
-    if (visible() && (active === 'pomodoro' || active === 'home')) bump('clock');
+    if (!visible() || active === 'pomodoro' || active === 'home') bump('clock');
     renderBubble(visible());
   }, 250);
 
   renderBubble(false);
-  renderStrip();
 };
 
 // A friend pet window (main/friends.ts): just the character, wandering and

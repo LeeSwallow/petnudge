@@ -30,8 +30,8 @@
 </div>
 
 <style>
-  .timer { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
-  .readout { display: flex; align-items: baseline; gap: var(--space-2); min-width: 0; }
+  .timer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); }
+  .readout { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2); min-width: 0; }
   .digits { font: var(--type-digits-md) var(--font-digits); color: var(--color-ink); }
   .digits.paused { color: var(--color-muted); }
   .phase { font: var(--type-small) var(--font-small); }

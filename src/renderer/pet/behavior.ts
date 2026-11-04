@@ -19,8 +19,15 @@ export const holdStill = (ms: number) => {
   holdUntil = Date.now() + ms;
 };
 
+// The pointer is over the dock beside her: she waits, so a button does not
+// walk away from under it.
+let pointerOnDock = false;
+export const pauseWalking = (paused: boolean) => {
+  pointerOnDock = paused;
+};
+
 const freeToWalk = () =>
-  Date.now() >= holdUntil && idle() && data.settings.walkAround && !data.settings.reduceMotion && Boolean(pack.states.walkL && pack.states.walkR);
+  Date.now() >= holdUntil && !pointerOnDock && idle() && data.settings.walkAround && !data.settings.reduceMotion && Boolean(pack.states.walkL && pack.states.walkR);
 
 let walking: ReturnType<typeof startWalking> | null = null;
 const emoter = createEmoter();
