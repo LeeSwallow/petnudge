@@ -46,13 +46,14 @@ describe('studySession', () => {
     expect(session.progress.completedSessions).toBe(1);
   });
 
-  it('queues newly unlocked rewards for the UI', () => {
+  it('has nothing to unlock: no reward queue after sessions', () => {
     let session = createInitialSession();
     for (let i = 0; i < 4; i += 1) {
       session = finishFocusIfDue(beginFocus(session, 0), 25 * MINUTE, '2026-10-15');
     }
 
-    expect(session.pendingUnlocks).toEqual(['place-rain-cafe']);
+    expect(session.progress.completedSessions).toBe(4);
+    expect(session).not.toHaveProperty('pendingUnlocks');
   });
 
   it('abandoning focus returns to planning without rewards', () => {

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { EXP_PER_LEVEL, getLevel, unlockables } from '../../../domain/progress/progress';
+  import { EXP_PER_LEVEL, getLevel } from '../../../domain/progress/progress';
   import { api } from '../../../renderer/api';
   import { esc, heatLegend, heatmap, hourBars, splitBar, weekBars } from '../../../renderer/charts';
   import { data, STATS_WEEKS } from '../../../renderer/data';
@@ -92,8 +92,7 @@
       rate: completionRate(completed, abandoned),
       moodIndex: averageMood === null ? null : Math.round(averageMood) - 1,
       level: getLevel(progress.exp),
-      exp,
-      nextUnlock: unlockables.find((u) => !progress.unlockedIds.includes(u.id))
+      exp
     };
   });
 
@@ -129,9 +128,6 @@
   <div class="bar-row"><span>Lv.{stats.level}</span>{@html splitBar(stats.exp, EXP_PER_LEVEL, 'var(--long)', `경험치 ${stats.exp}/${EXP_PER_LEVEL}`)}<span class="value">{stats.exp}/{EXP_PER_LEVEL}</span></div>
   <div class="bar-row"><span>오늘</span>{@html splitBar(stats.today.minutes, stats.goalMinutes, 'var(--focus)', `오늘 ${formatMinutes(stats.today.minutes)} / 목표 ${formatMinutes(stats.goalMinutes)}`)}<span class="value">{Math.min(100, Math.round((stats.today.minutes / stats.goalMinutes) * 100))}%</span></div>
   <div class="bar-row"><span>주간</span>{@html splitBar(stats.weekMinutes, stats.goalMinutes * 5, 'var(--break)', `이번 7일 ${formatMinutes(stats.weekMinutes)} / 주 5일 목표 ${formatMinutes(stats.goalMinutes * 5)}`)}<span class="value">{formatMinutes(stats.weekMinutes)}</span></div>
-  {#if stats.nextUnlock}
-    <div class="bar-row"><span>해금</span>{@html splitBar(stats.progress.completedSessions, stats.nextUnlock.requiredSessions, 'var(--goal)', `${stats.nextUnlock.title}까지 ${Math.max(0, stats.nextUnlock.requiredSessions - stats.progress.completedSessions)}세션`)}<span class="value">{stats.progress.completedSessions}/{stats.nextUnlock.requiredSessions}</span></div>
-  {/if}
 </div>
 <div class="section-title">최근 7일 <small>블록 1칸 = 25분</small></div>
 <div id="week">{@html weekBars(stats.week, stats.goalMinutes, data.todayKey)}</div>

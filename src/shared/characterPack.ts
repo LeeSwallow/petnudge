@@ -23,6 +23,7 @@ export type StateDef = {
 };
 export type Recolor = { layers?: string[]; region?: string; map: Record<string, string> };
 // `hides`: layers not drawn while this variant is worn (hair that would poke out of a hood).
+// `unlock` is read from older packs and ignored (unlocks were removed, #38).
 export type Variant = { label: string; recolor?: Recolor; unlock?: string; hides?: string[] };
 export type Slot = { label: string; swatch?: string; variants: Record<string, Variant> };
 // `from: 'slot'` draws cell `<id>.<variant>`. `from: 'face'` draws
