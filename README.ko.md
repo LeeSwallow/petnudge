@@ -176,7 +176,7 @@ flowchart LR
 지금 가장 도움이 되는 건 하루 써 보고 무엇을 기대했는지 알려 주시는 것입니다.
 그 밖에는 이런 방법이 있습니다.
 
-- [버그 제보](https://github.com/LeeSwallow/petnudge/issues/new?template=bug.yml)
+- [버그 제보](https://github.com/LeeSwallow/petnudge/issues/new?template=bug.yml): 설정 › 문제 해결 › 진단 정보 복사로 버전과 최근 오류를 붙여 주세요 (대화·메모·키는 담기지 않아요)
 - [기능 제안](https://github.com/LeeSwallow/petnudge/issues/new?template=feature.yml)
 - [새 캐릭터](https://github.com/LeeSwallow/petnudge/issues/new?template=character.yml): 직접 그렸고, 다른 사람이 써도 되는 라이선스인 캐릭터
 - 앱 번역 (지금은 한국어, 다음은 영어와 일본어)

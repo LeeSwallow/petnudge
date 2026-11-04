@@ -177,7 +177,7 @@ into those layers module by module. More in [docs/architecture.md](docs/architec
 The most useful thing right now is to use it for a day and say what you
 expected. Then:
 
-- a [bug report](https://github.com/LeeSwallow/petnudge/issues/new?template=bug.yml),
+- a [bug report](https://github.com/LeeSwallow/petnudge/issues/new?template=bug.yml), with Settings › 문제 해결 › 진단 정보 복사 pasted in (versions and recent errors; no chats, notes or keys),
 - a [feature request](https://github.com/LeeSwallow/petnudge/issues/new?template=feature.yml),
 - a [new character](https://github.com/LeeSwallow/petnudge/issues/new?template=character.yml): drawn by you, under a license that lets others use it,
 - a translation of the app (Korean today; English and Japanese next).

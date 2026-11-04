@@ -36,6 +36,12 @@ body:
       description: A screenshot or a screen recording helps most.
     validations:
       required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: Settings › 문제 해결 › 진단 정보 복사, pasted here. It holds the versions and the latest warnings and errors; chats, notes and keys are left out.
+      render: text
   - type: dropdown
     id: fix
     attributes:

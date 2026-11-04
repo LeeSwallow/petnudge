@@ -141,6 +141,13 @@
     }, 1500);
   };
 
+  let diagnosticsCopied = $state(false);
+  const copyDiagnostics = async () => {
+    await navigator.clipboard.writeText(await api.diagnostics());
+    diagnosticsCopied = true;
+    setTimeout(() => (diagnosticsCopied = false), 1500);
+  };
+
   const step = (key: NumberKey, by: number) => void updateSettings({ [key]: data.settings[key] + by } as Partial<AppSettings>);
   const toggle = (key: BoolKey, on: boolean) => void updateSettings({ [key]: on } as Partial<AppSettings>);
 </script>
@@ -254,6 +261,14 @@
       {@render copyRow('Cursor (~/.cursor/mcp.json)', JSON.stringify({ mcpServers: { petnudge: { url: mcp.url, headers: { Authorization: `Bearer ${mcp.token}` } } } }))}
       <div class="hint">토큰은 이 컴퓨터에만 저장돼요. 다른 사람에게 공유하지 마세요.</div>
     {/if}
+  </div>
+  <div class="section-title">문제 해결</div>
+  <div class="frame well setting-group" id="troubleshoot">
+    <div class="row">
+      <button type="button" class="grow" id="open-logs" onclick={() => void api.openLogs()}>로그 폴더 열기</button>
+      <button type="button" class="grow" id="copy-diagnostics" onclick={copyDiagnostics}>{diagnosticsCopied ? '복사됨!' : '진단 정보 복사'}</button>
+    </div>
+    <div class="hint">문제가 생기면 진단 정보를 복사해 버그 신고에 붙여 주세요. 버전과 최근 오류만 담기고, 대화·메모·키는 담기지 않아요.</div>
   </div>
   <div class="row">
     <button type="button" class="grow" id="reset-position" onclick={() => api.resetPosition()}>{@html pixelIcon('home')} 펫 위치 초기화</button>

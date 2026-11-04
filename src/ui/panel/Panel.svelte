@@ -2,7 +2,10 @@
   import { flushSync } from 'svelte';
   import type { ModuleId, UiModule } from '../modules/module';
   import { pixelIcon } from '../../renderer/icons';
+  import Button from '../components/Button.svelte';
+  import EmptyState from '../components/EmptyState.svelte';
   import Tabs from '../components/Tabs.svelte';
+  import { logError } from '../log';
   import { DEFAULT_MODULE, GROUPS, groupOf, visibleGroups, type GroupId } from './groups';
 
   type Props = {
@@ -47,7 +50,16 @@
   <div class="module-host">
     {#each modules as module (module.id)}
       <div class="tab-body" role="tabpanel" aria-label={module.label} data-body={module.id} hidden={module.id !== current}>
-        <module.component />
+        <!-- one tab failing leaves the others working; the failure goes to the log -->
+        <svelte:boundary onerror={(error) => logError(`panel:${module.id}`, error)}>
+          <module.component />
+          {#snippet failed(_error, reset)}
+            <div class="module-failed" data-failed={module.id}>
+              <EmptyState text="이 탭에 문제가 생겼어요" />
+              <Button onclick={reset}>다시 시도</Button>
+            </div>
+          {/snippet}
+        </svelte:boundary>
       </div>
     {/each}
   </div>
@@ -87,5 +99,6 @@
     cursor: pointer;
   }
   .quit:hover { color: #ff8fa3; border-color: #df6074; }
+  .module-failed { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); }
   .quit:focus-visible { outline: var(--stroke-frame) solid var(--color-goal); outline-offset: -2px; }
 </style>
