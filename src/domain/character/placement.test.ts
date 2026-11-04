@@ -3,7 +3,7 @@ import { buildPack } from './buildPack';
 import { findPart, type CharacterDraft } from './parts';
 import { blank, bounds, hexToPixel, type Pixels } from './pixels';
 import {
-  addPart, bringForward, canSetParent, clampMove, clearPart, composite, copyParts, deletePart, setMerged, drawOrder, emptyDraft, feetLine, framePicture, headBox, movePart,
+  addPart, bringForward, canSetParent, clampMove, clearPart, composite, copyParts, deletePart, setBodyKind, setMerged, drawOrder, emptyDraft, feetLine, framePicture, headBox, movePart,
   newPartId, partAt, partIds, placeBeside, resizeCanvas, sendBackward, setOrder, setParent, setPivot, setPixels, updatePart
 } from './placement';
 
@@ -200,10 +200,12 @@ describe('canvas size', () => {
 });
 
 describe('the body and other characters', () => {
-  it('sets whether the body is one piece', () => {
+  it('sets whether the body is one piece, and whether it stands on feet', () => {
     const d = setMerged(two(), true);
     expect(d.body).toEqual({ kind: 'biped', merged: true });
     expect(setMerged(d, true)).toBe(d);
+    expect(setBodyKind(d, 'legless').body).toEqual({ kind: 'legless', merged: true });
+    expect(setBodyKind(d, 'biped')).toBe(d);
   });
 
   it('copies parts from another character: same id replaced, others added, pictures moved to this canvas', () => {

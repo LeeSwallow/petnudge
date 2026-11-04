@@ -89,7 +89,7 @@ export type PoseDef = string | { cell: string; whole?: boolean; wears?: Record<s
 // can open it again: the body category and each part's label, parent, role
 // and pivot. The runtime does not read it (layers already follow their parents).
 export type EditorPartMeta = { id: string; label: string; parent: string; role?: string; pivot?: [number, number] };
-export type EditorMeta = { version: 1; body?: { kind: 'biped'; merged: boolean }; parts?: EditorPartMeta[] };
+export type EditorMeta = { version: 1; body?: { kind: 'biped' | 'legless'; merged: boolean }; parts?: EditorPartMeta[] };
 
 export type CharacterPack = {
   format: PackFormat;

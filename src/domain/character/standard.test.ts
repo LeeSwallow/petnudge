@@ -10,13 +10,15 @@ const rect = ([x0, y0, x1, y1]: [number, number, number, number], w = 96, h = 11
 };
 
 describe('starter templates', () => {
-  it('are four starting points, from a one-piece critter to a tall person', () => {
-    expect(TEMPLATES.map((t) => [t.id, t.canvas.w, t.canvas.h, t.merged])).toEqual([
-      ['critter', 72, 72, true],
-      ['chibi', 80, 96, false],
-      ['lila', 96, 112, false],
-      ['tall', 64, 160, false]
+  it('are five starting points, from a floating body to a tall person', () => {
+    expect(TEMPLATES.map((t) => [t.id, t.kind, t.canvas.w, t.canvas.h, t.merged])).toEqual([
+      ['floater', 'legless', 64, 64, true],
+      ['critter', 'biped', 72, 72, true],
+      ['chibi', 'biped', 80, 96, false],
+      ['lila', 'biped', 96, 112, false],
+      ['tall', 'biped', 64, 160, false]
     ]);
+    expect(fromTemplate('floater').parts.map((p) => [p.id, p.role, p.parent])).toEqual([['body', 'body', 'root'], ['eye.l', 'eye', 'body'], ['eye.r', 'eye', 'body'], ['mouth', 'mouth', 'body']]);
     expect(TEMPLATES.every((t) => t.label.length > 0)).toBe(true);
   });
 
@@ -34,7 +36,7 @@ describe('starter templates', () => {
       const d = fromTemplate(t.id);
       expect(d.parts.every((p) => p.pixels.w === t.canvas.w && p.pixels.h === t.canvas.h && !bounds(p.pixels))).toBe(true);
       // only missing pictures are wrong with a fresh template
-      expect(new Set(draftProblems(d).map((p) => p.code))).toEqual(new Set(t.merged ? ['body', 'feet'] : ['body', 'feet', 'head']));
+      expect(new Set(draftProblems(d).map((p) => p.code))).toEqual(new Set(t.merged ? ['body'] : ['body', 'head']));
     }
   });
 

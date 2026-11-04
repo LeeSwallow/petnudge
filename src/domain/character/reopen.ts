@@ -65,7 +65,7 @@ export const draftFromPack = (pack: CharacterPack, layers: readonly SourceLayer[
   const draft: CharacterDraft = {
     ...identity,
     canvas: { w, h },
-    body: { kind: 'biped', merged: pack.editor?.body?.merged ?? !parts.some((p) => p.role === 'head') },
+    body: { kind: pack.editor?.body?.kind ?? (parts.some((p) => p.role === 'foot') ? 'biped' : 'legless'), merged: pack.editor?.body?.merged ?? !parts.some((p) => p.role === 'head') },
     parts,
     ...(Object.keys(expressions).length ? { expressions } : {})
   };

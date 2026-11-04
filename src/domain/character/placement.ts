@@ -1,7 +1,7 @@
 import type { Box, Move } from './pack';
 import {
   ancestorsOf, clampCanvas, findPart, isPartId, isVariantName, MAX_DEPTH, partBox, picturesOf, restVariant, ROOT, subtreeOf, unionBox,
-  type CharacterDraft, type Part, type Role
+  type BodyKind, type CharacterDraft, type Part, type Role
 } from './parts';
 import { blank, over, shift, type Pixels } from './pixels';
 import { DEFAULT_TEMPLATE, fromTemplate, type TemplateId } from './standard';
@@ -239,6 +239,9 @@ export const resizeCanvas = (draft: CharacterDraft, w: number, h: number): { dra
 
 // Whether the body is one piece with the head (then a head part is not needed).
 export const setMerged = (draft: CharacterDraft, merged: boolean): CharacterDraft => (draft.body.merged === merged ? draft : { ...draft, body: { ...draft.body, merged } });
+
+// On feet (biped) or without legs (legless: it hovers instead of hopping when it has no feet).
+export const setBodyKind = (draft: CharacterDraft, kind: BodyKind): CharacterDraft => (draft.body.kind === kind ? draft : { ...draft, body: { ...draft.body, kind } });
 
 // Parts of another character into this draft: a part with the same id gets
 // its pictures, any other is added at the front with its label, role and

@@ -35,7 +35,8 @@ const EXPRESSION_NAME = /^[a-zA-Z][a-zA-Z0-9-]{0,31}$/;
 // Template states: moves on role targets. `upper` is the body (the top one),
 // `head` the head (the body when it is one piece), `legL`/`legR` the feet on
 // the left and right of the picture, `armL`/`armR` the hands. Walking flips
-// the picture toward where she goes (art faces left, walkR is mirrored) and bobs.
+// the picture toward where she goes (art faces left, walkR is mirrored) and
+// bobs; with no feet it hops or hovers instead (below).
 type Target = 'upper' | 'head' | 'legL' | 'legR' | 'armL' | 'armR';
 type TemplateFrame = Omit<FrameDef, 'move'> & { move?: Partial<Record<Target, Move>> };
 type TemplateState = Omit<StateDef, 'start' | 'loop'> & { start?: TemplateFrame[]; loop: TemplateFrame[] };
@@ -45,7 +46,17 @@ const WALK: TemplateFrame[] = [
   { ms: 130 },
   { ms: 130, dy: -1, move: { legR: [0, -1], armL: [0, 1] } }
 ];
-const walk = (flip: boolean): TemplateFrame[] => WALK.map((f) => (flip ? { ...f, flip } : f));
+// Without feet: a body on the ground hops (squash, up, down), a legless one
+// hovers along with a slow bob. The whole picture moves; nothing steps.
+const HOP: TemplateFrame[] = [
+  { ms: 120, move: { upper: [0, 1] } },
+  { ms: 110, dy: -2 },
+  { ms: 130, dy: -3 },
+  { ms: 110, dy: -1 }
+];
+const HOVER: TemplateFrame[] = [{ ms: 220 }, { ms: 220, dy: -1 }, { ms: 220, dy: -2 }, { ms: 220, dy: -1 }];
+const flipped = (frames: TemplateFrame[], flip: boolean): TemplateFrame[] => frames.map((f) => (flip ? { ...f, flip } : f));
+const walk = (flip: boolean) => flipped(WALK, flip);
 
 const TEMPLATE_STATES: Record<string, TemplateState> = {
   idle: { look: true, blink: { everyMs: 4200, ms: 140 }, loop: [{ ms: 700 }, { ms: 350, move: { upper: [0, -1] } }, { ms: 500, move: { upper: [0, -1] } }, { ms: 350, move: { upper: [0, -1] } }, { ms: 600 }] },
@@ -135,7 +146,9 @@ export const buildPack = (draft: CharacterDraft): BuiltPack => {
     }
     return Object.keys(out).length ? { ...rest, move: out } : { ...rest };
   };
-  const states: Record<string, StateDef> = Object.fromEntries(Object.entries(TEMPLATE_STATES).map(([name, s]) => [
+  const gait = feetL.length + feetR.length ? undefined : draft.body.kind === 'legless' ? HOVER : HOP;
+  const template: Record<string, TemplateState> = gait ? { ...TEMPLATE_STATES, walkL: { loop: flipped(gait, false) }, walkR: { loop: flipped(gait, true) } } : TEMPLATE_STATES;
+  const states: Record<string, StateDef> = Object.fromEntries(Object.entries(template).map(([name, s]) => [
     name,
     { ...s, ...(s.start ? { start: s.start.map(frameOf) } : {}), loop: s.loop.map(frameOf) } as StateDef
   ]));
@@ -199,7 +212,8 @@ export const buildPack = (draft: CharacterDraft): BuiltPack => {
     name: draft.name.trim(),
     ...(persona ? { persona } : {}),
     frame: { w, h },
-    feetY: Math.max(...withRole('foot').map((d) => d.box[3])),
+    // On the ground: the lowest foot, or the lowest pixel of a body without feet.
+    feetY: Math.max(...(withRole('foot').length ? withRole('foot') : drawn).map((d) => d.box[3])),
     sheet: 'sheet.png',
     // One row, in layer order: a preview can draw from the layers as they are.
     cells: Object.fromEntries(pictures.map(({ name }, i) => [name, [i * w, 0] as [number, number]])),

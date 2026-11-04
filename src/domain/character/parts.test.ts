@@ -34,12 +34,13 @@ describe('the part model', () => {
     expect(draftProblems(draft(biped()))).toEqual([]);
   });
 
-  it('needs a drawn body and two drawn feet', () => {
-    expect(codes(draft(biped().filter((p) => p.role !== 'body')))).toContain('body');
-    expect(codes(draft(biped().filter((p) => p.id !== 'foot.r')))).toContain('feet');
+  it('needs only a drawn body: feet are optional, a body alone is a whole (legless) character', () => {
+    expect(codes(draft(biped().filter((p) => p.role !== 'body')))).toContain('body'); // (and the eye hangs on nothing)
     const empty = biped();
-    empty[0] = { ...empty[0], pixels: blank(W, H) };
-    expect(codes(draft(empty))).toContain('feet');
+    empty[2] = { ...empty[2], pixels: blank(W, H) };
+    expect(codes(draft(empty))).toEqual(['body']);
+    expect(draftProblems(draft(biped().filter((p) => p.role !== 'foot')))).toEqual([]);
+    expect(draftProblems(draft(biped().filter((p) => p.id !== 'foot.r'), { body: { kind: 'legless', merged: true } }))).toEqual([]);
   });
 
   it('needs a head unless the body is merged', () => {

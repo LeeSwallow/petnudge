@@ -13,7 +13,7 @@ const frame = z.object({
 // The editor's part structure (#71): read back when the editor opens the pack again.
 const editorMeta = z.object({
   version: z.literal(1),
-  body: z.object({ kind: z.literal('biped'), merged: z.boolean() }).optional(),
+  body: z.object({ kind: z.enum(['biped', 'legless']), merged: z.boolean() }).optional(),
   parts: z.array(z.object({ id: name, label: z.string().max(40), parent: name, role: name.optional(), pivot: z.tuple([integer.min(0), integer.min(0)]).optional() })).max(64).optional()
 });
 const schema = z.object({

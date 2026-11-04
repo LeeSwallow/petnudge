@@ -25,7 +25,7 @@ const filled = (template: TemplateId): CharacterDraft => {
   const d = fromTemplate(template);
   const { w, h } = d.canvas;
   const at = ([x0, y0, x1, y1]: Rect): Rect => [Math.floor((x0 * w) / 16), Math.floor((y0 * h) / 16), Math.floor((x1 * w) / 16), Math.floor((y1 * h) / 16)];
-  const art = { ...ART, ...(template === 'critter' ? CRITTER_EYES : {}) };
+  const art = { ...ART, ...(template === 'critter' || template === 'floater' ? CRITTER_EYES : {}) };
   const parts: Part[] = d.parts.map((p) => {
     const box = at(art[p.id]);
     const pixels = rectOn(w, h, box);
@@ -47,7 +47,7 @@ describe('buildPack', () => {
     expect(pack.editor!.parts!.find((p) => p.id === 'eye.l')).toEqual({ id: 'eye.l', label: '왼눈', parent: 'head', role: 'eye' });
   });
 
-  it.each(['critter', 'chibi', 'lila', 'tall'] as const)('builds the %s template at its own canvas size', (template) => {
+  it.each(['floater', 'critter', 'chibi', 'lila', 'tall'] as const)('builds the %s template at its own canvas size', (template) => {
     const d = filled(template);
     const { w, h } = d.canvas;
     const { pack, layers } = buildPack(d);
@@ -70,13 +70,16 @@ describe('buildPack', () => {
     expect(pack.regions.eyes).toEqual([boxOf('eye.l'), boxOf('eye.r')]);
     // every layer follows its ancestors' regions and its own, eyes also glance
     const follow = Object.fromEntries(pack.layers.map((l) => [l.id, l.follow]));
-    if (template === 'critter') {
+    if (template === 'floater') {
+      expect(follow).toEqual({ body: ['body'], 'eye.l': ['body', 'eye.l', 'eyes'], 'eye.r': ['body', 'eye.r', 'eyes'], mouth: ['body', 'mouth'] });
+    } else if (template === 'critter') {
       expect(follow).toEqual({ 'foot.l': ['foot.l'], 'foot.r': ['foot.r'], body: ['body'], 'eye.l': ['body', 'eye.l', 'eyes'], 'eye.r': ['body', 'eye.r', 'eyes'], mouth: ['body', 'mouth'] });
     } else {
       expect(follow).toMatchObject({ body: ['body'], 'leg.l': ['leg.l'], 'arm.r': ['body', 'arm.r'], head: ['body', 'head'], 'eye.l': ['body', 'head', 'eye.l', 'eyes'], mouth: ['body', 'head', 'mouth'], 'hair.front': ['body', 'head', 'hair.front'] });
     }
-    // feet on the ground: the lowest foot pixel
-    expect(pack.feetY).toBe(Math.max(...d.parts.filter((p) => p.role === 'foot').map((p) => boxOf(p.id)[3])));
+    // feet on the ground: the lowest foot pixel, or the lowest pixel of a body without feet
+    const feet = d.parts.filter((p) => p.role === 'foot');
+    expect(pack.feetY).toBe(Math.max(...(feet.length ? feet : d.parts).map((p) => boxOf(p.id)[3])));
     // template moves only name regions it has, and every state is there
     expect(Object.keys(pack.states)).toEqual(['idle', 'patted', 'pouty', 'poked', 'dragged', 'sleep', 'celebrate', 'walkL', 'walkR']);
     for (const f of framesOf(pack.states)) for (const r of Object.keys(f.move ?? {})) expect(pack.regions[r]).toBeDefined();
@@ -156,10 +159,43 @@ describe('buildPack', () => {
     expect(pack.regions.head).toBeUndefined();
   });
 
-  it('refuses a draft that is not a whole biped, saying what is missing', () => {
+  it('refuses a draft without a body, or without a head when the body is not one piece', () => {
     const d = filled('lila');
     expect(() => buildPack({ ...d, parts: d.parts.filter((p) => p.role !== 'body') })).toThrow(/몸/);
-    expect(() => buildPack({ ...d, parts: d.parts.filter((p) => p.id !== 'leg.r') })).toThrow(/발/);
     expect(() => buildPack({ ...d, parts: d.parts.filter((p) => p.id !== 'head') })).toThrow(/머리/);
+    expect(() => buildPack({ ...d, parts: d.parts.filter((p) => p.id !== 'leg.r') })).not.toThrow(); // feet are optional
+  });
+
+  it('builds a legless floating body: no feet, it hovers instead of stepping', () => {
+    const d = filled('floater');
+    const { pack } = buildPack(d);
+    expect(pack.editor!.body).toEqual({ kind: 'legless', merged: true });
+    expect(Object.keys(pack.regions)).toEqual(['body', 'eye.l', 'eye.r', 'mouth', 'eyes']);
+    // hit areas from roles: the one-piece body split into head, chest and belly
+    expect(Object.keys(pack.hitAreas!)).toEqual(['head', 'chest', 'belly']);
+    expect(Object.keys(pack.actions!)).toEqual(['pat', 'pokeChest', 'pokeBelly']);
+    // walking: the whole body bobs up and down, no part steps; flipped toward where it goes
+    const walk = pack.states.walkL.loop;
+    expect(walk.flatMap((f) => Object.keys(f.move ?? {}))).toEqual([]);
+    expect(new Set(walk.map((f) => f.dy ?? 0)).size).toBeGreaterThan(1);
+    expect(walk.every((f) => (f.dy ?? 0) <= 0)).toBe(true);
+    expect(pack.states.walkR.loop.every((f) => f.flip)).toBe(true);
+    expect(pack.states.walkR.loop.map((f) => f.dy)).toEqual(walk.map((f) => f.dy));
+    // expressions from the eyes and the mouth, blinking too
+    expect(pack.expressions!.closed).toEqual({ 'eye.l': 'closed', 'eye.r': 'closed', mouth: 'closed' });
+    expect(pack.expressions!.talkA).toMatchObject({ mouth: 'open' });
+    expect(pack.states.idle.blink).toBeDefined();
+    // no state moves a region it does not have
+    for (const f of framesOf(pack.states)) for (const r of Object.keys(f.move ?? {})) expect(pack.regions[r]).toBeDefined();
+  });
+
+  it('a critter without feet hops: squash, then up, the whole body', () => {
+    const d = filled('critter');
+    const { pack } = buildPack({ ...d, parts: d.parts.filter((p) => p.role !== 'foot') });
+    const walk = pack.states.walkL.loop;
+    expect(Math.min(...walk.map((f) => f.dy ?? 0))).toBeLessThanOrEqual(-2);
+    expect(walk.some((f) => f.move?.body)).toBe(true); // the squash before the hop
+    expect(walk.flatMap((f) => Object.keys(f.move ?? {})).every((r) => r === 'body')).toBe(true);
+    expect(pack.feetY).toBe(54); // the body's lowest pixel (12/16 of 72)
   });
 });

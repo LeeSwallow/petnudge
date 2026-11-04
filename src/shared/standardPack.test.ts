@@ -7,7 +7,7 @@ import { validateImportedPack } from './characterImport';
 import { validatePack, type CharacterPack } from './characterPack';
 
 // Every template filled with synthetic boxes (in 1/16ths of the canvas), so
-// one table fits every proportion from the critter to the tall person.
+// one table fits every proportion from the floating body to the tall person.
 type Rect = [number, number, number, number];
 const ART: Record<string, Rect> = {
   body: [5, 6, 11, 12], 'leg.l': [6, 12, 8, 15], 'leg.r': [8, 12, 10, 15], 'foot.l': [5, 12, 7, 15], 'foot.r': [9, 12, 11, 15],
@@ -44,7 +44,7 @@ describe('standard pack @3', () => {
     const imported = roundTrip(d);
     expect(imported.format).toBe('study-pet-character@3');
     expect(imported.frame).toEqual(d.canvas);
-    expect(imported.editor).toMatchObject({ version: 1, body: { kind: 'biped', merged: id === 'critter' } });
+    expect(imported.editor).toMatchObject({ version: 1, body: { kind: id === 'floater' ? 'legless' : 'biped', merged: id === 'critter' || id === 'floater' } });
     expect(imported.editor!.parts!.map((p) => p.id)).toEqual(d.parts.map((p) => p.id));
     expect(imported.states.walkR.loop[0].flip).toBe(true);
     expect(Object.keys(imported.expressions!)).toContain('closed');

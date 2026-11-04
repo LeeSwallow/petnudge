@@ -1,17 +1,17 @@
-import { findPart, ROOT, type CharacterDraft, type DraftLines, type Part, type Role } from './parts';
+import { findPart, ROOT, type BodyKind, type CharacterDraft, type DraftLines, type Part, type Role } from './parts';
 import { blank, bounds, type Pixels } from './pixels';
 
 // Starter templates (#71): where a new character starts. A template is only a
 // prefilled list of empty parts with their roles and parents, on a canvas of
 // its proportions; every part can be renamed, re-parented or deleted, and
-// more can be added. And the older drafts (#54, fixed layer names like
+// more can be added; feet are optional (a critter stands or hops). And the older drafts (#54, fixed layer names like
 // `torso.chest`, `eye.L.open`) mapped onto parts, so they still load.
 
 export type { CharacterDraft, DraftLines } from './parts';
 
-export type TemplateId = 'critter' | 'chibi' | 'lila' | 'tall';
+export type TemplateId = 'floater' | 'critter' | 'chibi' | 'lila' | 'tall';
 type TemplatePart = { id: string; label: string; role: Role; parent: string };
-export type Template = { id: TemplateId; label: string; hint: string; canvas: { w: number; h: number }; merged: boolean; parts: readonly TemplatePart[] };
+export type Template = { id: TemplateId; label: string; hint: string; canvas: { w: number; h: number }; kind: BodyKind; merged: boolean; parts: readonly TemplatePart[] };
 
 const p = (id: string, label: string, role: Role, parent = ROOT): TemplatePart => ({ id, label, role, parent });
 
@@ -32,12 +32,16 @@ const PERSON: readonly TemplatePart[] = [
 
 export const TEMPLATES: readonly Template[] = [
   {
-    id: 'critter', label: '작은 생물', hint: '머리와 몸이 한 덩어리, 72×72', canvas: { w: 72, h: 72 }, merged: true,
+    id: 'floater', label: '떠다니는 몸', hint: '다리 없이 한 덩어리, 64×64', canvas: { w: 64, h: 64 }, kind: 'legless', merged: true,
+    parts: [p('body', '몸', 'body'), p('eye.l', '왼눈', 'eye', 'body'), p('eye.r', '오른눈', 'eye', 'body'), p('mouth', '입', 'mouth', 'body')]
+  },
+  {
+    id: 'critter', label: '작은 생물', hint: '머리와 몸이 한 덩어리, 발은 있어도 없어도, 72×72', canvas: { w: 72, h: 72 }, kind: 'biped', merged: true,
     parts: [p('foot.l', '왼발', 'foot'), p('foot.r', '오른발', 'foot'), p('body', '몸', 'body'), p('eye.l', '왼눈', 'eye', 'body'), p('eye.r', '오른눈', 'eye', 'body'), p('mouth', '입', 'mouth', 'body')]
   },
-  { id: 'chibi', label: '꼬마', hint: '2등신, 80×96', canvas: { w: 80, h: 96 }, merged: false, parts: PERSON },
-  { id: 'lila', label: 'lila형', hint: '4등신, 96×112', canvas: { w: 96, h: 112 }, merged: false, parts: PERSON },
-  { id: 'tall', label: '키 큰 사람', hint: '8등신, 64×160', canvas: { w: 64, h: 160 }, merged: false, parts: PERSON }
+  { id: 'chibi', label: '꼬마', hint: '2등신, 80×96', canvas: { w: 80, h: 96 }, kind: 'biped', merged: false, parts: PERSON },
+  { id: 'lila', label: 'lila형', hint: '4등신, 96×112', canvas: { w: 96, h: 112 }, kind: 'biped', merged: false, parts: PERSON },
+  { id: 'tall', label: '키 큰 사람', hint: '8등신, 64×160', canvas: { w: 64, h: 160 }, kind: 'biped', merged: false, parts: PERSON }
 ];
 
 export const DEFAULT_TEMPLATE: TemplateId = 'lila';
@@ -50,7 +54,7 @@ export const fromTemplate = (id: TemplateId): CharacterDraft => {
     persona: '',
     lines: { pat: [], pokeChest: [], pokeBelly: [] },
     canvas: { ...t.canvas },
-    body: { kind: 'biped', merged: t.merged },
+    body: { kind: t.kind, merged: t.merged },
     parts: t.parts.map((part) => ({ ...part, pixels: blank(t.canvas.w, t.canvas.h) }))
   };
 };
@@ -113,7 +117,7 @@ export const fromLegacyDraft = (old: LegacyDraft): CharacterDraft => {
   });
   const draft: CharacterDraft = {
     id: old.id, name: old.name, persona: old.persona, lines: old.lines, canvas: { ...LEGACY_FRAME },
-    body: { kind: 'biped', merged: !parts.some((part) => part.role === 'head') }, parts
+    body: { kind: parts.some((part) => part.role === 'foot') ? 'biped' : 'legless', merged: !parts.some((part) => part.role === 'head') }, parts
   };
   // A missing parent: the parent's own parent (an eye without a head hangs on the body).
   const parentOf = (id: string): string => {

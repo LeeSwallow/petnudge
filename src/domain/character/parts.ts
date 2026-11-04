@@ -5,8 +5,10 @@ import { bounds, type Pixels } from './pixels';
 // A character is a list of parts the user makes, back to front; nothing about
 // it is a fixed table. A part is a full-canvas picture with a parent (another
 // part or `root`), a pivot, an optional role tag and optional variants (eyes
-// open/closed, a mouth closed/open). The only body category is `biped`: a body
-// and two feet are required, a head only when the body is not one piece.
+// open/closed, a mouth closed/open). Every body but a four-legged animal:
+// `biped` (on feet) or `legless` (a one-piece mascot, a slime, a floating
+// ghost). Only a body part is required; feet are optional; a head is needed
+// only when the body is not one piece with it.
 // Proportions are never a setting: buildPack reads them from the pictures.
 
 export const ROLES = ['body', 'head', 'eye', 'mouth', 'foot', 'hand', 'hair', 'ear', 'tail', 'accessory'] as const;
@@ -26,7 +28,10 @@ export type Part = {
   variants?: Record<string, Pixels>;
 };
 
-export type BodyDef = { kind: 'biped'; merged: boolean };
+// Quadrupeds are left out for now; more kinds can come later.
+export const BODY_KINDS = ['biped', 'legless'] as const;
+export type BodyKind = (typeof BODY_KINDS)[number];
+export type BodyDef = { kind: BodyKind; merged: boolean };
 
 // Reaction lines the user writes in the editor, per interaction.
 export type DraftLines = { pat: string[]; pokeChest: string[]; pokeBelly: string[] };
@@ -103,7 +108,7 @@ export const subtreeOf = (draft: CharacterDraft, id: string): string[] => [id, .
 export const cellsOf = (part: Part): string[] =>
   part.variants && Object.keys(part.variants).length ? [`${part.id}.${restVariant(part)}`, ...Object.keys(part.variants).map((v) => `${part.id}.${v}`)] : [part.id];
 
-export type Problem = { code: 'canvas' | 'id' | 'duplicate' | 'parent' | 'loop' | 'depth' | 'size' | 'variant' | 'cell' | 'count' | 'body' | 'feet' | 'head'; message: string; part?: string };
+export type Problem = { code: 'canvas' | 'id' | 'duplicate' | 'parent' | 'loop' | 'depth' | 'size' | 'variant' | 'cell' | 'count' | 'body' | 'head'; message: string; part?: string };
 
 // What keeps the draft from being a character, each with a message for the user. Empty when it is one.
 export const draftProblems = (draft: CharacterDraft): Problem[] => {
@@ -133,7 +138,6 @@ export const draftProblems = (draft: CharacterDraft): Problem[] => {
   }
   const drawn = (role: Part['role']) => draft.parts.filter((p) => p.role === role && isDrawn(p)).length;
   if (!drawn('body')) out.push({ code: 'body', message: '몸 부위를 그려 주세요' });
-  if (drawn('foot') < 2) out.push({ code: 'feet', message: '발(다리) 부위 두 개를 그려 주세요' });
   if (!draft.body.merged && !drawn('head')) out.push({ code: 'head', message: '머리 부위를 그리거나, 몸을 한 덩어리로 정해 주세요' });
   return out;
 };
