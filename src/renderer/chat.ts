@@ -55,6 +55,10 @@ export const chatState: State = { config: parseChatConfig({}), providers: [], to
 const listeners = new Set<() => void>();
 export const onChat = (listener: () => void) => listeners.add(listener);
 const changed = () => listeners.forEach((listener) => listener());
+// A streamed delta only changes `live` (the reply so far), so it goes to its
+// own listeners: views redraw just the reply in progress, not everything.
+const liveListeners = new Set<() => void>();
+export const onChatLive = (listener: () => void) => liveListeners.add(listener);
 
 const saveSessions = () => {
   chatState.sessions = chatState.sessions.sort((a, b) => b.updatedAt - a.updatedAt).slice(0, MAX_SESSIONS);
@@ -382,8 +386,12 @@ export const startChat = async () => {
     const pending = chatState.pending;
     if (pending?.id !== id) return;
     const session = sessionById(pending.sessionId);
-    if (event.type === 'delta') chatState.live = event.text;
-    else if (session) toolLine(session, event);
+    if (event.type === 'delta') {
+      chatState.live = event.text;
+      liveListeners.forEach((listener) => listener());
+      return;
+    }
+    if (session) toolLine(session, event);
     changed();
   });
   api.onPetCommand((command) => {

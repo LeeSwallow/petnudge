@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ChatMessage } from '../../../shared/chat';
-import { friendIds, isGroup, preview, when } from './logic';
+import { followBottom, friendIds, isGroup, preview, when } from './logic';
 
 const now = new Date(2026, 10, 4, 15, 0).getTime();
 const session = (messages: ChatMessage[], members?: string[]) => ({ id: 's', characterId: 'lila', members, title: '', createdAt: 0, updatedAt: 0, messages });
@@ -26,5 +26,22 @@ describe('chat logic', () => {
     expect(isGroup(['lila'], [])).toBe(false);
     expect(isGroup(['lila', 'moa'], [])).toBe(true);
     expect(isGroup(['lila'], [{ role: 'pet', text: 'hi', speaker: 'guest:민' }])).toBe(true);
+  });
+
+  it('follows the bottom when the view is within the threshold of it', () => {
+    expect(followBottom(600, 1000, 400, 40)).toBe(true); // at the bottom
+    expect(followBottom(561, 1000, 400, 40)).toBe(true); // 39px above it
+    expect(followBottom(560, 1000, 400, 40)).toBe(true); // exactly 40px
+  });
+
+  it('stays put when the reader scrolled further up', () => {
+    expect(followBottom(559, 1000, 400, 40)).toBe(false);
+    expect(followBottom(0, 1000, 400, 40)).toBe(false);
+  });
+
+  it('follows when everything fits, and the threshold defaults to 40px', () => {
+    expect(followBottom(0, 300, 400)).toBe(true);
+    expect(followBottom(560, 1000, 400)).toBe(true);
+    expect(followBottom(559, 1000, 400)).toBe(false);
   });
 });
