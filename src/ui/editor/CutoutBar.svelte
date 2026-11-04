@@ -1,21 +1,35 @@
 <script lang="ts">
-  import { standardPart } from '../../domain/character/standard';
+  import { findPart } from '../../domain/character/parts';
   import { Button } from '../components';
   import { clearSelection, cutout, cutSelection, SELECTION_TYPE, selectAll, setTool, TOOLS } from './cutout.svelte';
   import { editor } from './draft.svelte';
-  import { LAYER_CHOICES, NEW_DECORATION } from './slots';
+  import { picturesFor } from './roles';
 
-  // The cut-out tools under the canvas (#57), while a 원본 picture is loaded:
-  // the canvas tool, select all / clear, how many pixels are selected (drag
-  // that chip onto a layer row to put them there) and 칸에 넣기 with a slot.
+  // The cut-out tools under the canvas (#57, #71), while a 원본 picture is
+  // loaded: the canvas tool, select all / clear, how many pixels are selected
+  // (drag that chip onto a part row to put them there) and 부위에 넣기 with
+  // its target: a part (front-most first), the closed eye or open mouth of an
+  // eye or mouth part, or a new part.
 
-  // The slot 칸에 넣기 fills: the selected part's layer when it has one, else the body.
-  let chosen = $state('torso.chest');
+  const NEW = 'new';
+  const options = $derived(
+    [...editor.draft.parts].reverse().flatMap((part) => picturesFor(part).map(({ variant, label }) => ({ value: variant ? `${part.id}:${variant}` : part.id, label })))
+  );
+  // The target: the selected part when there is one, else the body.
+  let chosen = $state('body');
   $effect(() => {
-    if (editor.selected && standardPart(editor.selected)?.slot !== 'custom') chosen = editor.selected;
+    if (editor.selected) chosen = editor.selected;
   });
 
-  const put = () => cutSelection(chosen === NEW_DECORATION ? { slot: 'custom' } : { layer: chosen });
+  const put = () => {
+    if (chosen === NEW) {
+      const count = editor.draft.parts.length + 1;
+      cutSelection({ newPart: { label: `새 부위 ${count}` } });
+      return;
+    }
+    const [part, variant] = chosen.split(':');
+    cutSelection(findPart(editor.draft, part) ? { part, ...(variant ? { variant } : {}) } : { newPart: { label: '새 부위' } });
+  };
 
   const ondragstart = (e: DragEvent) => {
     e.dataTransfer?.setData(SELECTION_TYPE, String(cutout.count));
@@ -38,21 +52,18 @@
     draggable={cutout.count > 0}
     {ondragstart}
     role="status"
-    title={cutout.count > 0 ? '레이어 줄에 끌어다 놓아도 넣을 수 있어요' : 'Shift: 더하기 · Alt: 빼기'}
+    title={cutout.count > 0 ? '부위 줄에 끌어다 놓아도 넣을 수 있어요' : 'Shift: 더하기 · Alt: 빼기'}
   >{cutout.count > 0 ? `${cutout.count}픽셀` : '고른 픽셀 없음'}</span>
   <label class="target">
-    <span>넣을 칸</span>
+    <span>넣을 부위</span>
     <select bind:value={chosen} data-cut-target>
-      {#each LAYER_CHOICES as group (group.slot)}
-        <optgroup label={group.label}>
-          {#each group.options as option (option.value)}
-            <option value={option.value}>{option.label}</option>
-          {/each}
-        </optgroup>
+      {#each options as option (option.value)}
+        <option value={option.value}>{option.label}</option>
       {/each}
+      <option value={NEW}>＋ 새 부위</option>
     </select>
   </label>
-  <Button variant="primary" data-cut disabled={cutout.count === 0} onclick={put}>칸에 넣기</Button>
+  <Button variant="primary" data-cut disabled={cutout.count === 0} onclick={put}>부위에 넣기</Button>
 </div>
 
 <style>

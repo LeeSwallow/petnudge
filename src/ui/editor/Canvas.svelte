@@ -1,20 +1,20 @@
 <script lang="ts">
-  import { bounds } from '../../domain/character/pixels';
-  import { composite, drawOrder, feetLine, headBox, partAt } from '../../domain/character/placement';
-  import type { CharacterDraft } from '../../domain/character/standard';
-  import { arrowStep, CANVAS, dragOffset, drawChecker, pixelAt, type Guides } from './canvas';
+  import { findPart, partBox, pivotOf, type CharacterDraft } from '../../domain/character/parts';
+  import { composite, feetLine, headBox, partAt } from '../../domain/character/placement';
+  import { arrowStep, dragOffset, drawChecker, nearPoint, pixelAt, type Guides } from './canvas';
   import { clearSelection, cutout, loadUnderlay, modeOf, selectAll, selectBox, selectColor } from './cutout.svelte';
-  import { editor, move, moveFrom, removePart, select, setHover } from './draft.svelte';
+  import { clearPart, editor, move, moveFrom, select, setHover, setPivot } from './draft.svelte';
   import { carriesFiles, droppedFile, dropPicture, notice, readPicture } from './pictures.svelte';
 
-  // The editor canvas (#58): the parts back to front over a checkerboard at a
-  // whole-number zoom, and an overlay at screen resolution for the guides and
+  // The editor canvas (#58, #71): the parts back to front over a checkerboard at a
+  // whole-number zoom, at the draft's canvas size, and an overlay at screen resolution for the guides and
   // the selected part's 1px outline. Drag a part to move it (snapped to whole
   // pixels); arrows move the selected part 1px, Shift+arrows 8px; Delete
-  // empties it. Every change goes through the draft store, so it can be undone.
+  // empties it. The selected part's pivot is a small cross: drag it to move
+  // the pivot. Every change goes through the draft store, so it can be undone.
   // Hidden parts (the layer panel's eye) are not drawn; hidden and locked parts
   // cannot be picked. The part under the pointer (here or in the panel) stays
-  // bright while the others dim. A PNG dropped here fills the selected layer;
+  // bright while the others dim. A PNG dropped here fills the selected part;
   // with nothing selected it becomes the 원본 underlay (#57).
   //
   // The underlay is drawn translucent under the parts, what is already cut out
@@ -28,23 +28,27 @@
   let overlay = $state<HTMLCanvasElement>();
   let stage = $state<HTMLDivElement>();
   const scratch = document.createElement('canvas');
-  scratch.width = CANVAS.width;
-  scratch.height = CANVAS.height;
+  const W = $derived(editor.draft.canvas.w);
+  const H = $derived(editor.draft.canvas.h);
 
-  const selectedBox = $derived(editor.selected && editor.draft.parts[editor.selected] ? bounds(editor.draft.parts[editor.selected]) : undefined);
+  const selectedPart = $derived(editor.selected ? findPart(editor.draft, editor.selected) : undefined);
+  const selectedBox = $derived(selectedPart ? partBox(selectedPart) : undefined);
+  const pivot = $derived(selectedPart && selectedBox ? pivotOf(selectedPart) : undefined);
   const feet = $derived(feetLine(editor.draft));
   const head = $derived(headBox(editor.draft));
 
   // Hidden or locked parts are passed over when picking on the canvas.
   const unpickable = $derived(new Set([...editor.hidden, ...editor.locked]));
-  const lit = $derived(editor.hovered && editor.draft.parts[editor.hovered] && !editor.hidden.has(editor.hovered) ? editor.hovered : null);
+  const lit = $derived(editor.hovered && findPart(editor.draft, editor.hovered) && !editor.hidden.has(editor.hovered) ? editor.hovered : null);
 
   // The art, in canvas pixels.
   $effect(() => {
     const ctx = art?.getContext('2d');
     if (!ctx) return;
-    const put = (data: Uint32Array) => scratch.getContext('2d')!.putImageData(new ImageData(new Uint8ClampedArray(data.buffer), CANVAS.width, CANVAS.height), 0, 0);
-    drawChecker(ctx);
+    const [w, h] = [W, H];
+    if (scratch.width !== w || scratch.height !== h) [scratch.width, scratch.height] = [w, h];
+    const put = (data: Uint32Array) => scratch.getContext('2d')!.putImageData(new ImageData(new Uint8ClampedArray(data.buffer, data.byteOffset, w * h * 4), w, h), 0, 0);
+    drawChecker(ctx, w, h);
     const underlay = editor.underlayShown ? editor.underlay : null;
     if (underlay) {
       const away = underlay.original.data.map((p, i) => (underlay.rest.data[i] ? 0 : p));
@@ -62,10 +66,10 @@
       return;
     }
     // One part lit: the others drawn faint, in their order.
-    for (const name of drawOrder(editor.draft)) {
-      if (editor.hidden.has(name)) continue;
-      put(editor.draft.parts[name].data);
-      ctx.globalAlpha = name === lit ? 1 : 0.3;
+    for (const part of editor.draft.parts) {
+      if (editor.hidden.has(part.id)) continue;
+      put(part.pixels.data);
+      ctx.globalAlpha = part.id === lit ? 1 : 0.3;
       ctx.drawImage(scratch, 0, 0);
     }
     ctx.globalAlpha = 1;
@@ -75,7 +79,7 @@
   $effect(() => {
     const ctx = overlay?.getContext('2d');
     if (!ctx) return;
-    const [w, h] = [CANVAS.width * zoom, CANVAS.height * zoom];
+    const [w, h] = [W * zoom, H * zoom];
     ctx.clearRect(0, 0, w, h);
     ctx.lineWidth = 1;
     const box = (x0: number, y0: number, x1: number, y1: number, color: string, dash: number[] = []) => {
@@ -83,7 +87,7 @@
       ctx.strokeStyle = color;
       ctx.strokeRect(x0 * zoom + 0.5, y0 * zoom + 0.5, (x1 - x0) * zoom - 1, (y1 - y0) * zoom - 1);
     };
-    if (guides.border) box(0, 0, CANVAS.width, CANVAS.height, '#8a7aa8');
+    if (guides.border) box(0, 0, W, H, '#8a7aa8');
     if (guides.head && head) box(...head, '#7ec8e3', [4, 3]);
     if (guides.feet && feet !== undefined) {
       ctx.setLineDash([6, 3]);
@@ -94,7 +98,24 @@
       ctx.lineTo(w, y);
       ctx.stroke();
     }
-    if (selectedBox && cutout.tool === 'move') box(...selectedBox, '#ffffff');
+    if (selectedBox && !selecting) box(...selectedBox, '#ffffff');
+    // The pivot: a small cross through the middle of its pixel, dark-edged so it shows on any colour.
+    if (pivot && !selecting) {
+      const [cx, cy] = [(pivot[0] + 0.5) * zoom, (pivot[1] + 0.5) * zoom];
+      const arm = Math.max(6, zoom * 2);
+      ctx.setLineDash([]);
+      for (const [color, width] of [['#1d1730', 3], ['#f2c14e', 1]] as const) {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = width;
+        ctx.beginPath();
+        ctx.moveTo(cx - arm, Math.round(cy) + 0.5);
+        ctx.lineTo(cx + arm, Math.round(cy) + 0.5);
+        ctx.moveTo(Math.round(cx) + 0.5, cy - arm);
+        ctx.lineTo(Math.round(cx) + 0.5, cy + arm);
+        ctx.stroke();
+      }
+      ctx.lineWidth = 1;
+    }
     // The pixel selection: a light fill and its edges.
     const mask = cutout.mask;
     if (mask) {
@@ -118,12 +139,14 @@
     // A box being dragged.
     if (marquee) {
       const [x0, y0, x1, y1] = [Math.min(marquee.from[0], marquee.to[0]), Math.min(marquee.from[1], marquee.to[1]), Math.max(marquee.from[0], marquee.to[0]) + 1, Math.max(marquee.from[1], marquee.to[1]) + 1];
-      box(Math.max(0, x0), Math.max(0, y0), Math.min(CANVAS.width, x1), Math.min(CANVAS.height, y1), '#ffffff', [3, 3]);
+      box(Math.max(0, x0), Math.max(0, y0), Math.min(W, x1), Math.min(H, y1), '#ffffff', [3, 3]);
     }
   });
 
-  // A drag: the draft it started from, the layer and the pointer's start.
+  // A drag: the draft it started from, the part and the pointer's start.
   let drag: { start: CharacterDraft; layer: string; x: number; y: number; id: string; at: [number, number] } | null = null;
+  // A pivot drag: the part and the drag's id (one undo step).
+  let pivotDrag: { layer: string; id: string } | null = null;
   let drags = 0;
   // A selection box being dragged: its corners (canvas pixels, both included) and the mode it started with.
   let marquee = $state<{ from: [number, number]; to: [number, number]; shiftKey: boolean; altKey: boolean } | null>(null);
@@ -150,6 +173,12 @@
       }
       return;
     }
+    if (pivot && selectedPart && !editor.locked.has(selectedPart.id) && nearPoint([x, y], pivot)) {
+      pivotDrag = { layer: selectedPart.id, id: String(++drags) };
+      capture(e);
+      e.preventDefault();
+      return;
+    }
     const layer = partAt(editor.draft, x, y, unpickable);
     if (!layer) return;
     select(layer);
@@ -164,6 +193,10 @@
       return;
     }
     if (selecting) return;
+    if (pivotDrag && overlay) {
+      setPivot(pivotDrag.layer, pixelAt(e.clientX, e.clientY, overlay.getBoundingClientRect(), zoom), pivotDrag.id);
+      return;
+    }
     if (!drag) {
       if (overlay) setHover(partAt(editor.draft, ...pixelAt(e.clientX, e.clientY, overlay.getBoundingClientRect(), zoom), unpickable) ?? null);
       return;
@@ -179,6 +212,7 @@
     }
     marquee = null;
     drag = null;
+    pivotDrag = null;
   };
 
   // Arrows and Delete act on the selected part, wherever the focus is, except
@@ -190,7 +224,7 @@
     e.preventDefault();
     const file = droppedFile(e);
     if (!file) return;
-    if (editor.selected) void dropPicture(file, { layer: editor.selected });
+    if (editor.selected) void dropPicture(file, { part: editor.selected });
     else void dropUnderlay(file);
   };
   // Nothing selected: the dropped picture is the 원본 to cut parts out of.
@@ -222,7 +256,7 @@
       move(step[0], step[1], { merge: 'nudge' });
     } else if ((e.key === 'Delete' || e.key === 'Backspace') && !editor.locked.has(editor.selected)) {
       e.preventDefault();
-      removePart(editor.selected);
+      clearPart(editor.selected);
     }
   };
 </script>
@@ -230,16 +264,16 @@
 <svelte:window {onkeydown} />
 
 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-<div class="stage" bind:this={stage} tabindex="0" data-stage style:width="{CANVAS.width * zoom}px" style:height="{CANVAS.height * zoom}px" aria-label="캐릭터 캔버스: 부위를 끌거나 화살표 키로 옮겨요">
+<div class="stage" bind:this={stage} tabindex="0" data-stage style:width="{W * zoom}px" style:height="{H * zoom}px" aria-label="캐릭터 캔버스: 부위를 끌거나 화살표 키로 옮겨요">
   <canvas
     bind:this={art}
     data-canvas
     data-zoom={zoom}
-    width={CANVAS.width}
-    height={CANVAS.height}
-    style:width="{CANVAS.width * zoom}px"
-    style:height="{CANVAS.height * zoom}px"
-    aria-label="캐릭터 캔버스 {CANVAS.width}×{CANVAS.height}, {zoom}배 확대"
+    width={W}
+    height={H}
+    style:width="{W * zoom}px"
+    style:height="{H * zoom}px"
+    aria-label="캐릭터 캔버스 {W}×{H}, {zoom}배 확대"
   ></canvas>
   <canvas
     bind:this={overlay}
@@ -252,8 +286,9 @@
     class:selecting
     data-feet={feet ?? ''}
     data-head={head?.join(',') ?? ''}
-    width={CANVAS.width * zoom}
-    height={CANVAS.height * zoom}
+    data-pivot={pivot?.join(',') ?? ''}
+    width={W * zoom}
+    height={H * zoom}
     {onpointerdown}
     {onpointermove}
     {onpointerup}

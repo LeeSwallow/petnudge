@@ -1,16 +1,17 @@
 <script lang="ts">
   import type { EditorCharacter, ImportedCharacter } from '../../domain/character-editor/ipc';
   import { drawOrder } from '../../domain/character/placement';
+  import { findPart } from '../../domain/character/parts';
   import { Button } from '../components';
   import { editorApi } from './api';
   import { copyParts, imports, loadCharacter, startFrom } from './imports.svelte';
-  import { LAYER_CHOICES } from './slots';
   import Thumb from './Thumb.svelte';
 
   // Another character (#57). 'parts' (다른 캐릭터에서 가져오기): tick the parts
   // to copy into this draft, one undo step. 'start' (새로 만들기 › 기존
   // 캐릭터에서 시작): the whole character as a new draft. Older packs (@2) are
-  // converted to the standard slots in main; what has no slot is listed first.
+  // converted to parts in main; what has no part is listed first. A copied
+  // part keeps its name, role and parent; pictures fit this canvas.
 
   let dialog = $state<HTMLDialogElement>();
   let characters = $state<EditorCharacter[]>([]);
@@ -50,7 +51,7 @@
       const result = await loadCharacter(next);
       if (ticket !== asked) return;
       loaded = result;
-      ticked = Object.fromEntries(Object.keys(result.draft.parts).map((layer) => [layer, true]));
+      ticked = Object.fromEntries(drawOrder(result.draft).map((id) => [id, true]));
     } catch (e) {
       if (ticket !== asked) return;
       loaded = null;
@@ -63,7 +64,7 @@
   const cancel = () => {
     imports.characterPick = null;
   };
-  const label = (layer: string) => LAYER_CHOICES.flatMap((g) => g.options).find((o) => o.value === layer)?.label ?? layer;
+  const label = (id: string) => (loaded && findPart(loaded.draft, id)?.label) || id;
   const chosen = $derived(parts.filter((layer) => ticked[layer]));
 </script>
 
@@ -84,13 +85,13 @@
       <p class="lead error" data-error>{error}</p>
     {:else if loaded}
       {#if mode === 'parts'}
-        <p class="lead">가져올 부위를 골라요. 같은 칸에 있던 부위는 바뀌어요.</p>
+        <p class="lead">가져올 부위를 골라요. 같은 이름의 부위는 그림이 바뀌고, 없는 부위는 새로 생겨요.</p>
         <ul class="list" data-parts>
           {#each parts as layer (layer)}
             <li data-part={layer}>
               <label>
                 <input type="checkbox" checked={ticked[layer]} onchange={(e) => (ticked = { ...ticked, [layer]: e.currentTarget.checked })} />
-                <Thumb pixels={loaded.draft.parts[layer]} size={24} />
+                <Thumb pixels={findPart(loaded.draft, layer)!.pixels} size={24} />
                 <span class="name">{label(layer)}</span>
               </label>
             </li>
@@ -101,7 +102,7 @@
       {/if}
       {#if loaded.dropped.length}
         <details class="dropped" data-dropped open={mode === 'start'}>
-          <summary>표준 칸에 없어 빠지는 것 {loaded.dropped.length}개</summary>
+          <summary>부위로 옮기지 못해 빠지는 것 {loaded.dropped.length}개</summary>
           <ul>
             {#each loaded.dropped as d, i (i)}
               <li><b>{d.name}</b> {d.reason}</li>
