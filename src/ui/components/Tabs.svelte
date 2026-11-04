@@ -74,7 +74,9 @@
     border-color: var(--color-edge);
     box-shadow: inset var(--shadow-sm) var(--shadow-sm) 0 var(--color-edge-hi);
   }
-  .group .text { overflow: hidden; text-overflow: clip; }
+  /* a label longer than the tab (other languages) goes under its icon, then wraps */
+  .group .ui-tab { flex-wrap: wrap; white-space: normal; row-gap: 0; }
+  .group .text { min-width: 0; text-align: center; overflow-wrap: anywhere; }
 
   .sub { padding: var(--space-2) var(--space-2) 0; gap: var(--space-3); }
   .sub .ui-tab {
