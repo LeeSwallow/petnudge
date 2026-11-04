@@ -8,5 +8,6 @@ describe('design tokens', () => {
     expect(css).toContain('--shadow-md: 4px;');
     expect(css).toContain('--color-ink: #f4edff;');
     expect(css).toContain('--type-body: 12px;');
+    expect(css).toContain('--color-edge-lo: #4b3f7a;');
   });
 });

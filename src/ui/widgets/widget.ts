@@ -1,6 +1,6 @@
 import type { Component } from 'svelte';
 
-export type WidgetId = 'timer' | 'todos' | 'pinned' | 'music';
+export type WidgetId = 'clock' | 'timer' | 'todos' | 'pinned' | 'music';
 
 // A widget: a small Svelte component for the home board (and later the dock
 // beside the pet). `size` is how many of the board's two columns it takes.
