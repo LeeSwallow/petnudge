@@ -1,7 +1,7 @@
 import { pixelIcon } from '../icons';
 import { pack } from '../character';
 import { activeSession, cancelChat, chatAvailable, chatState, onChat, providerLabel, sendChat } from '../chat';
-import { onEnter } from '../modules/module';
+import { onEnter } from '../../ui/dom';
 
 // The quick chat bar: a talk button beside her (shown on hover) opens a small
 // input right above her head; replies show in her speech bubble and go into

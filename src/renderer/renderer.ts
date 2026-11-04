@@ -3,14 +3,12 @@ import { getRemainingMs, type TimerState } from '../domain/pomodoro/timer';
 import { api } from './api';
 import { data, onData, refreshAll, refreshNotes, refreshSettings, refreshStats, refreshTodos, type DataKind } from './data';
 import { confetti, enter, pop } from './fx';
-import { chatModule, showActiveSession } from './modules/chat';
 import { startChat } from './chat';
 import { installChatBar } from './pet/chatbar';
 import { startFriends } from './pet/friends';
 import { holdStill } from './pet/behavior';
 import { sayNow } from './pet/bubble';
 import { faceToward } from './pet/gaze';
-import type { ModuleId, PanelModule } from './modules/module';
 import { handleModeChange, handleNowPlaying, music, onMusic } from './music';
 import { installPetInput, isDragging, markActivity, react, renderBubble, resizePet, startPetLoop } from './pet';
 import { cancelMods, emit as emitMod } from './pet/mods';
@@ -18,9 +16,10 @@ import { petStore, whenHydrated } from './store';
 import { installTooltip } from './tooltip';
 import { pixelIcon } from './icons';
 import { characterReady, pack, setCharacter } from './character';
-import { createPanel, type PanelController, type RenderCause } from '../ui/panel/controller';
+import { createPanel, type PanelController } from '../ui/panel/controller';
+import type { Cause } from '../ui/state/bridge';
 import { restoreModule } from '../ui/panel/groups';
-import type { AnyModule } from '../ui/modules/module';
+import type { ModuleId, UiModule } from '../ui/modules/module';
 import { todoUi } from '../ui/modules/todo';
 import { pomodoroUi } from '../ui/modules/pomodoro';
 import { notesUi } from '../ui/modules/notes';
@@ -28,21 +27,20 @@ import { dashboardUi } from '../ui/modules/dashboard';
 import { playlistUi } from '../ui/modules/playlist';
 import { friendsUi } from '../ui/modules/friends';
 import { settingsUi } from '../ui/modules/settings';
+import { chatUi, showActiveSession } from '../ui/modules/chat';
 import { bump } from '../ui/state/revision.svelte';
 import { installTokens } from '../ui/theme/install';
 
 const TRANSITION_STEP_MS = 1200;
-const MODULES: AnyModule[] = [todoUi, pomodoroUi, dashboardUi, playlistUi, notesUi, chatModule, friendsUi, settingsUi];
+const MODULES: UiModule[] = [todoUi, pomodoroUi, dashboardUi, playlistUi, notesUi, chatUi, friendsUi, settingsUi];
 
 const panel = document.getElementById('panel')!;
 let panelUi: PanelController | null = null;
 
 const visible = () => !panel.hidden;
 
-const renderActive = (cause: RenderCause) => {
-  bump(cause);
-  panelUi?.render(cause);
-};
+// Svelte modules follow these counters (src/ui/state).
+const renderActive = (cause: Cause) => bump(cause);
 const showModule = (id: ModuleId, animate = true) => panelUi?.show(id, animate);
 
 const togglePanel = () => {
@@ -50,7 +48,7 @@ const togglePanel = () => {
   if (!panel.hidden) cancelMods();
   emitMod(panel.hidden ? 'panelClose' : 'panelOpen', 'after');
   api.setPanelOpen(visible());
-  if (visible()) panelUi?.refresh();
+  if (visible()) bump('shown');
   renderBubble(visible());
 };
 
@@ -179,9 +177,9 @@ const boot = async () => {
   music.setVolume(data.settings.musicVolume);
 
   panelUi = createPanel(panel, MODULES, {
-    visible,
     onQuit: () => api.quit(),
     onShow: (id, body, tab, animate) => {
+      bump('shown');
       void api.db.setKv('ui.module', id);
       tab?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
       if (animate) {

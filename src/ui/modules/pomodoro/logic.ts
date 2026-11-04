@@ -23,4 +23,8 @@ export const intentText = (mode: TimerMode, phase: PhaseKind, activeTodoTitle: s
     ? phase === 'long' ? '긴 휴식 · 스트레칭 어때?' : '짧은 휴식 · 물 한 잔'
     : activeTodoTitle !== undefined ? `지금 할 일: ${activeTodoTitle}` : '할 일 탭에서 지금 할 일 지정';
 
+// The reflection box starts empty when it opens, and only then: refreshes
+// while it is open (a paused break, a finished todo) keep what was typed.
+export const reflectionStarts = (wasOpen: boolean, isOpen: boolean) => !wasOpen && isOpen;
+
 export const untilLongBreak = (completedSessions: number, every: number) => every - (completedSessions % every);

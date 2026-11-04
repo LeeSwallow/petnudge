@@ -37,7 +37,7 @@
   });
 
   const view = $derived.by(() => {
-    void revision.todos, revision.settings, revision.session, filterRev;
+    void revision.todos, revision.settings, revision.session, revision.shown, filterRev;
     const todos = data.todos;
     const status = (filter?.state.status ?? 'all') as TodoStatus;
     const shown = visibleTodos(todos, filter?.bounds() ?? { from: null, to: null }, status);
@@ -66,11 +66,17 @@
   const toggle = async (todo: Todo) => {
     await api.db.setTodoDone(todo.id, !todo.done);
     if (!todo.done) {
-      poppedId = todo.id;
       const store = petStore.getState();
       if (store.activeTodoId === todo.id) store.setActiveTodo(data.todos.find((t) => !t.done && t.id !== todo.id)?.id ?? null);
     }
     await refreshTodos();
+    // the row now in the done list pops once (the .pop animation), then rests
+    if (!todo.done) {
+      poppedId = todo.id;
+      setTimeout(() => {
+        if (poppedId === todo.id) poppedId = null;
+      }, 700);
+    }
   };
 
   const activate = (id: string) => {
@@ -94,10 +100,6 @@
     await refreshTodos();
   };
 
-  // the pop shows once: forget it after the list drew it
-  $effect(() => {
-    if (poppedId && view) queueMicrotask(() => (poppedId = null));
-  });
 </script>
 
 {#snippet row(t: Todo, canMove: boolean)}
