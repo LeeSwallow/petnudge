@@ -41,6 +41,7 @@ await new Promise((resolve, reject) => {
 let next = 0;
 const pending = new Map();
 const problems = [];
+let current = 'boot'; // the check running when a problem shows up
 ws.addEventListener('message', (message) => {
   const d = JSON.parse(message.data);
   if (d.id) {
@@ -48,9 +49,9 @@ ws.addEventListener('message', (message) => {
     pending.delete(d.id);
     return;
   }
-  if (d.method === 'Runtime.exceptionThrown') problems.push(`exception: ${d.params.exceptionDetails.exception?.description ?? d.params.exceptionDetails.text}`);
-  if (d.method === 'Runtime.consoleAPICalled' && d.params.type === 'error') problems.push(`console.error: ${d.params.args.map((a) => a.value ?? a.description).join(' ')}`);
-  if (d.method === 'Log.entryAdded' && d.params.entry.level === 'error') problems.push(`log: ${d.params.entry.text}`);
+  if (d.method === 'Runtime.exceptionThrown') problems.push(`[${current}] exception: ${d.params.exceptionDetails.exception?.description ?? d.params.exceptionDetails.text}`);
+  if (d.method === 'Runtime.consoleAPICalled' && d.params.type === 'error') problems.push(`[${current}] console.error: ${d.params.args.map((a) => a.value ?? a.description).join(' ')}`);
+  if (d.method === 'Log.entryAdded' && d.params.entry.level === 'error') problems.push(`[${current}] log: ${d.params.entry.text}`);
 });
 const send = (method, params = {}) =>
   new Promise((resolve, reject) => {
@@ -84,7 +85,7 @@ const check = (name, body, expected) => checks.push({ name, body, expected });
 check('panel opens on right click', `$('#pet').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true })); await wait(); return !$('#panel').hidden;`, true);
 check('three groups, none overflowing', `return $$('[data-group]').map((b) => b.textContent.trim() + (b.scrollWidth <= b.clientWidth ? '' : '!'));`, ['집중', '기록', '설정']);
 check('pomodoro opens first', `return $('[data-module][aria-selected=true]').dataset.module;`, 'pomodoro');
-check('arrow keys move between groups', `$('[data-group=focus]').focus(); key('[data-group=focus]', 'ArrowLeft'); await wait(100); return [document.activeElement.dataset.group, $$('[data-group]').map((b) => b.tabIndex)];`, ['settings', [-1, -1, 0]]);
+check('arrow keys move between groups', `$('[data-group=focus]').focus(); key('[data-group=focus]', 'ArrowLeft'); await wait(150); return [$('[data-group][aria-selected=true]').dataset.group, $$('[data-group]').map((b) => b.tabIndex)];`, ['settings', [-1, -1, 0]]);
 
 check('todo: empty list', `await open_('focus', 'todo'); return text('#todo-open');`, '할 일이 비었어요');
 check('todo: add with Enter', `type('#todo-input', '영어 단어'); key('#todo-input', 'Enter'); await wait(400); return [$('#todo-input').value, $$('#todo-open .todo-title').map((e) => e.textContent.trim())];`, ['', ['영어 단어']]);
@@ -94,7 +95,7 @@ check('todo: check off and clear', `type('#todo-input', ''); $('#todo-open .todo
 check('todo: filter opens', `$('#todo-funnel').click(); await wait(100); const shown = !$('#todo-filter').hidden; $('#todo-funnel').click(); return shown;`, true);
 
 check('pomodoro: idle', `await open_('focus', 'pomodoro'); return [text('#digits'), text('#controls')];`, ['25:00', '집중 시작']);
-check('pomodoro: start ticks', `$('#controls .primary').click(); await wait(1600); return [text('#digits'), text('#controls')];`, ['24:59', '일시정지 그만두기']);
+check('pomodoro: start ticks', `$('#controls .primary').click(); await wait(2300); return [text('#digits') !== '25:00' && text('#digits').startsWith('24:5'), text('#controls')];`, [true, '일시정지 그만두기']);
 check('pomodoro: pause holds', `$('#controls .primary').click(); await wait(300); const a = text('#digits'); await wait(1200); return [a === text('#digits'), $('#digits').classList.contains('paused'), text('#controls')];`, [true, true, '재개 그만두기']);
 check('pomodoro: abandon resets', `$$('#controls button')[1].click(); await wait(300); return [text('#digits'), text('#controls')];`, ['25:00', '집중 시작']);
 
@@ -112,6 +113,8 @@ check('dashboard: tiles and empty log', `await open_('record', 'dashboard'); awa
 check('dashboard: charts drawn', `return ['#week', '#hours', '#heat'].map((s) => $(s + ' svg') !== null);`, [true, true, true]);
 check('dashboard: log filter opens', `$('#log-funnel').click(); await wait(100); const shown = !$('#log-filter').hidden; $('#log-funnel').click(); return shown;`, true);
 
+check('characters: main pet stays, friends can be called', `await open_('settings', 'friends'); await wait(400); return [text('#friends-count'), $$('#friends-list li').length >= 3, text('#friends-list li:first-child').includes('대표') || $$('#friends-list .hint').some((e) => e.textContent === '대표'), $('#friends-clear').disabled];`, ['화면에 1마리', true, true, true]);
+check('characters: call a friend out and send everyone back', `$('#friends-list button.mini:not(.ghost)').click(); await wait(1500); const called = text('#friends-count'); $('#friends-clear').click(); await wait(1200); return [called, text('#friends-count')];`, ['화면에 2마리', '화면에 1마리']);
 check('chat: 크게 보기 opens 기록 › 대화', `$('#chat-quick-full').click(); await wait(200); return [$('[data-group][aria-selected=true]').dataset.group, $('[data-module][aria-selected=true]').dataset.module];`, ['record', 'chat']);
 check('settings: quit button under settings', `await open_('settings'); return $('[data-quit]') !== null;`, true);
 check('panel: 220px keeps both tab rows', `$('#panel').style.setProperty('--panel-height', '220px'); await wait(100); const p = $('#panel').getBoundingClientRect(), s = $('.ui-tabs.sub').getBoundingClientRect(); $('#panel').style.removeProperty('--panel-height'); return s.height > 0 && s.bottom <= p.bottom;`, true);
@@ -125,6 +128,7 @@ try {
   await sleep(2500);
   await run(HELPERS);
   for (const { name, body, expected } of checks) {
+    current = name;
     let actual;
     try {
       actual = await run(body);

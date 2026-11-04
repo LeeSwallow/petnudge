@@ -10,7 +10,6 @@ import { startFriends } from './pet/friends';
 import { holdStill } from './pet/behavior';
 import { sayNow } from './pet/bubble';
 import { faceToward } from './pet/gaze';
-import { friendsModule } from './modules/friends';
 import type { ModuleId, PanelModule } from './modules/module';
 import { settingsModule } from './modules/settings';
 import { handleModeChange, handleNowPlaying, music, onMusic } from './music';
@@ -28,11 +27,12 @@ import { pomodoroUi } from '../ui/modules/pomodoro';
 import { notesUi } from '../ui/modules/notes';
 import { dashboardUi } from '../ui/modules/dashboard';
 import { playlistUi } from '../ui/modules/playlist';
+import { friendsUi } from '../ui/modules/friends';
 import { bump } from '../ui/state/revision.svelte';
 import { installTokens } from '../ui/theme/install';
 
 const TRANSITION_STEP_MS = 1200;
-const MODULES: AnyModule[] = [todoUi, pomodoroUi, dashboardUi, playlistUi, notesUi, chatModule, friendsModule, settingsModule];
+const MODULES: AnyModule[] = [todoUi, pomodoroUi, dashboardUi, playlistUi, notesUi, chatModule, friendsUi, settingsModule];
 
 const panel = document.getElementById('panel')!;
 let panelUi: PanelController | null = null;
