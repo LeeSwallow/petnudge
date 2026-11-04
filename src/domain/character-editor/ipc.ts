@@ -1,5 +1,5 @@
 import type { Pixels } from '../character/pixels';
-import type { CharacterDraft } from '../character/standard';
+import type { CharacterDraft } from '../character/parts';
 
 // What the character editor window (src/ui/editor) and main
 // (src/main/editorIpc.ts) say to each other: the channel names and the shape
@@ -38,8 +38,8 @@ export const editorOk = <A>(value: A): EditorResult<A> => ({ ok: true, value });
 export const editorFailure = (code: string, message: string): EditorResult<never> => ({ ok: false, error: { code, message } });
 export const notImplemented = (what: string): EditorResult<never> => editorFailure('not_implemented', `${what} 기능은 아직 준비 중이에요`);
 
-// What the imports answer. Pixels are full 96×112 canvases for an image;
-// layers keep the file's size (at most 96×112).
+// What the imports answer. A picture and the layers of a file keep their own
+// size (at most the largest canvas, 160×192); the editor fits them to its canvas.
 export type ImportedImage = { readonly name: string; readonly pixels: Pixels };
 export type ImportedLayers = { readonly name: string; readonly layers: readonly { readonly name: string; readonly pixels: Pixels }[] };
 export type ImportedCharacter = { readonly draft: CharacterDraft; readonly dropped: readonly { readonly name: string; readonly reason: string }[] };

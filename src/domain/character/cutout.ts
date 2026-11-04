@@ -1,5 +1,7 @@
 import type { Box } from './pack';
-import { blank, type Pixels } from './pixels';
+import { findPart, restVariant, type CharacterDraft } from './parts';
+import { blank, over, type Pixels } from './pixels';
+import { addPart, setPixels, type NewPart } from './placement';
 
 // Cutting parts out of one picture (#57, the editor's "한 장 + 오려 내기"):
 // a selection is a mask over the picture, made with a box or a same-colour
@@ -94,4 +96,25 @@ export const cut = (source: Pixels, mask: Mask): { part: Pixels; rest: Pixels } 
   }
   if (!taken) throw new Error('고른 픽셀이 없어요. 그림이 있는 곳을 골라 주세요');
   return { part, rest };
+};
+
+// Where a cut goes (#71): a part (at rest or one of its variants), or a new part.
+export type CutTarget = { part: string; variant?: string } | { newPart: NewPart };
+
+// Cuts the selection out of `source` into its target, drawn over what the
+// target already has, at the same positions. Answers the new draft, what is
+// left of the source, and the part that got the pixels.
+export const cutToPart = (draft: CharacterDraft, source: Pixels, mask: Mask, target: CutTarget): { draft: CharacterDraft; rest: Pixels; id: string } => {
+  if ('part' in target && !findPart(draft, target.part)) throw new Error(`없는 부위예요: ${target.part}`);
+  const { part: pixels, rest } = cut(source, mask);
+  if ('newPart' in target) {
+    const added = addPart(draft, { ...target.newPart, pixels });
+    return { ...added, rest };
+  }
+  const part = findPart(draft, target.part)!;
+  const variant = target.variant && target.variant !== restVariant(part) ? target.variant : undefined;
+  const into = variant ? part.variants?.[variant] : part.pixels;
+  const merged: Pixels = into ? { ...into, data: into.data.slice() } : blank(pixels.w, pixels.h);
+  over(merged, pixels);
+  return { draft: setPixels(draft, part.id, merged, variant), rest, id: part.id };
 };

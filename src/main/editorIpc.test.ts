@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { EDITOR_CHANNEL } from '../domain/character-editor/ipc';
+import { fromTemplate } from '../domain/character/standard';
 import { editorHandlers, runEditorHandler } from './editorIpc';
 
 const deps = (closeEditor = vi.fn()) => ({
@@ -10,7 +11,7 @@ const deps = (closeEditor = vi.fn()) => ({
   closeEditor,
   importImage: async () => null,
   importLayered: async () => ({ name: 'a.pxo', layers: [] }),
-  importCharacter: async (id: unknown) => ({ draft: { id: String(id), name: '', persona: '', lines: { pat: [], pokeChest: [], pokeBelly: [] }, parts: {}, order: [] }, dropped: [] })
+  importCharacter: async (id: unknown) => ({ draft: { ...fromTemplate('critter'), id: String(id) }, dropped: [] })
 });
 
 describe('editor IPC', () => {

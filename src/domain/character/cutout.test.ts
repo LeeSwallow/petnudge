@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { boxMask, combine, countMask, cut, emptyMask, fullMask, maskBounds, sameColor, subtract, union } from './cutout';
+import { boxMask, combine, countMask, cut, cutToPart, emptyMask, fullMask, maskBounds, sameColor, subtract, union } from './cutout';
+import { findPart } from './parts';
+import { emptyDraft, setPixels } from './placement';
 import { blank, bounds, hexToPixel, type Pixels } from './pixels';
 
 const W = 8;
@@ -116,5 +118,45 @@ describe('cutting a selection out', () => {
 
   it('refuses a mask of another size', () => {
     expect(() => cut(PIC, emptyMask(W + 1, H))).toThrow();
+  });
+});
+
+describe('cutting into a part', () => {
+  const canvasRect = (x0: number, y0: number, x1: number, y1: number, color = RED) => {
+    const px = blank(96, 112);
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) px.data[y * 96 + x] = color;
+    return px;
+  };
+  const source = () => {
+    const px = canvasRect(30, 40, 66, 100);
+    for (let y = 10; y < 34; y++) for (let x = 36; x < 60; x++) px.data[y * 96 + x] = BLUE;
+    return px;
+  };
+
+  it('draws the cut pixels over the part, at the same place, and takes them out of the source', () => {
+    const start = setPixels(emptyDraft(), 'head', canvasRect(0, 0, 2, 2, BLUE));
+    const { draft, rest, id } = cutToPart(start, source(), boxMask(96, 112, [36, 10, 60, 34]), { part: 'head' });
+    expect(id).toBe('head');
+    expect(bounds(findPart(draft, 'head')!.pixels)).toEqual([0, 0, 60, 34]);
+    expect(rest.data[10 * 96 + 36]).toBe(0);
+    expect(findPart(start, 'head')!.pixels.data[10 * 96 + 36]).toBe(0); // the old draft is untouched
+  });
+
+  it('cuts into a variant of a part', () => {
+    const { draft } = cutToPart(emptyDraft(), source(), boxMask(96, 112, [36, 10, 60, 12]), { part: 'eye.l', variant: 'closed' });
+    expect(bounds(findPart(draft, 'eye.l')!.variants!.closed)).toEqual([36, 10, 60, 12]);
+    expect(bounds(findPart(draft, 'eye.l')!.pixels)).toBeUndefined();
+  });
+
+  it('cuts into a new part, named and placed at the front', () => {
+    const { draft, id } = cutToPart(emptyDraft(), source(), boxMask(96, 112, [30, 90, 66, 100]), { newPart: { label: 'tail', role: 'tail', parent: 'body' } });
+    expect(id).toBe('tail');
+    expect(draft.parts.at(-1)).toMatchObject({ id: 'tail', role: 'tail', parent: 'body' });
+    expect(bounds(findPart(draft, 'tail')!.pixels)).toEqual([30, 90, 66, 100]);
+  });
+
+  it('refuses an unknown part and an empty selection', () => {
+    expect(() => cutToPart(emptyDraft(), source(), boxMask(96, 112, [36, 10, 60, 34]), { part: 'nope' })).toThrow(/nope/);
+    expect(() => cutToPart(emptyDraft(), source(), emptyMask(96, 112), { part: 'head' })).toThrow('고른 픽셀이 없어요');
   });
 });

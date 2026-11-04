@@ -4,17 +4,18 @@ import path from 'node:path';
 import * as aseprite from '../../scripts/character/aseprite.mjs';
 import { decodePng } from '../../scripts/character/png.mjs';
 import { readPxo } from '../../scripts/character/pxo.mjs';
-import { convertPack, type Converted, type Dropped } from '../domain/character/convert';
+import { convertPack, type Converted } from '../domain/character/convert';
 import type { CharacterPack } from '../domain/character/pack';
 import type { Pixels } from '../domain/character/pixels';
-import { framePicture } from '../domain/character/placement';
-import { FRAME, standardPart, type CharacterDraft } from '../domain/character/standard';
+import { CANVAS_LIMITS } from '../domain/character/parts';
+import { draftFromPack } from '../domain/character/reopen';
 
 // Reading pictures for the character editor (#57), in main: one PNG (the
 // cut-out flow), a layered file (.pxo read directly, .aseprite through its
 // CLI when it is installed), and another character's parts (an @2 pack
-// converted to the standard slots). Every picture leaves here as 8-bit RGBA
-// in a Pixels; nothing bigger than the 96×112 canvas leaves at all.
+// converted to parts). Every picture leaves here as 8-bit RGBA in a Pixels
+// at its own size; nothing bigger than the largest canvas leaves at all (the
+// editor fits a picture to its canvas, placement.framePicture).
 
 export type NamedPicture = { name: string; pixels: Pixels };
 export type ImportedImage = { name: string; pixels: Pixels };
@@ -28,14 +29,15 @@ const rgbaPixels = (w: number, h: number, rgba: Uint8Array): Pixels => {
   return { w, h, data: new Uint32Array(copy.buffer, 0, w * h) };
 };
 
-const tooBig = (w: number, h: number) => new Error(`그림이 ${w}×${h}예요. ${FRAME.w}×${FRAME.h} 이하로 줄여 주세요 (격자 정리)`);
+const MAX = { w: CANVAS_LIMITS.w[1], h: CANVAS_LIMITS.h[1] };
+const tooBig = (w: number, h: number) => new Error(`그림이 ${w}×${h}예요. ${MAX.w}×${MAX.h} 이하로 줄여 주세요 (격자 정리)`);
 
-// One PNG as a full-canvas picture (smaller ones in the middle).
+// One PNG, at its own size.
 export const imageFromPng = (name: string, bytes: Uint8Array): ImportedImage => {
   if (bytes.length > MAX_IMAGE_BYTES) throw new Error('그림 파일이 너무 커요');
   const { width, height, rgba } = decodePng(Buffer.from(bytes.buffer, bytes.byteOffset, bytes.length));
-  if (width > FRAME.w || height > FRAME.h) throw tooBig(width, height);
-  return { name, pixels: framePicture(width, height, rgbaPixels(width, height, rgba).data) };
+  if (width > MAX.w || height > MAX.h) throw tooBig(width, height);
+  return { name, pixels: rgbaPixels(width, height, rgba) };
 };
 
 const layeredKind = (file: string) => {
@@ -59,12 +61,12 @@ export const layersFromFile = async (file: string): Promise<NamedPicture[]> => {
   if (!info.isFile() || info.size > MAX_LAYERED_BYTES) throw new Error('레이어 파일의 종류나 크기를 확인해 주세요');
   if (layeredKind(file) === 'pxo') {
     const { width, height, layers } = await readPxo(file);
-    if (width > FRAME.w || height > FRAME.h) throw tooBig(width, height);
+    if (width > MAX.w || height > MAX.h) throw tooBig(width, height);
     return layers.map((l) => ({ name: l.name, pixels: rgbaPixels(width, height, l.rgba) }));
   }
   findAseprite();
   const { width, height, layers } = await aseprite.inspect(file);
-  if (width > FRAME.w || height > FRAME.h) throw tooBig(width, height);
+  if (width > MAX.w || height > MAX.h) throw tooBig(width, height);
   const dir = await mkdtemp(path.join(os.tmpdir(), 'petnudge-editor-import-'));
   try {
     const { sheet, frames } = await aseprite.exportSheet(file, dir);
@@ -95,27 +97,11 @@ export const layersFromBytes = async (name: string, bytes: Uint8Array): Promise<
   }
 };
 
-// Another character as a standard draft. An editor-made pack (@3) already
-// uses the standard names; an older pack (@2) is converted (convert.ts), and
-// what has no slot comes back in `dropped`.
+// Another character as a draft of parts. An editor-made pack (@3) is opened
+// back into its parts (reopen.ts); an older pack (@2) is converted
+// (convert.ts). What has no part comes back in `dropped`.
 export const characterDraft = async (files: { source: string; manifest: string }): Promise<Converted> => {
   const pack = JSON.parse(await readFile(files.manifest, 'utf8')) as CharacterPack;
   const layers = await layersFromFile(files.source);
-  if (!String(pack.format ?? '').endsWith('@3')) return convertPack(pack, layers);
-  const parts: Record<string, Pixels> = {};
-  const dropped: Dropped[] = [];
-  for (const { name, pixels } of layers) {
-    if (!standardPart(name) || parts[name]) dropped.push({ name, reason: '표준 칸에 없는 레이어예요' });
-    else if (pixels.w !== FRAME.w || pixels.h !== FRAME.h) dropped.push({ name, reason: `그림 크기가 ${FRAME.w}×${FRAME.h}가 아니에요` });
-    else parts[name] = pixels;
-  }
-  const draft: CharacterDraft = {
-    id: pack.id,
-    name: pack.name,
-    persona: pack.persona ?? '',
-    lines: { pat: [...(pack.actions?.pat?.lines ?? [])], pokeChest: [...(pack.actions?.pokeChest?.lines ?? [])], pokeBelly: [...(pack.actions?.pokeBelly?.lines ?? [])] },
-    parts,
-    order: Object.keys(parts)
-  };
-  return { draft, dropped };
+  return String(pack.format ?? '').endsWith('@3') ? draftFromPack(pack, layers) : convertPack(pack, layers);
 };
