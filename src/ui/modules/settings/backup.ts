@@ -1,10 +1,11 @@
-import { api } from '../api';
-import { esc } from '../charts';
-import { pack, setCharacter } from '../character';
-import { data, refreshAll, updateSettings } from '../data';
-import { petStore } from '../store';
-import type { BackupSummary } from '../../main/backup';
-import { $, onAction } from './module';
+import { api } from '../../../renderer/api';
+import { esc } from '../../../renderer/charts';
+import { pack, setCharacter } from '../../../renderer/character';
+import { data, refreshAll, updateSettings } from '../../../renderer/data';
+import { petStore } from '../../../renderer/store';
+import type { BackupSummary } from '../../../main/backup';
+import { backupCounts, cleanError, exportedOn } from './logic';
+import { $, onAction } from '../../../renderer/modules/module';
 
 // Settings → 데이터 백업. Main does the file dialogs and the actual work;
 // this section only shows what a file holds and asks once more before
@@ -21,15 +22,7 @@ export const backupSection = `
     <div class="hint" id="backup-status" role="status" aria-live="polite">할 일·메모·집중 기록·플레이리스트·설정을 파일 하나로 옮겨요. 토큰 같은 비밀 값은 빼고 저장해요.</div>
   </div>`;
 
-const counts = (s: BackupSummary) => `할 일 ${s.todos} · 메모 ${s.notes} · 집중 기록 ${s.sessions} · 플레이리스트 ${s.playlists}`;
-
-const cleanError = (error: unknown) =>
-  error instanceof Error ? error.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : String(error);
-
-const exportedOn = (iso: string) => {
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? '' : `${date.toLocaleDateString('ko-KR')} 백업`;
-};
+const counts = backupCounts;
 
 // The running pet keeps its progress in memory and writes it back every
 // tick, so imported progress is applied to the store itself (which then

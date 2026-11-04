@@ -1,14 +1,15 @@
-import { api } from '../api';
-import { pack } from '../character';
-import { esc } from '../charts';
-import { data } from '../data';
-import { chatState, clearAllSessions, onChat, refreshChatProviders, saveChatConfig, testChat } from '../chat';
+import { api } from '../../../renderer/api';
+import { pack } from '../../../renderer/character';
+import { esc } from '../../../renderer/charts';
+import { data } from '../../../renderer/data';
+import { chatState, clearAllSessions, onChat, refreshChatProviders, saveChatConfig, testChat } from '../../../renderer/chat';
 import {
   CHAT_PROVIDERS, DEFAULT_BASE_PROMPT, PROVIDER_INFO, buildSystemPrompt, modelFor, profileSchema,
   type ChatProfile, type ChatProvider, type ToolGroup
-} from '../../shared/chat';
-import type { CharacterChoice } from '../../shared/characterImport';
-import { $, onAction } from './module';
+} from '../../../shared/chat';
+import type { CharacterChoice } from '../../../shared/characterImport';
+import { cleanError } from './logic';
+import { $, onAction } from '../../../renderer/modules/module';
 
 // Settings › AI 대화 설정: its own page inside the settings tab, since there
 // is a lot to set — the provider and keys, which tools she may use, each
@@ -23,7 +24,7 @@ let characters: CharacterChoice[] = [];
 let profileId = '';
 let confirmClear = false;
 
-const errorText = (error: unknown) => error instanceof Error ? error.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : String(error);
+const errorText = cleanError;
 
 const profile = (): ChatProfile => profileSchema.parse(chatState.config.profiles[profileId] ?? {});
 const saveProfile = (patch: Partial<ChatProfile>) =>
