@@ -1,5 +1,6 @@
 import { toDateKey } from '../domain/progress/progress';
 import { shiftDateKey } from './stats';
+import { formatDate, t, type MessageKey } from '../i18n';
 
 // Date-range filtering and day grouping shared by the notes, todo and focus
 // record lists. Everything works on local YYYY-MM-DD keys so "오늘" matches
@@ -9,12 +10,12 @@ export type RangePreset = 'all' | 'today' | '7d' | '30d' | 'custom';
 
 export type DateRange = { preset: RangePreset; from: string; to: string };
 
-export const RANGE_PRESETS: [RangePreset, string][] = [
-  ['all', '전체'],
-  ['today', '오늘'],
-  ['7d', '최근 7일'],
-  ['30d', '최근 30일'],
-  ['custom', '직접 선택']
+export const RANGE_PRESETS: [RangePreset, MessageKey][] = [
+  ['all', 'filter.all'],
+  ['today', 'filter.today'],
+  ['7d', 'filter.last7'],
+  ['30d', 'filter.last30'],
+  ['custom', 'filter.custom']
 ];
 
 const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
@@ -45,9 +46,10 @@ export const inBounds = (dateKey: string, bounds: { from: string | null; to: str
   (bounds.from === null || dateKey >= bounds.from) && (bounds.to === null || dateKey <= bounds.to);
 
 export const dayLabel = (dateKey: string, todayKey: string) => {
-  if (dateKey === todayKey) return '오늘';
-  if (dateKey === shiftDateKey(todayKey, -1)) return '어제';
-  return dateKey.replaceAll('-', '.');
+  if (dateKey === todayKey) return t('filter.today');
+  if (dateKey === shiftDateKey(todayKey, -1)) return t('filter.yesterday');
+  const [y, m, d] = dateKey.split('-').map(Number);
+  return formatDate(new Date(y, m - 1, d), { year: 'numeric', month: '2-digit', day: '2-digit' });
 };
 
 // Groups already-sorted items by day, newest day first; items keep their

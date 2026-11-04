@@ -1,8 +1,9 @@
 <script lang="ts">
   import { pixelIcon } from '../../../renderer/icons';
   import { revision } from '../../state/revision.svelte';
+  import { t } from '../../i18n';
   import { myMusic, type MusicFeed } from './feed';
-  import { EMPTY_TEXT, musicView } from './logic';
+  import { emptyText, musicView } from './logic';
 
   let { feed = myMusic }: { feed?: MusicFeed } = $props();
 
@@ -19,18 +20,18 @@
       {#if view.subtitle}<div class="sub">{view.subtitle}</div>{/if}
     </div>
     {#if feed.toggle}
-      <button type="button" class="act" aria-label={view.playing ? '일시정지' : '재생'} data-tip={view.playing ? '일시정지' : '재생'} onclick={() => feed.toggle?.()}>
+      <button type="button" class="act" aria-label={view.playing ? t('pomodoro.pause') : t('widgets.music.play')} data-tip={view.playing ? t('pomodoro.pause') : t('widgets.music.play')} onclick={() => feed.toggle?.()}>
         {@html pixelIcon(view.playing ? 'pause' : 'play')}
       </button>
     {/if}
     {#if feed.next}
-      <button type="button" class="act" aria-label="다음 곡" data-tip="다음 곡" data-music-next onclick={() => feed.next?.()}>
+      <button type="button" class="act" aria-label={t('widgets.music.next')} data-tip={t('widgets.music.next')} data-music-next onclick={() => feed.next?.()}>
         {@html pixelIcon('next')}
       </button>
     {/if}
   </div>
 {:else}
-  <p class="empty" data-music-empty>{EMPTY_TEXT}</p>
+  <p class="empty" data-music-empty>{emptyText()}</p>
 {/if}
 
 <style>

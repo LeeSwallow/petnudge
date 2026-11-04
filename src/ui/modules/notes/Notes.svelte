@@ -8,6 +8,7 @@
   import { dateKeyOf, groupByDay, type DateRange } from '../../../shared/dateFilter';
   import type { Note } from '../../../shared/types';
   import { revision } from '../../state/revision.svelte';
+  import { t } from '../../i18n';
   import { emptyText, snippet, visibleNotes, when } from './logic';
 
   let query = $state('');
@@ -32,7 +33,7 @@
     filter = createFilter(funnelSlot.querySelector<HTMLButtonElement>('#note-funnel')!, filterPanel, {
       kvKey: 'filter.notes',
       defaults: { preset: 'all', from: '', to: '', pinned: false },
-      extras: (state) => flagToggle('pinned', '고정한 메모만', state.pinned),
+      extras: (state) => flagToggle('pinned', t('notes.pinnedOnly'), state.pinned),
       onChange: () => (filterRev += 1)
     });
   });
@@ -71,17 +72,17 @@
     if (!openId) return;
     const id = openId;
     if (saveTimer) clearTimeout(saveTimer);
-    status = '저장 중…';
+    status = t('notes.saving');
     saveTimer = setTimeout(async () => {
       await api.db.updateNote(id, { title, body });
       if (opened?.id === id) opened = { ...opened, title, body, updatedAt: Date.now() };
-      status = '저장됨';
+      status = t('notes.saved');
       await refreshNotes();
     }, 400);
   };
 
   const create = async () => {
-    const note = await api.db.createNote('새 메모', '');
+    const note = await api.db.createNote(t('notes.newTitle'), '');
     if (!note) return;
     data.noteQuery = '';
     query = '';
@@ -110,44 +111,44 @@
   <!-- a whole card opens the note, as before; the card list keeps its <li> markup and styles -->
   <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
   <li class="note-card" onclick={() => openNote(n.id)}>
-    <div class="row"><b class="grow todo-title">{@html n.pinned ? pixelIcon('star') + ' ' : ''}{n.title || '제목 없음'}</b><span class="hint">{when(n.updatedAt, data.todayKey, Date.now())}</span></div>
-    <div class="note-snippet">{#if snippet(n.body)}{snippet(n.body)}{:else}<span class="hint">내용 없음</span>{/if}</div>
+    <div class="row"><b class="grow todo-title">{@html n.pinned ? pixelIcon('star') + ' ' : ''}{n.title || t('common.untitled')}</b><span class="hint">{when(n.updatedAt, data.todayKey, Date.now())}</span></div>
+    <div class="note-snippet">{#if snippet(n.body)}{snippet(n.body)}{:else}<span class="hint">{t('notes.noBody')}</span>{/if}</div>
   </li>
 {/snippet}
 
 <div id="note-browser" class="notes-browser" hidden={Boolean(openId)}>
   <div class="row">
-    <input type="text" id="note-search" class="grow" placeholder="메모 검색" bind:value={query} oninput={search} />
+    <input type="text" id="note-search" class="grow" placeholder={t('notes.search')} bind:value={query} oninput={search} />
     <span class="funnel-slot" bind:this={funnelSlot}>{@html funnelButton('note-funnel', 'note-filter')}</span>
-    <button class="primary" type="button" onclick={create}>＋ 새 메모</button>
+    <button class="primary" type="button" onclick={create}>＋ {t('notes.new')}</button>
   </div>
   <div class="frame well filter-panel" id="note-filter" hidden bind:this={filterPanel}></div>
   <ul class="note-list" id="note-list">
-    {#if view.filtered}<li class="filter-count hint">메모 {view.total}개 중 {view.shown.length}개</li>{/if}
+    {#if view.filtered}<li class="filter-count hint">{t('notes.filteredCount', { shown: view.shown.length, total: view.total })}</li>{/if}
     {#if view.shown.length}
       {#if view.pinned.length}
-        <li class="day-head" role="presentation"><b>{@html pixelIcon('star')} 고정</b><span>{view.pinned.length}개</span></li>
+        <li class="day-head" role="presentation"><b>{@html pixelIcon('star')} {t('notes.pinned')}</b><span>{t('common.count', { count: view.pinned.length })}</span></li>
         {#each view.pinned as n (n.id)}{@render card(n)}{/each}
       {/if}
       {#each view.days as day (day.dateKey)}
-        {@html dayHead(day.dateKey, `${day.items.length}개`)}
+        {@html dayHead(day.dateKey, t('common.count', { count: day.items.length }))}
         {#each day.items as n (n.id)}{@render card(n)}{/each}
       {/each}
     {:else}
       {@const text = emptyText(view.total, view.filtered, data.noteQuery)}
-      <li class="empty">{text}{#if text === '첫 메모를 남겨보세요'}&nbsp;{@html pixelIcon('pencil')}{/if}</li>
+      <li class="empty">{text}{#if !view.total && !data.noteQuery}&nbsp;{@html pixelIcon('pencil')}{/if}</li>
     {/if}
   </ul>
 </div>
 <div id="note-editor" class="frame note-paper" hidden={!openId} bind:this={editor}>
   <div class="row">
-    <button class="ghost" type="button" onclick={() => (openId = null)}>{@html pixelIcon('back')} 목록</button>
+    <button class="ghost" type="button" onclick={() => (openId = null)}>{@html pixelIcon('back')} {t('notes.list')}</button>
     <span class="grow hint" id="note-status">{status}</span>
-    <button class="ghost" type="button" id="note-pin" onclick={togglePin}>{@html pixelIcon('star')} {view.open?.pinned ? '고정됨' : '고정'}</button>
-    <button class="ghost" type="button" aria-label="메모 삭제" onclick={remove}>{@html pixelIcon('close')}</button>
+    <button class="ghost" type="button" id="note-pin" onclick={togglePin}>{@html pixelIcon('star')} {view.open?.pinned ? t('notes.pinnedOn') : t('notes.pin')}</button>
+    <button class="ghost" type="button" aria-label={t('notes.delete')} onclick={remove}>{@html pixelIcon('close')}</button>
   </div>
-  <input type="text" id="note-title" maxlength="80" placeholder="제목" bind:value={title} bind:this={titleInput} oninput={scheduleSave} />
-  <textarea id="note-body" placeholder="공부하면서 떠오른 걸 적어두세요" bind:value={body} oninput={scheduleSave}></textarea>
+  <input type="text" id="note-title" maxlength="80" placeholder={t('notes.titlePlaceholder')} bind:value={title} bind:this={titleInput} oninput={scheduleSave} />
+  <textarea id="note-body" placeholder={t('notes.bodyPlaceholder')} bind:value={body} oninput={scheduleSave}></textarea>
 </div>
 
 <style>

@@ -1,4 +1,5 @@
 import type { TimerMode, TimerState } from '../../../domain/pomodoro/timer';
+import { t } from '../../i18n';
 
 // The pomodoro tab's rules, apart from the screen (tested in logic.test.ts).
 
@@ -20,8 +21,8 @@ export const phaseOf = (timer: TimerState, lengths: { breakMinutes: number; long
 
 export const intentText = (mode: TimerMode, phase: PhaseKind, activeTodoTitle: string | undefined) =>
   mode === 'break'
-    ? phase === 'long' ? '긴 휴식 · 스트레칭 어때?' : '짧은 휴식 · 물 한 잔'
-    : activeTodoTitle !== undefined ? `지금 할 일: ${activeTodoTitle}` : '할 일 탭에서 지금 할 일 지정';
+    ? phase === 'long' ? t('pomodoro.intent.long') : t('pomodoro.intent.break')
+    : activeTodoTitle !== undefined ? t('pomodoro.intent.todo', { title: activeTodoTitle }) : t('pomodoro.intent.none');
 
 // The reflection box starts empty when it opens, and only then: refreshes
 // while it is open (a paused break, a finished todo) keep what was typed.

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ChatMessage } from '../../../shared/chat';
+import { setLocale } from '../../../i18n';
 import { followBottom, friendIds, isGroup, preview, when } from './logic';
 
 const now = new Date(2026, 10, 4, 15, 0).getTime();
@@ -8,8 +9,18 @@ const session = (messages: ChatMessage[], members?: string[]) => ({ id: 's', cha
 describe('chat logic', () => {
   it('dates a conversation like a messenger', () => {
     expect(when(new Date(2026, 10, 4, 9, 5).getTime(), now)).toMatch(/9:05/);
-    expect(when(new Date(2026, 9, 30, 9).getTime(), now)).toBe('10.30');
-    expect(when(new Date(2025, 0, 2).getTime(), now)).toBe('2025.1.2');
+    expect(when(new Date(2026, 9, 30, 9).getTime(), now)).toBe('10. 30.');
+    expect(when(new Date(2025, 0, 2).getTime(), now)).toBe('2025. 1. 2.');
+  });
+
+  it('dates a conversation in the chosen language (Intl)', () => {
+    setLocale('en');
+    expect(when(new Date(2026, 10, 4, 9, 5).getTime(), now)).toBe('9:05 AM');
+    expect(when(new Date(2026, 9, 30, 9).getTime(), now)).toBe('10/30');
+    setLocale('ja');
+    expect(when(new Date(2026, 10, 4, 9, 5).getTime(), now)).toBe('09:05');
+    expect(when(new Date(2025, 0, 2).getTime(), now)).toBe('2025/1/2');
+    setLocale('ko');
   });
 
   it('previews the last spoken line, skipping tool lines', () => {

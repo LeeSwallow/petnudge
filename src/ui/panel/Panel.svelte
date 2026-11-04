@@ -6,6 +6,7 @@
   import EmptyState from '../components/EmptyState.svelte';
   import Tabs from '../components/Tabs.svelte';
   import { logError } from '../log';
+  import { t } from '../i18n';
   import { DEFAULT_MODULE, groupOf, modulesIn, shownModules, visibleGroups, type GroupId } from './groups';
 
   type Props = {
@@ -22,7 +23,7 @@
   // only modules whose group is shown get a tab and a body
   const shown = $derived(shownModules(modules));
   const group = $derived(groupOf(modules, current));
-  const groupItems = visibleGroups().map((g) => ({ id: g.id, label: g.label, icon: g.icon }));
+  const groupItems = $derived(visibleGroups().map((g) => ({ id: g.id, label: g.label, icon: g.icon })));
   const inGroup = $derived(modulesIn(shown, group).map((m) => ({ id: m.id, label: m.label, icon: m.icon })));
 
   export const show = (id: ModuleId, animate = true) => {
@@ -41,9 +42,9 @@
 </script>
 
 <div class="ui-panel">
-  <Tabs variant="group" key="group" label="기능 묶음" items={groupItems} selected={group} onselect={selectGroup} />
+  <Tabs variant="group" key="group" label={t('panel.groupsLabel')} items={groupItems} selected={group} onselect={selectGroup} />
   {#if inGroup.length > 1}
-    <Tabs variant="sub" key="module" label="기능" items={inGroup} selected={current} onselect={(id) => show(id as ModuleId)} />
+    <Tabs variant="sub" key="module" label={t('panel.modulesLabel')} items={inGroup} selected={current} onselect={(id) => show(id as ModuleId)} />
   {/if}
   <div class="module-host">
     {#each shown as module (module.id)}
@@ -53,8 +54,8 @@
           <module.component />
           {#snippet failed(_error, reset)}
             <div class="module-failed" data-failed={module.id}>
-              <EmptyState text="이 탭에 문제가 생겼어요" />
-              <Button onclick={reset}>다시 시도</Button>
+              <EmptyState text={t('panel.tabFailed')} />
+              <Button onclick={reset}>{t('panel.retry')}</Button>
             </div>
           {/snippet}
         </svelte:boundary>
@@ -63,7 +64,7 @@
   </div>
   {#if group === 'settings'}
     <footer>
-      <button type="button" class="quit" data-quit onclick={onquit}>{@html pixelIcon('power')}<span>나가기</span></button>
+      <button type="button" class="quit" data-quit onclick={onquit}>{@html pixelIcon('power')}<span>{t('panel.quit')}</span></button>
     </footer>
   {/if}
 </div>

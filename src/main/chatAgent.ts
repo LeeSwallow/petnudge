@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { ChatAnthropic } from '@langchain/anthropic';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { AIMessage, HumanMessage, SystemMessage, ToolMessage, type AIMessageChunk, type BaseMessage } from '@langchain/core/messages';
@@ -13,25 +14,25 @@ const MAX_STEPS = 8;
 
 export const createModel = (provider: ChatProvider, config: ChatConfig, apiKey: string | null, model = modelFor(config, provider)): BaseChatModel => {
   if (provider === 'anthropic') {
-    if (!apiKey) throw new Error('Anthropic API 키를 넣어 주세요');
+    if (!apiKey) throw new Error(t('error.chat.needKey', { provider: 'Anthropic' }));
     return new ChatAnthropic({ model, apiKey, maxTokens: 2048 });
   }
   if (provider === 'openai') {
-    if (!apiKey) throw new Error('OpenAI API 키를 넣어 주세요');
+    if (!apiKey) throw new Error(t('error.chat.needKey', { provider: 'OpenAI' }));
     return new ChatOpenAI({ model, apiKey });
   }
   if (provider === 'openrouter') {
-    if (!apiKey) throw new Error('OpenRouter API 키를 넣어 주세요');
+    if (!apiKey) throw new Error(t('error.chat.needKey', { provider: 'OpenRouter' }));
     return new ChatOpenAI({
       model, apiKey,
       configuration: { baseURL: 'https://openrouter.ai/api/v1', defaultHeaders: { 'X-Title': 'Study Companion Pet' } }
     });
   }
   if (provider === 'custom') {
-    if (!/^https?:\/\//.test(config.baseUrl)) throw new Error('호환 서버 주소를 http(s)://… 로 적어 주세요');
+    if (!/^https?:\/\//.test(config.baseUrl)) throw new Error(t('error.chat.baseUrl'));
     return new ChatOpenAI({ model, apiKey: apiKey || 'not-needed', configuration: { baseURL: config.baseUrl } });
   }
-  throw new Error(`${provider}는 API 제공자가 아니에요`);
+  throw new Error(t('error.chat.notApi', { provider }));
 };
 
 type RunOptions = {

@@ -3,6 +3,7 @@ import { defaultSettings, type AppSettings } from '../shared/settings';
 import { lastDateKeys, shiftDateKey } from '../shared/stats';
 import type { DailyFocus, HourlyFocus, Note, Playlist, Todo } from '../shared/types';
 import { api } from './api';
+import { setLocale } from '../i18n';
 
 // Renderer-side cache of what lives in SQLite. Modules read from `data` and
 // call `refresh*` after writing; listeners re-render on change.
@@ -46,14 +47,20 @@ export const refreshPlaylists = async () => {
   emit('playlists');
 };
 
+// The language follows the settings (#77): the whole window speaks it.
+const settingsChanged = () => {
+  setLocale(data.settings.locale);
+  emit('settings');
+};
+
 export const refreshSettings = async () => {
   data.settings = await api.db.getSettings();
-  emit('settings');
+  settingsChanged();
 };
 
 export const updateSettings = async (patch: Partial<AppSettings>) => {
   data.settings = await api.db.updateSettings(patch);
-  emit('settings');
+  settingsChanged();
 };
 
 export const refreshStats = async () => {

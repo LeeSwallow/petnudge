@@ -1,5 +1,6 @@
 import { closestOutfit } from '../domain/character/outfits';
 import type { Avatar, CharacterPack } from './characterPack';
+import { isLocale, type AnyLocale } from '../i18n';
 
 export type AppSettings = {
   characterId: string;
@@ -24,6 +25,9 @@ export type AppSettings = {
   // shortcut takes the keys away from every other app.
   chatShortcut: boolean;
   nickname: string;
+  // The app's language (#77). Main fills it in from the OS on first run
+  // (app.getLocale(): ko, ja, else en); `xx` is the checks' pseudo-locale.
+  locale: AnyLocale;
   // Lila's outfit before per-character avatars (characterAvatars); hair and
   // glow colours were removed with the colour slots (#50).
   avatarOutfit: string;
@@ -50,6 +54,7 @@ export const defaultSettings: AppSettings = {
   reduceMotion: false,
   chatShortcut: false,
   nickname: '',
+  locale: 'en',
   avatarOutfit: 'jacket',
   avatarHeadwear: 'catphones'
 };
@@ -103,6 +108,8 @@ export const normalizeSettings = (input: unknown): AppSettings => {
       result[key] = value;
     } else if (key.startsWith('avatar')) {
       if (typeof value === 'string' && /^[a-z][a-z0-9-]{0,23}$/.test(value)) result[key] = value;
+    } else if (key === 'locale') {
+      if (isLocale(value)) result[key] = value;
     } else if (key === 'nickname') {
       result[key] = typeof value === 'string' ? value.trim().slice(0, 16) : '';
     } else if (key === 'focusPlaylistId' || key === 'breakPlaylistId') {

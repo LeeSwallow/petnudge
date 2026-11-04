@@ -1,5 +1,6 @@
 import { dateKeyOf, inBounds } from '../../../shared/dateFilter';
 import type { Todo } from '../../../shared/types';
+import { formatTime, t } from '../../i18n';
 
 // The todo tab's arithmetic, apart from the screen (tested in logic.test.ts).
 
@@ -11,7 +12,7 @@ export const clampEstimate = (n: number) => Math.min(12, Math.max(1, n));
 // When the remaining pomodoros (each a focus and a break) would end if started now.
 export const finishTime = (remaining: number, focusMinutes: number, breakMinutes: number, now: Date) => {
   const finish = new Date(now.getTime() + remaining * (focusMinutes + breakMinutes) * 60_000);
-  return `${String(finish.getHours()).padStart(2, '0')}:${String(finish.getMinutes()).padStart(2, '0')}`;
+  return formatTime(finish);
 };
 
 export const summarize = (todos: Todo[]) => {
@@ -35,4 +36,4 @@ export const visibleTodos = (todos: Todo[], bounds: Bounds, status: TodoStatus) 
   return { open: shownOpen, done: shownDone, canMove: shownOpen.length === open.length };
 };
 
-export const emptyText = (openCount: number) => (openCount ? '조건에 맞는 할 일이 없어요' : '할 일이 비었어요');
+export const emptyText = (openCount: number) => (openCount ? t('todo.noMatch') : t('todo.empty'));

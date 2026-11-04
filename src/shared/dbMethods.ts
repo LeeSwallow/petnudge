@@ -34,7 +34,8 @@ export const DB_METHODS = [
   'addPlaylistItem',
   'getPlaylistItem',
   'removePlaylistItem',
-  'movePlaylistItem'
+  'movePlaylistItem',
+  'hasSetting'
 ] as const satisfies readonly RepositoryMethod[];
 
 type Missing = Exclude<RepositoryMethod, (typeof DB_METHODS)[number]>;

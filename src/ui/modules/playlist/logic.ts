@@ -1,4 +1,5 @@
 import type { Playlist } from '../../../shared/types';
+import { t } from '../../i18n';
 
 // The music tab's rules, apart from the screen (tested in logic.test.ts).
 
@@ -11,7 +12,7 @@ export const selectedList = (playlists: Playlist[], id: string | null) => playli
 // A file added from disk: its name without the extension, "내 파일" as artist.
 export const localTrack = (path: string) => {
   const name = path.split(/[\\/]/).pop() ?? path;
-  return { player: 'Local', ref: path, title: name.replace(/\.[^.]+$/, ''), artist: '내 파일' };
+  return { player: 'Local', ref: path, title: name.replace(/\.[^.]+$/, ''), artist: t('music.myFile') };
 };
 
-export const addedText = (added: number) => (added ? `${added}곡 추가했어요` : '지원하는 음악 파일이 없어요');
+export const addedText = (added: number) => (added ? t('music.addedFiles', { count: added }) : t('music.noAudio'));

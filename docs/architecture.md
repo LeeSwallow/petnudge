@@ -52,9 +52,24 @@ Dependencies point down: `ui`/`infra` → `app` → `core` → `domain`.
 | `src/app` | `core`, `domain`, `effect` | feature modules (actions, queries, jobs), as they move out of the older code |
 | `src/infra` | everything below, Electron, `node:` | the runtime that starts the engine, power and lock events, adapters |
 | `src/ui` | `domain` | the renderer, as it moves out of the older code |
+| `src/i18n` | itself only, no packages | the message catalogs (ko, the source; en, ja) and their runtime; every layer may import it |
 
 `src/architecture.test.ts` reads every import in those folders and fails on
-a rule broken. The older folders, `src/main` (windows, repository, MCP,
+a rule broken.
+
+## Languages
+
+What the user reads comes from `src/i18n`: `t(key, params)` with keys by
+area (`todo.*`, `settings.*`, `tray.*`, `error.*`…), plurals through
+`Intl.PluralRules`, dates, times and numbers through `Intl`. Korean
+(`ko.ts`) is the source; `en.ts` and `ja.ts` have the same keys and
+placeholders (`src/i18n/i18n.test.ts`). The language is the `locale`
+setting, filled in from the OS on first run. Main and the renderer each keep
+their current locale and listeners: Svelte views follow it through
+`src/ui/i18n.ts`, main rebuilds the tray menu. `src/hangul.test.ts` fails on
+Korean written straight into `src/ui`, `src/renderer` or `src/main`.
+Character packs and mods are data: a pack may give `lines` and `persona` per
+language, with its `lang` as the fallback. The older folders, `src/main` (windows, repository, MCP,
 characters, mods, chat, backup), `src/renderer` (the pet and the panel),
 `src/preload` and `src/shared`, are not checked yet; they move into the
 layers module by module, todos first.

@@ -259,6 +259,8 @@ select:focus {
 
 .toggle input {
   appearance: none;
+  /* never squeezed by a long label: its knob would stick out */
+  flex: none;
   width: 30px;
   height: 16px;
   margin: 0;
@@ -1279,9 +1281,11 @@ select:focus {
 }
 
 .ai-label {
-  width: 64px;
+  /* a longer label (other languages) takes two lines, not the field's room */
+  min-width: 64px;
+  max-width: 40%;
   flex: none;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .ai-field {

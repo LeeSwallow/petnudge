@@ -9,6 +9,15 @@ describe('normalizeSettings', () => {
     expect(normalizeSettings('x')).toEqual(defaultSettings);
   });
 
+  it('keeps a known language and drops anything else (#77)', () => {
+    expect(defaultSettings.locale).toBe('en');
+    expect(normalizeSettings({ locale: 'ja' }).locale).toBe('ja');
+    expect(normalizeSettings({ locale: 'ko' }).locale).toBe('ko');
+    expect(normalizeSettings({ locale: 'xx' }).locale).toBe('xx');
+    expect(normalizeSettings({ locale: 'fr' }).locale).toBe('en');
+    expect(normalizeSettings({ locale: 3 }).locale).toBe('en');
+  });
+
   it('leaves music sync off for a new profile', () => {
     expect(defaultSettings.musicSync).toBe(false);
     expect(normalizeSettings({ musicSync: true }).musicSync).toBe(true);

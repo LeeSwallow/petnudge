@@ -1,6 +1,6 @@
 // The panel itself (src/ui/panel): opening, the group tabs, every tab.
 // It is also what --changed runs when no other scenario covers a change.
-import { check } from './lib.mjs';
+import { check, T, TS } from './lib.mjs';
 
 export default {
   name: 'panel',
@@ -9,7 +9,7 @@ export default {
   setup: `await window.petApi.db.removeKv('ui.module'); return true;`,
   checks: [
     check('panel opens on right click', `$('#pet').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true })); await wait(); return !$('#panel').hidden;`, true),
-    check('four groups, home first, none overflowing', `return $$('[data-group]').map((b) => b.textContent.trim() + (b.scrollWidth <= b.clientWidth ? '' : '!'));`, ['홈', '집중', '기록', '설정']),
+    check('four groups, home first, none overflowing', `return $$('[data-group]').map((b) => b.textContent.trim() + (b.scrollWidth <= b.clientWidth ? '' : '!'));`, ['home', 'focus', 'record', 'settings'].map((g) => T(`panel.group.${g}`))),
     check('pomodoro opens first', `return $('[data-module][aria-selected=true]').dataset.module;`, 'pomodoro'),
     check('arrow keys move between groups', `$('[data-group=focus]').focus(); key('[data-group=focus]', 'ArrowLeft'); await wait(150); const left = [$('[data-group][aria-selected=true]').dataset.group, $$('[data-group]').map((b) => b.tabIndex)]; key('[data-group=home]', 'ArrowLeft'); await wait(150); return [left, $('[data-group][aria-selected=true]').dataset.group];`, [['home', [0, -1, -1, -1]], 'settings']),
     check('every tab renders without falling back', `const failed = []; for (const g of $$('[data-group]')) { g.click(); await wait(200); const modules = $$('[data-module]'); for (const m of modules) { m.click(); await wait(300); if ($$('[data-failed]').length) failed.push(m.dataset.module); } if (!modules.length && $$('[data-failed]').length) failed.push(g.dataset.group); } return [failed, $$('[data-failed]').length];`, [[], 0]),

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { setLocale } from '../i18n';
 import { CHAT_SHORTCUT, RESET_SHORTCUT, trayMenuItems } from './trayMenu';
 
 const actions = (items: ReturnType<typeof trayMenuItems>) => items.map((item) => (item.type === 'separator' ? '---' : item.action));
@@ -21,6 +22,15 @@ describe('trayMenuItems', () => {
     expect(find(false, 'chat')).toEqual({ type: 'item', action: 'chat', label: '말 걸기' });
     expect(find(true, 'chat')).toMatchObject({ label: '말 걸기', accelerator: CHAT_SHORTCUT });
     expect(find(true, 'quit')).toEqual({ type: 'item', action: 'quit', label: '나가기' });
+  });
+
+  it('speaks the chosen language (#77)', () => {
+    const labels = () => trayMenuItems({ panelOpen: false, chatShortcut: false }).map((i) => (i.type === 'separator' ? '---' : i.label));
+    setLocale('en');
+    expect(labels()).toEqual(['Open panel', 'Talk', 'Reset position', '---', 'Quit']);
+    setLocale('ja');
+    expect(labels()).toEqual(['パネルを開く', '話しかける', '位置をリセット', '---', '終了']);
+    setLocale('ko');
   });
 
   it('pairs the chat key with the reset key', () => {

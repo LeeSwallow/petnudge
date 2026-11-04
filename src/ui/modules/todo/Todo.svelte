@@ -10,12 +10,13 @@
   import type { Todo } from '../../../shared/types';
   import TextInput from '../../components/TextInput.svelte';
   import { revision } from '../../state/revision.svelte';
+  import { t } from '../../i18n';
   import { clampEstimate, emptyText, finishTime, summarize, visibleTodos, type TodoStatus } from './logic';
 
-  const STATUS: [string, string][] = [
-    ['all', '전체'],
-    ['open', '진행 중'],
-    ['done', '완료']
+  const STATUS = (): [string, string][] => [
+    ['all', t('todo.status.all')],
+    ['open', t('todo.status.open')],
+    ['done', t('todo.status.done')]
   ];
 
   let title = $state('');
@@ -31,7 +32,7 @@
     filter = createFilter(funnelSlot.querySelector<HTMLButtonElement>('#todo-funnel')!, filterPanel, {
       kvKey: 'filter.todos',
       defaults: { preset: 'all', from: '', to: '', status: 'all' },
-      extras: (state) => `${segmented('status', STATUS, state.status, '상태')}<div class="hint">진행 중은 만든 날, 완료는 끝낸 날 기준이에요</div>`,
+      extras: (state) => `${segmented('status', STATUS(), state.status, t('todo.status.label'))}<div class="hint">${t('todo.status.hint')}</div>`,
       onChange: () => (filterRev += 1)
     });
   });
@@ -102,41 +103,41 @@
 
 </script>
 
-{#snippet row(t: Todo, canMove: boolean)}
-  <li class="todo {t.done ? 'done' : ''} {t.id === view.activeId ? 'active' : ''} {t.id === poppedId ? 'pop' : ''}">
-    <button class="todo-check" type="button" aria-label="완료 표시" onclick={() => toggle(t)}>{@html t.done ? pixelIcon('check') : ''}</button>
-    <div class="todo-main" role="button" tabindex="-1" onclick={() => activate(t.id)} onkeydown={(e) => e.key === 'Enter' && activate(t.id)}>
-      <span class="todo-title">{@html t.id === view.activeId ? pixelIcon('play') + ' ' : ''}{t.title}</span>
-      <span class="todo-meta">{@html pomodoroCells(t.pomodoros, t.estimate)}</span>
+{#snippet row(todo: Todo, canMove: boolean)}
+  <li class="todo {todo.done ? 'done' : ''} {todo.id === view.activeId ? 'active' : ''} {todo.id === poppedId ? 'pop' : ''}">
+    <button class="todo-check" type="button" aria-label={t('todo.markDone')} onclick={() => toggle(todo)}>{@html todo.done ? pixelIcon('check') : ''}</button>
+    <div class="todo-main" role="button" tabindex="-1" onclick={() => activate(todo.id)} onkeydown={(e) => e.key === 'Enter' && activate(todo.id)}>
+      <span class="todo-title">{@html todo.id === view.activeId ? pixelIcon('play') + ' ' : ''}{todo.title}</span>
+      <span class="todo-meta">{@html pomodoroCells(todo.pomodoros, todo.estimate)}</span>
     </div>
     <div class="todo-actions">
-      {#if !t.done && canMove}
-        <button type="button" aria-label="위로" onclick={() => move(t.id, -1)}>{@html pixelIcon('up')}</button>
-        <button type="button" aria-label="아래로" onclick={() => move(t.id, 1)}>{@html pixelIcon('down')}</button>
+      {#if !todo.done && canMove}
+        <button type="button" aria-label={t('todo.moveUp')} onclick={() => move(todo.id, -1)}>{@html pixelIcon('up')}</button>
+        <button type="button" aria-label={t('todo.moveDown')} onclick={() => move(todo.id, 1)}>{@html pixelIcon('down')}</button>
       {/if}
-      <button type="button" aria-label="삭제" onclick={() => remove(t.id)}>{@html pixelIcon('close')}</button>
+      <button type="button" aria-label={t('common.delete')} onclick={() => remove(todo.id)}>{@html pixelIcon('close')}</button>
     </div>
   </li>
 {/snippet}
 
 <div class="todo-summary frame well" id="todo-summary">
   {#if view.sum.total}
-    <div class="bar-row"><span>완료</span>{@html splitBar(view.sum.done, view.sum.total, 'var(--long)', `할 일 ${view.sum.done}/${view.sum.total} 완료`)}<span class="value">{view.sum.done}/{view.sum.total}</span></div>
-    <div class="bar-row"><span>{@html pixelIcon('tomato')}</span>{@html splitBar(view.sum.spent, Math.max(view.sum.estimated, view.sum.spent), 'var(--focus)', `뽀모도로 ${view.sum.spent}/${view.sum.estimated} 사용`)}<span class="value">{view.sum.spent}/{view.sum.estimated}</span></div>
+    <div class="bar-row"><span>{t('todo.status.done')}</span>{@html splitBar(view.sum.done, view.sum.total, 'var(--long)', t('todo.barDone', { done: view.sum.done, total: view.sum.total }))}<span class="value">{view.sum.done}/{view.sum.total}</span></div>
+    <div class="bar-row"><span>{@html pixelIcon('tomato')}</span>{@html splitBar(view.sum.spent, Math.max(view.sum.estimated, view.sum.spent), 'var(--focus)', t('todo.barPomodoros', { spent: view.sum.spent, estimated: view.sum.estimated }))}<span class="value">{view.sum.spent}/{view.sum.estimated}</span></div>
     <div class="hint">
       {#if view.sum.remaining > 0}
-        남은 {@html pixelIcon('tomato')} {view.sum.remaining}개 · 지금 시작하면 <b>{finishTime(view.sum.remaining, data.settings.focusMinutes, data.settings.breakMinutes, new Date())}</b> 완료 예상
+        {t('todo.remainingBefore')} {@html pixelIcon('tomato')} {t('todo.remaining', { count: view.sum.remaining })} · {t('todo.finishBefore')} <b>{finishTime(view.sum.remaining, data.settings.focusMinutes, data.settings.breakMinutes, new Date())}</b> {t('todo.finishAfter')}
       {:else}
-        모든 예상 뽀모도로를 채웠어요!
+        {t('todo.allFilled')}
       {/if}
     </div>
   {:else}
-    <div class="hint">오늘 할 일을 적어봐요. 항목을 누르면 {@html pixelIcon('play')} 지금 할 일로 지정돼요.</div>
+    <div class="hint">{t('todo.introBefore')} {@html pixelIcon('play')} {t('todo.introAfter')}</div>
   {/if}
 </div>
 <div class="todo-form">
-  <span class="grow"><TextInput id="todo-input" maxlength={80} placeholder="할 일을 입력하고 Enter" bind:value={title} onenter={add} /></span>
-  <span class="estimate" data-tip="예상 뽀모도로 수">
+  <span class="grow"><TextInput id="todo-input" maxlength={80} placeholder={t('todo.placeholder')} bind:value={title} onenter={add} /></span>
+  <span class="estimate" data-tip={t('todo.estimate')}>
     <button type="button" onclick={() => (estimate = clampEstimate(estimate - 1))}>-</button>
     {@html pixelIcon('tomato')}<output id="todo-estimate">{estimate}</output>
     <button type="button" onclick={() => (estimate = clampEstimate(estimate + 1))}>+</button>
@@ -145,30 +146,30 @@
 </div>
 <div class="frame well filter-panel" id="todo-filter" hidden bind:this={filterPanel}></div>
 <ul class="todo-list" id="todo-open" hidden={view.status === 'done'}>
-  {#each view.shown.open as t (t.id)}
-    {@render row(t, view.shown.canMove)}
+  {#each view.shown.open as todo (todo.id)}
+    {@render row(todo, view.shown.canMove)}
   {:else}
     <li class="empty">{emptyText(view.openCount)}{#if !view.openCount}&nbsp;{@html pixelIcon('flower')}{/if}</li>
   {/each}
 </ul>
 <div class="section-title" id="todo-done-title">
   {#if view.doneCount && view.status !== 'open'}
-    <span>완료한 일 {#if view.filtered}<small>{view.doneCount}개 중 {view.shown.done.length}개</small>{/if}</span>
-    <button class="ghost" type="button" data-tip="완료한 일을 모두 지워요" onclick={clearDone}>비우기</button>
+    <span>{t('todo.doneTitle')} {#if view.filtered}<small>{t('todo.filteredCount', { shown: view.shown.done.length, total: view.doneCount })}</small>{/if}</span>
+    <button class="ghost" type="button" data-tip={t('todo.clearTip')} onclick={clearDone}>{t('todo.clear')}</button>
   {/if}
 </div>
 <ul class="todo-list" id="todo-done">
   {#if view.doneCount && view.status !== 'open'}
     {#each view.days as day (day.dateKey)}
-      {@html dayHead(day.dateKey, `${day.items.length}개`)}
-      {#each day.items as t (t.id)}
-        {@render row(t, false)}
+      {@html dayHead(day.dateKey, t('common.count', { count: day.items.length }))}
+      {#each day.items as todo (todo.id)}
+        {@render row(todo, false)}
       {/each}
     {:else}
-      {#if view.status === 'done'}<li class="empty">조건에 맞는 완료한 일이 없어요</li>{/if}
+      {#if view.status === 'done'}<li class="empty">{t('todo.noDoneMatch')}</li>{/if}
     {/each}
   {:else if view.status === 'done'}
-    <li class="empty">아직 완료한 일이 없어요</li>
+    <li class="empty">{t('todo.noDone')}</li>
   {/if}
 </ul>
 

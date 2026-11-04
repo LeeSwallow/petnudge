@@ -1,18 +1,21 @@
 import type { ChatMessage } from '../../../shared/chat';
+import { formatDate, formatTime, t } from '../../i18n';
 
 // The chat tab's wording and lists, apart from the screen (tested in logic.test.ts).
 
-// Today: the time; this year: month.day; before: year.month.day.
+// Today: the time; this year: month and day; before: the whole date.
 export const when = (time: number, now: number) => {
   const d = new Date(time);
   const today = new Date(now);
-  if (d.toDateString() === today.toDateString()) return d.toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' });
-  return d.getFullYear() === today.getFullYear() ? `${d.getMonth() + 1}.${d.getDate()}` : `${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()}`;
+  if (d.toDateString() === today.toDateString()) return formatTime(d);
+  return d.getFullYear() === today.getFullYear()
+    ? formatDate(d, { month: 'numeric', day: 'numeric' })
+    : formatDate(d, { year: 'numeric', month: 'numeric', day: 'numeric' });
 };
 
 export const preview = (session: { messages: ChatMessage[] }) => {
   const last = [...session.messages].reverse().find((m) => m.role !== 'tool');
-  return last ? `${last.role === 'user' ? '나: ' : ''}${last.text}` : '아직 대화가 없어요';
+  return last ? `${last.role === 'user' ? t('chat.me') : ''}${last.text}` : t('chat.noMessages');
 };
 
 // The friend list: the pet first, then the other characters, then anyone a

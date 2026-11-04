@@ -2,6 +2,7 @@ import { pixelIcon } from '../icons';
 import { pack } from '../character';
 import { activeSession, cancelChat, chatAvailable, chatState, onChat, providerLabel, sendChat } from '../chat';
 import { onEnter } from '../../ui/dom';
+import { onLocaleChange, t } from '../../i18n';
 
 // The quick chat bar: the talk button in the dock beside her (src/ui/dock,
 // passed in as `slot`) opens a small input right above her head; replies show in her speech bubble and go into
@@ -30,9 +31,10 @@ export const installChatBar = (openFull: () => void, slot: HTMLElement): { openI
   bar.innerHTML = `
     <input type="text" id="chat-quick" maxlength="2000" autocomplete="off" />
     <button type="button" class="icon-button" id="chat-quick-send"></button>
-    <button type="button" class="icon-button" id="chat-quick-full" aria-label="대화 크게 보기" data-tip="크게 보기">⤢</button>`;
+    <button type="button" class="icon-button" id="chat-quick-full">⤢</button>`;
   const input = bar.querySelector<HTMLInputElement>('#chat-quick')!;
   const send = bar.querySelector<HTMLButtonElement>('#chat-quick-send')!;
+  const full = bar.querySelector<HTMLButtonElement>('#chat-quick-full')!;
 
   unit.insertBefore(bar, body);
   slot.append(button);
@@ -40,16 +42,18 @@ export const installChatBar = (openFull: () => void, slot: HTMLElement): { openI
   const render = () => {
     const busy = Boolean(chatState.pending);
     send.innerHTML = pixelIcon(busy ? 'stop' : 'play');
-    send.setAttribute('aria-label', busy ? '멈춤' : '보내기');
+    send.setAttribute('aria-label', busy ? t('chat.stop') : t('chat.send'));
+    full.setAttribute('aria-label', t('chatbar.full'));
+    full.dataset.tip = t('chatbar.fullTip');
     input.disabled = busy;
     input.placeholder = chatAvailable()
-      ? busy ? `${pack.name}가 생각 중…` : `${pack.name}에게 말하기 (${providerLabel()})`
-      : '설정 › AI 대화 설정에서 연결해 주세요';
+      ? busy ? t('chatbar.thinking', { name: pack.name }) : t('chatbar.placeholder', { name: pack.name, provider: providerLabel() })
+      : t('chat.noProvider');
     button.hidden = !chatState.config.button;
     if (!chatState.config.button && !summoned) bar.hidden = true;
     button.classList.toggle('on', !bar.hidden);
-    button.setAttribute('aria-label', bar.hidden ? '말 걸기' : '입력창 닫기');
-    button.dataset.tip = bar.hidden ? '말 걸기' : '닫기';
+    button.setAttribute('aria-label', bar.hidden ? t('chatbar.talk') : t('chatbar.closeInput'));
+    button.dataset.tip = bar.hidden ? t('chatbar.talk') : t('common.close');
   };
 
   const open = (show: boolean) => {
@@ -68,7 +72,7 @@ export const installChatBar = (openFull: () => void, slot: HTMLElement): { openI
 
   button.addEventListener('click', () => open(bar.hidden === true));
   send.addEventListener('click', submit);
-  bar.querySelector('#chat-quick-full')!.addEventListener('click', openFull);
+  full.addEventListener('click', openFull);
   onEnter(input, submit);
   input.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') open(false);
@@ -77,6 +81,7 @@ export const installChatBar = (openFull: () => void, slot: HTMLElement): { openI
     render();
     if (!chatState.pending && !bar.hidden) input.focus();
   });
+  onLocaleChange(render);
   render();
   return {
     openInput: () => {

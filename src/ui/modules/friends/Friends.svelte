@@ -4,6 +4,7 @@
   import { pack } from '../../../renderer/character';
   import type { CharacterChoice } from '../../../shared/characterImport';
   import { revision } from '../../state/revision.svelte';
+  import { t } from '../../i18n';
   import { errorText, friendRow, onScreenCount } from './logic';
 
   // The 캐릭터 tab: who is out on the desktop. The main pet always stays (it is
@@ -19,7 +20,7 @@
       [characters, out] = await Promise.all([api.listCharacters(), api.listFriends()]);
       status = '';
     } catch (error) {
-      status = errorText(error, '캐릭터 목록을 읽지 못했어요');
+      status = errorText(error, t('settings.character.listFailed'));
     }
   };
 
@@ -42,28 +43,28 @@
   const count = $derived(onScreenCount(out, mainId));
 
   const call = (id: string) => {
-    api.openFriend(id).catch((error) => (status = errorText(error, '부르지 못했어요')));
+    api.openFriend(id).catch((error) => (status = errorText(error, t('friends.callFailed'))));
   };
 </script>
 
-<div class="section-title">화면의 캐릭터 <small id="friends-count">화면에 {count}마리</small></div>
+<div class="section-title">{t('friends.title')} <small id="friends-count">{t('friends.count', { count })}</small></div>
 <div class="frame well setting-group">
   <ul class="friends-list" id="friends-list">
     {#each characters as c (c.id)}
       {@const action = friendRow(c.id, mainId, out)}
       <li class="row">
-        <span class="grow">{c.name}{#if c.builtin}&nbsp;<small class="hint">기본</small>{/if}</span>
+        <span class="grow">{c.name}{#if c.builtin}&nbsp;<small class="hint">{t('settings.mods.builtin')}</small>{/if}</span>
         {#if action === 'main'}
-          <span class="hint">대표</span>
+          <span class="hint">{t('friends.main')}</span>
         {:else if action === 'remove'}
-          <button type="button" class="ghost mini" data-id={c.id} onclick={() => api.closeFriend(c.id)}>돌려보내기</button>
+          <button type="button" class="ghost mini" data-id={c.id} onclick={() => api.closeFriend(c.id)}>{t('friends.sendBack')}</button>
         {:else}
-          <button type="button" class="mini" data-id={c.id} onclick={() => call(c.id)}>화면에 부르기</button>
+          <button type="button" class="mini" data-id={c.id} onclick={() => call(c.id)}>{t('friends.call')}</button>
         {/if}
       </li>
     {/each}
   </ul>
-  <button type="button" id="friends-clear" disabled={count === 1} onclick={() => out.forEach((id) => api.closeFriend(id))}>대표만 남기기</button>
-  <div class="hint">대표 캐릭터는 설정에서 바꿔요. 부른 친구는 다음에 켤 때 다시 나오지 않아요.</div>
+  <button type="button" id="friends-clear" disabled={count === 1} onclick={() => out.forEach((id) => api.closeFriend(id))}>{t('friends.clear')}</button>
+  <div class="hint">{t('friends.hint')}</div>
   <div class="hint" id="friends-status" role="status" aria-live="polite">{status}</div>
 </div>

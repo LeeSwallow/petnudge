@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { existsSync, watch } from 'node:fs';
 import { cp, mkdir, readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -16,10 +17,10 @@ export const createModLibrary = (builtinRoot: string, userRoot: string, disabled
       if (!existsSync(file)) continue;
       try {
         const text = await readFile(file, 'utf8');
-        if (text.length > MAX_BYTES) throw new Error('mod.json이 너무 커요');
+        if (text.length > MAX_BYTES) throw new Error(t('error.mod.tooBig'));
         const mod = parseMod(JSON.parse(text));
-        if (mod.id !== id) throw new Error(`폴더 이름(${id})과 모드 ID(${mod.id})가 달라요`);
-        if (out.some((m) => m.mod.id === mod.id)) throw new Error(`같은 ID의 모드가 이미 있어요: ${mod.id}`);
+        if (mod.id !== id) throw new Error(t('error.mod.idMismatch', { folder: id, id: mod.id }));
+        if (out.some((m) => m.mod.id === mod.id)) throw new Error(t('error.mod.duplicate', { id: mod.id }));
         out.push({ mod, builtin, enabled: !disabled().includes(mod.id), path: file });
       } catch (error) {
         problems.push({ path: file, error: error instanceof Error ? error.message : String(error) });
@@ -47,7 +48,7 @@ export const createModLibrary = (builtinRoot: string, userRoot: string, disabled
     const file = path.join(target, 'mod.json');
     const mod = JSON.parse(await readFile(file, 'utf8'));
     mod.id = id;
-    mod.name = `내 모드 ${n}`;
+    mod.name = t('settings.mods.newName', { n });
     const { writeFile } = await import('node:fs/promises');
     await writeFile(file, `${JSON.stringify(mod, null, 2)}\n`);
     return file;

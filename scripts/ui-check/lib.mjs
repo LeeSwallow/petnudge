@@ -3,12 +3,36 @@
 // defined in the page, and running and reporting checks. Importing this file
 // starts nothing; launch() does.
 import { spawn } from 'node:child_process';
+import { buildSync } from 'esbuild';
+import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 export const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// The language the checks run the app in (#77): UI_CHECK_LOCALE=en|ja|ko, or
+// xx, the pseudo-locale (accented, about 40% longer) that catches text that
+// would not fit. Korean by default. The launcher saves it in the throwaway
+// profile before the first check; checks read expected wording with T(), the
+// app's own catalogs bundled for node, never Korean written into a check.
+export const LOCALE = process.env.UI_CHECK_LOCALE ?? 'ko';
+const i18nBundle = buildSync({
+  entryPoints: [fileURLToPath(new URL('../../src/i18n/index.ts', import.meta.url))],
+  bundle: true,
+  format: 'esm',
+  platform: 'neutral',
+  write: false
+}).outputFiles[0].text;
+const i18n = await import(`data:text/javascript;base64,${Buffer.from(i18nBundle).toString('base64')}`);
+if (!i18n.isLocale(LOCALE)) throw new Error(`UI_CHECK_LOCALE must be ko, en, ja or xx, not ${LOCALE}`);
+i18n.setLocale(LOCALE);
+export const T = (key, params) => i18n.t(key, params);
+// T() as a JavaScript string literal, to put inside a check's body.
+export const TS = (key, params) => JSON.stringify(T(key, params));
+// The wording in another language (the language switch checks).
+export const TIn = (locale, key, params) => i18n.tIn(locale, key, params);
 
 // One step of a scenario: `body` is the inside of an async function run in the
 // pet window, and what it returns must equal `expected` (as JSON).
@@ -62,6 +86,7 @@ export const HELPERS = `
   window.replies = () => $$('#chat-log .chat-bubble.pet:not(.thinking)').length;
   window.docked = () => $$('#dock [data-dock-widget]').map((e) => e.dataset.dockWidget + (e.hidden ? ':quiet' : ''));
   window.shown = (el) => !!el && el.offsetParent !== null && getComputedStyle(el).opacity === '1' && el.getBoundingClientRect().width > 0;
+  window.T = (key, params) => window.petnudgeI18n.t(key, params);
   window.copied = [];
   navigator.clipboard.writeText = async (t) => { window.copied.push(t); };
   return true;`;
@@ -141,6 +166,15 @@ export const launch = async ({ port }) => {
   await send('Runtime.enable');
   await send('Log.enable');
   await reload(); // the first load came before Runtime.enable
+  // the language for every check, saved like the user would (Settings › 프로필)
+  await run(`await window.petApi.db.updateSettings({ locale: ${JSON.stringify(LOCALE)} }); return true;`);
+  await reload();
+  const active = await run('return window.petnudgeI18n.getLocale();');
+  if (active !== LOCALE) {
+    ws.close();
+    cleanup();
+    throw new Error(`the app runs in ${active}, not ${LOCALE}`);
+  }
   return {
     run,
     reload,

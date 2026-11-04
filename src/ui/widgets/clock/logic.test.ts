@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { setLocale } from '../../../i18n';
 import { changedCards, clockFace, dateLabel } from './logic';
 
 // Local times: the clock shows the computer's own time zone.
@@ -13,10 +14,18 @@ describe('clock widget', () => {
   });
 
   it('names the date as month, day and weekday', () => {
-    expect(dateLabel(new Date(2026, 10, 4))).toBe('11월 4일 수');
-    expect(dateLabel(new Date(2026, 0, 1))).toBe('1월 1일 목');
-    expect(dateLabel(new Date(2026, 10, 8))).toBe('11월 8일 일');
-    expect(clockFace(at(14, 32)).date).toBe('11월 4일 수');
+    expect(dateLabel(new Date(2026, 10, 4))).toBe('11월 4일 (수)');
+    expect(dateLabel(new Date(2026, 0, 1))).toBe('1월 1일 (목)');
+    expect(dateLabel(new Date(2026, 10, 8))).toBe('11월 8일 (일)');
+    expect(clockFace(at(14, 32)).date).toBe('11월 4일 (수)');
+  });
+
+  it('names the date in the chosen language (Intl)', () => {
+    setLocale('en');
+    expect(dateLabel(new Date(2026, 10, 4))).toBe('Wed, November 4');
+    setLocale('ja');
+    expect(dateLabel(new Date(2026, 10, 4))).toBe('11月4日(水)');
+    setLocale('ko');
   });
 
   it('flips only the cards whose digits changed', () => {
