@@ -23,6 +23,8 @@ import { installChat } from './chatIpc';
 import { createFriends } from './friends';
 import { startEngine, type EngineHandle } from '../infra/runtime';
 import { bridgePower } from '../infra/electron/power';
+import { createTray } from './tray';
+import { CHAT_SHORTCUT, RESET_SHORTCUT, type TrayAction } from './trayMenu';
 const NOW_PLAYING_POLL_MS = 2000;
 
 const AUDIO_EXTENSIONS = ['mp3', 'm4a', 'aac', 'wav', 'ogg', 'oga', 'flac', 'opus', 'webm'];
@@ -127,8 +129,6 @@ const openDatabase = () => {
   });
 };
 
-const RESET_SHORTCUT = 'CommandOrControl+Alt+P';
-
 // Window geometry follows the pet's feet (the anchor); see layout.ts. The
 // renderer reports how big the pet area is and whether the panel is open.
 const view = { anchor: { x: 0, y: 0 } as Point, petAreaHeight: 200, petWidth: 156, panelOpen: false };
@@ -167,6 +167,46 @@ const resetPosition = () => {
   view.anchor = homeAnchor();
   applyLayout();
   win?.showInactive();
+};
+
+// The tray and the chat shortcut act from another app: bring the pet's window
+// forward with keyboard focus so the quick chat input can take typing.
+const summon = () => {
+  if (!win) return;
+  if (process.platform === 'darwin') app.focus({ steal: true });
+  win.show();
+  win.focus();
+};
+const togglePanel = () => {
+  summon();
+  win?.webContents.send('panel:toggle');
+};
+const openQuickChat = () => {
+  summon();
+  win?.webContents.send('chat:open-quick');
+};
+
+let tray: ReturnType<typeof createTray> | null = null;
+const runTrayAction = (action: TrayAction) => {
+  if (action === 'panel') togglePanel();
+  if (action === 'chat') openQuickChat();
+  if (action === 'reset') resetPosition();
+  if (action === 'quit') app.quit();
+};
+
+// ⌘/Ctrl+Alt+C, only while Settings › 펫 turns it on. register() fails when
+// another app holds the keys; the tray's 말 걸기 still works then.
+let chatShortcutOn = false;
+const syncChatShortcut = () => {
+  const wanted = repository.getSettings().chatShortcut;
+  if (wanted && !chatShortcutOn) {
+    chatShortcutOn = globalShortcut.register(CHAT_SHORTCUT, openQuickChat);
+    if (!chatShortcutOn) logger.log('warn', 'shortcut', `${CHAT_SHORTCUT} is taken by another app`);
+  } else if (!wanted && chatShortcutOn) {
+    globalShortcut.unregister(CHAT_SHORTCUT);
+    chatShortcutOn = false;
+  }
+  tray?.refresh();
 };
 
 const createWindow = () => {
@@ -218,7 +258,10 @@ ipcMain.handle('db', (_event, method: unknown, ...args: unknown[]) => {
   if (!isDbMethod(method)) throw new Error(`unknown db method ${String(method)}`);
   const fn = repository[method] as (...a: unknown[]) => unknown;
   const result = fn(...args);
-  if (method === 'updateSettings') applyAlwaysOnTop(repository.getSettings().alwaysOnTop);
+  if (method === 'updateSettings') {
+    applyAlwaysOnTop(repository.getSettings().alwaysOnTop);
+    syncChatShortcut();
+  }
   return result;
 });
 
@@ -273,6 +316,7 @@ ipcMain.on('pet-layout', (event, size: unknown) => {
 ipcMain.on('panel-open', (_event, open: unknown) => {
   view.panelOpen = open === true;
   applyLayout();
+  tray?.refresh();
 });
 
 ipcMain.on('reset-position', resetPosition);
@@ -370,6 +414,7 @@ ipcMain.handle('data:import', async (_event, step: unknown) => {
     const session = restoreBackup(database, pendingImport);
     pendingImport = null;
     applyAlwaysOnTop(repository.getSettings().alwaysOnTop);
+    syncChatShortcut();
     for (const kind of ['todos', 'notes', 'stats'] as const) win?.webContents.send('data-changed', kind);
     return { session };
   }
@@ -481,6 +526,12 @@ app.whenReady().then(() => {
   if (!app.isPackaged) watchBuiltinCharacter();
   mods.watchUser(() => win?.webContents.send('mods:changed'));
   globalShortcut.register(RESET_SHORTCUT, resetPosition);
+  tray = createTray({
+    iconDir: path.join(__dirname, 'tray'),
+    state: () => ({ panelOpen: view.panelOpen, chatShortcut: chatShortcutOn }),
+    run: runTrayAction
+  });
+  syncChatShortcut();
   // Monitors added/removed/rearranged: pull the pet back on screen.
   screen.on('display-removed', applyLayout);
   screen.on('display-metrics-changed', applyLayout);

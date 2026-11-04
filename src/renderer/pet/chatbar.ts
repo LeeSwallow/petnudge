@@ -6,8 +6,10 @@ import { onEnter } from '../../ui/dom';
 // The quick chat bar: a talk button beside her (shown on hover) opens a small
 // input right above her head; replies show in her speech bubble and go into
 // her current session (the 대화 tab shows the whole conversation).
+// The tray's 말 걸기 and the chat shortcut open the input too, through the
+// returned function, even when the button is turned off.
 
-export const installChatBar = (openFull: () => void) => {
+export const installChatBar = (openFull: () => void): { openInput: () => void } => {
   const unit = document.getElementById('pet-unit')!;
   const canvas = document.getElementById('pet')!;
 
@@ -23,6 +25,8 @@ export const installChatBar = (openFull: () => void) => {
   bar.className = 'frame';
   bar.dataset.hit = '';
   bar.hidden = true;
+  // Opened from the tray or the shortcut: stays while the button is off.
+  let summoned = false;
   bar.innerHTML = `
     <input type="text" id="chat-quick" maxlength="2000" autocomplete="off" />
     <button type="button" class="icon-button" id="chat-quick-send"></button>
@@ -46,13 +50,14 @@ export const installChatBar = (openFull: () => void) => {
       ? busy ? `${pack.name}가 생각 중…` : `${pack.name}에게 말하기 (${providerLabel()})`
       : '설정 › AI 대화 설정에서 연결해 주세요';
     button.hidden = !chatState.config.button;
-    if (!chatState.config.button) bar.hidden = true;
+    if (!chatState.config.button && !summoned) bar.hidden = true;
     button.classList.toggle('on', !bar.hidden);
     button.setAttribute('aria-label', bar.hidden ? '말 걸기' : '입력창 닫기');
     button.dataset.tip = bar.hidden ? '말 걸기' : '닫기';
   };
 
   const open = (show: boolean) => {
+    if (!show) summoned = false;
     bar.hidden = !show;
     render();
     if (show) input.focus();
@@ -77,4 +82,10 @@ export const installChatBar = (openFull: () => void) => {
     if (!chatState.pending && !bar.hidden) input.focus();
   });
   render();
+  return {
+    openInput: () => {
+      summoned = true;
+      open(true);
+    }
+  };
 };
