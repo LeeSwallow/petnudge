@@ -7,6 +7,8 @@
   import { logError } from '../../log';
   import { WIDGETS } from '../../widgets/registry';
   import type { Widget } from '../../widgets/widget';
+  import { MAX_DOCK, placementOf, placeWidget, type Placement } from '../../dock/logic';
+  import { dock, loadDock, saveDock } from '../../dock/store.svelte';
   import { addable, addWidget, BOARD_KEY, moveWidget, parseBoard, removeWidget, serializeBoard } from './logic';
 
   const known = WIDGETS.map((w) => w.id);
@@ -20,7 +22,17 @@
   const widgets = $derived((board ?? []).map(byId));
   const offered = $derived(board ? addable(board, known).map(byId) : []);
 
+  // Where each widget shows: the board, the dock beside the pet, or both.
+  const PLACES: { id: Placement; label: string }[] = [
+    { id: 'board', label: '보드에' },
+    { id: 'dock', label: '도크에' },
+    { id: 'both', label: '둘 다' }
+  ];
+  const dockList = $derived(dock.list ?? []);
+  const dockFull = $derived(dockList.length >= MAX_DOCK);
+
   onMount(async () => {
+    void loadDock();
     try {
       board = parseBoard((await api.db.getKv(BOARD_KEY)) as string | null, known);
     } catch (error) {
@@ -34,6 +46,13 @@
     menuFor = null;
     adding = false;
     void api.db.setKv(BOARD_KEY, serializeBoard(next));
+  };
+
+  const place = (id: string, where: Placement) => {
+    if (!board) return;
+    const next = placeWidget(id, where, board, dockList);
+    saveDock(next.dock);
+    save(next.board);
   };
 
   // a click outside an open menu closes it
@@ -58,6 +77,18 @@
             <button type="button" role="menuitem" data-widget-action="up" disabled={i === 0} onclick={() => board && save(moveWidget(board, widget.id, -1))}>위로</button>
             <button type="button" role="menuitem" data-widget-action="down" disabled={i === widgets.length - 1} onclick={() => board && save(moveWidget(board, widget.id, 1))}>아래로</button>
             <button type="button" role="menuitem" data-widget-action="remove" onclick={() => board && save(removeWidget(board, widget.id))}>빼기</button>
+            <div class="sep" role="separator"></div>
+            {#each PLACES as p (p.id)}
+              {@const here = placementOf(widget.id, board, dockList) === p.id}
+              <button
+                type="button"
+                role="menuitemradio"
+                aria-checked={here}
+                data-place={p.id}
+                disabled={!here && p.id !== 'board' && dockFull && !dockList.includes(widget.id)}
+                title={!here && p.id !== 'board' && dockFull && !dockList.includes(widget.id) ? `도크에는 ${MAX_DOCK}개까지 둘 수 있어요` : undefined}
+                onclick={() => place(widget.id, p.id)}>{here ? '✓ ' : ''}{p.label}</button>
+            {/each}
           </div>
         {/if}
       </div>
@@ -70,7 +101,7 @@
     {#if adding}
       <div class="menu" role="menu" aria-label="추가할 위젯" data-widget-add-menu>
         {#each offered as widget (widget.id)}
-          <button type="button" role="menuitem" data-add={widget.id} onclick={() => board && save(addWidget(board, widget.id))}>{widget.label}</button>
+          <button type="button" role="menuitem" data-add={widget.id} onclick={() => board && save(addWidget(board, widget.id))}>{widget.label}{dockList.includes(widget.id) ? ' (도크에 있음)' : ''}</button>
         {/each}
       </div>
     {/if}
@@ -110,6 +141,7 @@
     border-radius: 0;
     cursor: pointer;
   }
+  .sep { height: var(--stroke-frame); margin: var(--space-1) 0; background: var(--color-edge); }
   .menu button:hover:not(:disabled) { background: var(--color-well); }
   .menu button:disabled { color: var(--color-muted); cursor: default; }
   .menu button:focus-visible { outline: var(--stroke-frame) solid var(--color-goal); outline-offset: -2px; }

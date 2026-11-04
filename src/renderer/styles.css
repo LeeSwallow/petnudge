@@ -57,6 +57,7 @@ body.below {
   flex: none;
   display: flex;
   flex-direction: column;
+  justify-content: flex-end; /* min-height keeps room for a tall dock (src/ui/dock) */
   align-items: center;
   gap: 6px;
 }
@@ -667,54 +668,11 @@ select:focus {
   color: var(--muted);
 }
 
-/* ---------- now-playing strip ---------- */
-.strip {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 6px;
-}
-
-.badge {
-  padding: 0 4px;
-  font: 9px var(--font-small);
-  color: #1a1024;
-  background: var(--muted);
-}
-
-.badge.focus {
-  background: var(--focus);
-}
-
-.badge.break {
-  background: var(--break);
-}
-
-.marquee {
-  flex: 1;
-  overflow: hidden;
-  white-space: nowrap;
-  font: 11px var(--font);
-  color: var(--ink-2);
-}
-
-.marquee span.scroll {
-  display: inline-block;
-  padding-left: 100%;
-  animation: marquee 14s steps(140) infinite;
-}
-
-@keyframes marquee {
-  to {
-    transform: translateX(-100%);
-  }
-}
-
 /* ---------- speech bubble & pet ---------- */
 #bubble {
   position: relative;
-  max-width: 100%;
+  /* --head-width: as wide as she is while a tall dock stands beside her */
+  max-width: var(--head-width, 100%);
   padding: 6px 10px;
   background: var(--well);
   border: 2px solid var(--long);
@@ -1114,23 +1072,15 @@ select:focus {
 }
 
 /* ---------- quick chat (pet/chatbar.ts) ---------- */
+/* her canvas and, beside it, the dock with the talk button (src/ui/dock) */
 #pet-body {
   position: relative;
   line-height: 0;
 }
 
 #chat-toggle {
-  position: absolute;
-  right: 8%;
-  top: 30%;
-  opacity: 0;
-  transition: opacity 120ms steps(2);
-}
-
-#pet-body:hover #chat-toggle,
-#chat-toggle:focus-visible,
-#chat-toggle.on {
-  opacity: 1;
+  width: 28px;
+  height: 26px;
 }
 
 #chat-toggle.on {
@@ -1140,7 +1090,7 @@ select:focus {
 #chat-bar {
   display: flex;
   gap: 4px;
-  width: min(260px, 100%);
+  width: min(260px, var(--head-width, 100%));
   padding: 4px;
 }
 

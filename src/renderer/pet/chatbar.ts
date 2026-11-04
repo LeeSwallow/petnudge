@@ -3,15 +3,15 @@ import { pack } from '../character';
 import { activeSession, cancelChat, chatAvailable, chatState, onChat, providerLabel, sendChat } from '../chat';
 import { onEnter } from '../../ui/dom';
 
-// The quick chat bar: a talk button beside her (shown on hover) opens a small
-// input right above her head; replies show in her speech bubble and go into
+// The quick chat bar: the talk button in the dock beside her (src/ui/dock,
+// passed in as `slot`) opens a small input right above her head; replies show in her speech bubble and go into
 // her current session (the 대화 tab shows the whole conversation).
 // The tray's 말 걸기 and the chat shortcut open the input too, through the
 // returned function, even when the button is turned off.
 
-export const installChatBar = (openFull: () => void): { openInput: () => void } => {
+export const installChatBar = (openFull: () => void, slot: HTMLElement): { openInput: () => void } => {
   const unit = document.getElementById('pet-unit')!;
-  const canvas = document.getElementById('pet')!;
+  const body = document.getElementById('pet-body')!;
 
   const button = document.createElement('button');
   button.type = 'button';
@@ -34,12 +34,8 @@ export const installChatBar = (openFull: () => void): { openInput: () => void } 
   const input = bar.querySelector<HTMLInputElement>('#chat-quick')!;
   const send = bar.querySelector<HTMLButtonElement>('#chat-quick-send')!;
 
-  // The button sits on her shoulder, so it wraps the canvas.
-  const body = document.createElement('div');
-  body.id = 'pet-body';
-  unit.insertBefore(bar, canvas);
-  unit.insertBefore(body, canvas);
-  body.append(canvas, button);
+  unit.insertBefore(bar, body);
+  slot.append(button);
 
   const render = () => {
     const busy = Boolean(chatState.pending);

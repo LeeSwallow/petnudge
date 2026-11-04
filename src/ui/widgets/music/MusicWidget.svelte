@@ -23,14 +23,20 @@
         {@html pixelIcon(view.playing ? 'pause' : 'play')}
       </button>
     {/if}
+    {#if feed.next}
+      <button type="button" class="act" aria-label="다음 곡" data-tip="다음 곡" data-music-next onclick={() => feed.next?.()}>
+        {@html pixelIcon('next')}
+      </button>
+    {/if}
   </div>
 {:else}
   <p class="empty" data-music-empty>{EMPTY_TEXT}</p>
 {/if}
 
 <style>
-  .now { display: flex; align-items: center; gap: var(--space-2); }
-  .text { flex: 1 1 auto; min-width: 0; }
+  .now { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+  /* narrow (the dock): the buttons go under the title */
+  .text { flex: 1 1 64px; min-width: 0; }
   .title, .sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .title { font: var(--type-body) var(--font); color: var(--color-ink); }
   .sub, .empty { font: var(--type-small) var(--font-small); color: var(--color-muted); }
