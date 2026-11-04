@@ -1,19 +1,5 @@
-import type { DataKind } from '../data';
-import type { PixelIconName } from '../icons';
-
-export type ModuleId = 'todo' | 'pomodoro' | 'dashboard' | 'playlist' | 'notes' | 'chat' | 'friends' | 'settings';
-
-export type PanelModule = {
-  id: ModuleId;
-  label: string;
-  icon: PixelIconName;
-  // Builds the static skeleton (inputs keep focus across re-renders).
-  mount: (root: HTMLElement) => void;
-  // Re-renders dynamic regions; called on data/store changes while visible.
-  render: () => void;
-  // Data kinds this module displays; other changes skip its render.
-  watches: (DataKind | 'session' | 'clock' | 'music')[];
-};
+// Small DOM helpers for the imperative parts left in the UI (settings'
+// backup and AI pages, the quick chat bar).
 
 export const $ = <T extends Element = HTMLElement>(root: ParentNode, selector: string) => root.querySelector(selector) as T;
 

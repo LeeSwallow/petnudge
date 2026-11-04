@@ -5,7 +5,7 @@ import { data, refreshAll, updateSettings } from '../../../renderer/data';
 import { petStore } from '../../../renderer/store';
 import type { BackupSummary } from '../../../main/backup';
 import { backupCounts, cleanError, exportedOn } from './logic';
-import { $, onAction } from '../../../renderer/modules/module';
+import { $, onAction } from '../../dom';
 
 // Settings → 데이터 백업. Main does the file dialogs and the actual work;
 // this section only shows what a file holds and asks once more before

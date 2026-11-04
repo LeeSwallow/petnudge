@@ -1,4 +1,4 @@
-import type { ModuleId } from '../../renderer/modules/module';
+import type { ModuleId } from '../modules/module';
 import type { PixelIconName } from '../../renderer/icons';
 
 // The panel's big tabs and the modules inside each (design: 큰 묶음 + 작은 탭).

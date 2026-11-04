@@ -9,7 +9,7 @@ import {
 } from '../../../shared/chat';
 import type { CharacterChoice } from '../../../shared/characterImport';
 import { cleanError } from './logic';
-import { $, onAction } from '../../../renderer/modules/module';
+import { $, onAction } from '../../dom';
 
 // Settings › AI 대화 설정: its own page inside the settings tab, since there
 // is a lot to set — the provider and keys, which tools she may use, each
