@@ -78,8 +78,12 @@ export type ActionDef = {
 // `outfits`: in a whole pose, a cell drawn with the clothes on, used alone
 // (no overlays) when the avatar wears every slot variant in `when`. Overlays
 // drawn frame by frame never line up as well as one drawing of the outfit.
+// `wears`: the slot variants the pose's own cell is drawn in (Lila walks
+// without outer or headwear), so that combination counts as drawn too. A
+// whole pose with outfit drawings allows only the combinations it has a
+// drawing for (outfits.ts), so every state shows the same clothes.
 export type PoseOutfit = { when: Record<string, string>; cell: string };
-export type PoseDef = string | { cell: string; whole?: boolean; outfits?: PoseOutfit[] };
+export type PoseDef = string | { cell: string; whole?: boolean; wears?: Record<string, string>; outfits?: PoseOutfit[] };
 
 export type CharacterPack = {
   format: PackFormat;

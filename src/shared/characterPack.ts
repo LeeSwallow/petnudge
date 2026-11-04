@@ -44,6 +44,7 @@ export const validatePack = (input: unknown): CharacterPack => {
   for (const [pose, def] of Object.entries(pack.poses ?? {})) {
     const cells = [poseCellOf(def)!, ...(typeof def === 'object' ? def.outfits ?? [] : []).map((outfit) => outfit.cell)];
     for (const cell of cells) if (!pack.cells[cell]) fail(`pose "${pose}" uses missing cell "${cell}"`);
+    for (const [slot, id] of Object.entries(typeof def === 'object' ? def.wears ?? {} : {})) if (!pack.slots[slot]?.variants[id]) fail(`pose "${pose}" names unknown outfit "${slot}.${id}"`);
   }
   for (const [head, source] of Object.entries(pack.mirror ?? {})) {
     if (!Object.keys(pack.cells).some((cell) => cell.endsWith(`@${source}`))) fail(`mirror "${head}" uses head "${source}" with no cells`);

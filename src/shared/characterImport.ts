@@ -21,7 +21,7 @@ const schema = z.object({
     ignore: z.array(name).max(16).optional()
   })).min(1).max(64),
   expressions: z.record(name, z.record(name, name)).optional(),
-  poses: z.record(name, z.union([name, z.object({ cell: name, whole: z.boolean().optional(), outfits: z.array(z.object({ when: z.record(name, name), cell: name })).max(16).optional() })])).optional(),
+  poses: z.record(name, z.union([name, z.object({ cell: name, whole: z.boolean().optional(), wears: z.record(name, name).optional(), outfits: z.array(z.object({ when: z.record(name, name), cell: name })).max(16).optional() })])).optional(),
   mirror: z.record(name, name).optional(),
   regions: z.record(name, z.array(box).min(1).max(32)),
   states: z.record(name, z.object({
