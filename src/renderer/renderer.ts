@@ -26,6 +26,7 @@ import { installTooltip } from './tooltip';
 import { pixelIcon } from './icons';
 import { characterReady, pack, setCharacter } from './character';
 import { mountProbe } from '../ui/mount';
+import { installTokens } from '../ui/theme/install';
 
 const TRANSITION_STEP_MS = 1200;
 const MODULES: PanelModule[] = [todoModule, pomodoroModule, dashboardModule, playlistModule, notesModule, chatModule, friendsModule, settingsModule];
@@ -207,6 +208,7 @@ const installClickThrough = () => {
 // ---------- boot ----------
 
 const boot = async () => {
+  installTokens();
   document.getElementById('player-next')!.innerHTML = pixelIcon('next');
   installTooltip();
   await Promise.all([refreshAll(), whenHydrated(), characterReady]);
