@@ -1,9 +1,10 @@
 import { mount } from 'svelte';
-import type { DataKind } from '../../renderer/data';
-import type { ModuleId, PanelModule } from '../../renderer/modules/module';
+import type { Cause } from '../state/bridge';
+import type { ModuleId } from '../../renderer/modules/module';
+import { isUiModule, type AnyModule } from '../modules/module';
 import Panel from './Panel.svelte';
 
-export type RenderCause = DataKind | 'session' | 'clock' | 'music';
+export type RenderCause = Cause;
 
 export type PanelController = {
   show(id: ModuleId, animate?: boolean): void;
@@ -23,8 +24,13 @@ type Options = {
 
 // The panel shell: big tabs (groups), small tabs (modules), the older modules
 // mounted once each. Replaces the hand-built tab row of renderer.ts.
-export const createPanel = (target: HTMLElement, modules: PanelModule[], options: Options): PanelController => {
+export const createPanel = (target: HTMLElement, modules: AnyModule[], options: Options): PanelController => {
   const moduleOf = (id: ModuleId) => modules.find((m) => m.id === id)!;
+  // Older modules re-render on demand; Svelte ones react to `revision`.
+  const renderOld = (id: ModuleId) => {
+    const module = moduleOf(id);
+    if (!isUiModule(module)) module.render();
+  };
   const panel = mount(Panel, {
     target,
     props: {
@@ -32,7 +38,7 @@ export const createPanel = (target: HTMLElement, modules: PanelModule[], options
       onquit: options.onQuit,
       onshow: (id: ModuleId, animate: boolean) => {
         const body = target.querySelector<HTMLElement>(`[data-body="${id}"]`)!;
-        moduleOf(id).render();
+        renderOld(id);
         options.onShow(id, body, target.querySelector<HTMLElement>(`[data-module="${id}"]`), animate);
       }
     }
@@ -43,8 +49,8 @@ export const createPanel = (target: HTMLElement, modules: PanelModule[], options
     render: (cause) => {
       if (!options.visible()) return;
       const module = moduleOf(panel.active());
-      if (module.watches.includes(cause)) module.render();
+      if (!isUiModule(module) && (module.watches as Cause[]).includes(cause)) module.render();
     },
-    refresh: () => moduleOf(panel.active()).render()
+    refresh: () => renderOld(panel.active())
   };
 };

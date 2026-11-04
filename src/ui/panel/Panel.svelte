@@ -1,13 +1,14 @@
 <script lang="ts">
   import { flushSync } from 'svelte';
-  import type { ModuleId, PanelModule } from '../../renderer/modules/module';
+  import type { ModuleId } from '../../renderer/modules/module';
+  import { isUiModule, type AnyModule } from '../modules/module';
   import { pixelIcon } from '../../renderer/icons';
   import Tabs from '../components/Tabs.svelte';
   import { DEFAULT_MODULE, GROUPS, groupOf, visibleGroups, type GroupId } from './groups';
   import LegacyModule from './LegacyModule.svelte';
 
   type Props = {
-    modules: PanelModule[];
+    modules: AnyModule[];
     // after a module is shown (persist it, render it, animate)
     onshow: (id: ModuleId, animate: boolean) => void;
     onquit: () => void;
@@ -22,7 +23,7 @@
   const inGroup = $derived(
     (GROUPS.find((g) => g.id === group)?.modules ?? [])
       .map((id) => modules.find((m) => m.id === id))
-      .filter((m): m is PanelModule => m !== undefined)
+      .filter((m): m is AnyModule => m !== undefined)
       .map((m) => ({ id: m.id, label: m.label, icon: m.icon }))
   );
 
@@ -47,7 +48,13 @@
   {/if}
   <div class="module-host">
     {#each modules as module (module.id)}
-      <LegacyModule {module} visible={module.id === current} />
+      {#if isUiModule(module)}
+        <div class="tab-body" role="tabpanel" aria-label={module.label} data-body={module.id} hidden={module.id !== current}>
+          <module.component />
+        </div>
+      {:else}
+        <LegacyModule {module} visible={module.id === current} />
+      {/if}
     {/each}
   </div>
   {#if group === 'settings'}
