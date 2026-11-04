@@ -3,8 +3,9 @@ import type { PixelIconName } from '../../renderer/icons';
 
 // The panel's big tabs (design: 큰 묶음 + 작은 탭). Which modules a group holds
 // is not listed here: each module names its group and order, and the registry
-// (../modules/registry.ts) gathers them. Home (the widget board, #14) and
-// together (multiplayer) stay hidden until they have something to show.
+// (../modules/registry.ts) gathers them. Home, the widget board, comes first;
+// the panel still opens on the pomodoro (DEFAULT_MODULE) until a module is
+// saved. Together (multiplayer) stays hidden until it has something to show.
 
 export type GroupId = 'home' | 'focus' | 'record' | 'together' | 'settings';
 export type Group = { id: GroupId; label: string; icon: PixelIconName; hidden?: boolean };
@@ -13,7 +14,7 @@ export type Group = { id: GroupId; label: string; icon: PixelIconName; hidden?: 
 export type Placed = { readonly id: ModuleId; readonly group: GroupId; readonly order: number };
 
 export const GROUPS: readonly Group[] = [
-  { id: 'home', label: '홈', icon: 'home', hidden: true },
+  { id: 'home', label: '홈', icon: 'home' },
   { id: 'focus', label: '집중', icon: 'tomato' },
   { id: 'record', label: '기록', icon: 'note' },
   { id: 'together', label: '함께', icon: 'happy', hidden: true },

@@ -4,6 +4,7 @@ import { MODULES } from '../modules/registry';
 
 // The registry imports the Svelte components; these tests need only where
 // each module goes, so the components stand in as empty objects.
+vi.mock('../modules/home/Home.svelte', () => ({ default: {} }));
 vi.mock('../modules/todo/Todo.svelte', () => ({ default: {} }));
 vi.mock('../modules/pomodoro/Pomodoro.svelte', () => ({ default: {} }));
 vi.mock('../modules/playlist/Playlist.svelte', () => ({ default: {} }));
@@ -18,11 +19,16 @@ describe('panel groups', () => {
   it('puts every module in exactly one visible group', () => {
     const all = visibleGroups().flatMap((g) => modulesIn(MODULES, g.id).map((m) => m.id));
     expect(new Set(all).size).toBe(all.length);
-    expect([...all].sort()).toEqual(['chat', 'dashboard', 'friends', 'notes', 'playlist', 'pomodoro', 'settings', 'todo']);
+    expect([...all].sort()).toEqual(['chat', 'dashboard', 'friends', 'home', 'notes', 'playlist', 'pomodoro', 'settings', 'todo']);
   });
 
-  it('shows focus, record and settings until the home board and multiplayer exist', () => {
-    expect(visibleGroups().map((g) => g.id)).toEqual(['focus', 'record', 'settings']);
+  it('shows home first, then focus, record and settings until multiplayer exists', () => {
+    expect(visibleGroups().map((g) => g.id)).toEqual(['home', 'focus', 'record', 'settings']);
+  });
+
+  it('keeps the widget board alone in the home group', () => {
+    expect(modulesIn(MODULES, 'home').map((m) => m.id)).toEqual(['home']);
+    expect(groupOf(MODULES, 'home')).toBe('home');
   });
 
   it('opens the chat from the record group', () => {
@@ -40,7 +46,7 @@ describe('panel groups', () => {
   it('does not show a module whose group is hidden', () => {
     const modules = [
       { id: 'pomodoro', group: 'focus', order: 1 },
-      { id: 'todo', group: 'home', order: 1 }
+      { id: 'todo', group: 'together', order: 1 }
     ] as const;
     expect(shownModules(modules).map((m) => m.id)).toEqual(['pomodoro']);
     expect(modulesIn(modules, 'focus').map((m) => m.id)).toEqual(['pomodoro']);

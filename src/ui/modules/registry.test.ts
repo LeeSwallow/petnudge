@@ -4,6 +4,7 @@ import { MODULES } from './registry';
 
 // The registry imports the Svelte components; the tests need only where each
 // module goes, so the components stand in as empty objects.
+vi.mock('./home/Home.svelte', () => ({ default: {} }));
 vi.mock('./todo/Todo.svelte', () => ({ default: {} }));
 vi.mock('./pomodoro/Pomodoro.svelte', () => ({ default: {} }));
 vi.mock('./playlist/Playlist.svelte', () => ({ default: {} }));
@@ -29,7 +30,7 @@ describe('module registry', () => {
     expect(ids(modulesIn(MODULES, 'focus'))).toEqual(['todo', 'pomodoro', 'playlist']);
     expect(ids(modulesIn(MODULES, 'record'))).toEqual(['notes', 'dashboard', 'chat']);
     expect(ids(modulesIn(MODULES, 'settings'))).toEqual(['settings', 'friends']);
-    expect(modulesIn(MODULES, 'home')).toEqual([]);
+    expect(ids(modulesIn(MODULES, 'home'))).toEqual(['home']);
     expect(modulesIn(MODULES, 'together')).toEqual([]);
   });
 
@@ -40,7 +41,9 @@ describe('module registry', () => {
 
   it('restores a registered module and falls back to the pomodoro for any other id', () => {
     expect(restoreModule(MODULES, 'chat')).toBe('chat');
-    expect(restoreModule(MODULES, 'home')).toBe('pomodoro');
+    expect(restoreModule(MODULES, 'home')).toBe('home');
+    expect(restoreModule(MODULES, 'together')).toBe('pomodoro');
     expect(restoreModule(MODULES, '')).toBe('pomodoro');
+    expect(restoreModule(MODULES, null)).toBe('pomodoro');
   });
 });
