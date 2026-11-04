@@ -35,6 +35,7 @@
     "build:character": "node scripts/build-character.mjs lila",
     "watch:character": "node scripts/build-character.mjs lila --watch",
     "dist:linux": "node build.mjs && electron-builder --linux AppImage",
+    "check:ui": "node build.mjs && node scripts/ui-check.mjs",
     "demo:shots": "node scripts/demo-shots.mjs && node scripts/compose-images.mjs"
   },
   "devDependencies": {

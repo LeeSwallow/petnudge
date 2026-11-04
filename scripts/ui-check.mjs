@@ -1,0 +1,142 @@
+// Checks the panel in the real app: npm run check:ui (after npm run build).
+// Starts the built app with a throwaway profile (your data is never touched),
+// clicks through every tab with Chrome DevTools Protocol and checks what the
+// screen shows. Fails on a wrong result, a console error or a CSP violation.
+// Each check is one step of the scenario below; add one when a tab gains
+// behaviour.
+import { spawn } from 'node:child_process';
+import { createRequire } from 'node:module';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+
+const port = 9343;
+const profile = mkdtempSync(path.join(tmpdir(), 'petnudge-ui-check-'));
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const electron = createRequire(import.meta.url)('electron');
+const app = spawn(electron, ['.', `--remote-debugging-port=${port}`], { env: { ...process.env, PETNUDGE_PROFILE: profile }, stdio: 'ignore' });
+
+const cleanup = () => {
+  app.kill();
+  rmSync(profile, { recursive: true, force: true });
+};
+
+let page;
+for (let i = 0; i < 80 && !page; i++) {
+  try {
+    page = (await (await fetch(`http://127.0.0.1:${port}/json`)).json()).find((t) => t.type === 'page' && t.url.endsWith('index.html'));
+  } catch {}
+  if (!page) await sleep(250);
+}
+if (!page) {
+  cleanup();
+  throw new Error('the app did not open a debuggable window (run npm run build first)');
+}
+
+const ws = new WebSocket(page.webSocketDebuggerUrl);
+await new Promise((resolve, reject) => {
+  ws.addEventListener('open', resolve);
+  ws.addEventListener('error', reject);
+});
+let next = 0;
+const pending = new Map();
+const problems = [];
+ws.addEventListener('message', (message) => {
+  const d = JSON.parse(message.data);
+  if (d.id) {
+    pending.get(d.id)?.(d);
+    pending.delete(d.id);
+    return;
+  }
+  if (d.method === 'Runtime.exceptionThrown') problems.push(`exception: ${d.params.exceptionDetails.exception?.description ?? d.params.exceptionDetails.text}`);
+  if (d.method === 'Runtime.consoleAPICalled' && d.params.type === 'error') problems.push(`console.error: ${d.params.args.map((a) => a.value ?? a.description).join(' ')}`);
+  if (d.method === 'Log.entryAdded' && d.params.entry.level === 'error') problems.push(`log: ${d.params.entry.text}`);
+});
+const send = (method, params = {}) =>
+  new Promise((resolve, reject) => {
+    const id = ++next;
+    pending.set(id, (d) => (d.error ? reject(new Error(d.error.message)) : resolve(d.result)));
+    ws.send(JSON.stringify({ id, method, params }));
+  });
+// Runs `body` (the inside of an async function) in the pet window.
+const run = async (body) => {
+  const { result, exceptionDetails } = await send('Runtime.evaluate', { expression: `(async () => { ${body} })()`, awaitPromise: true, returnByValue: true });
+  if (exceptionDetails) throw new Error(exceptionDetails.exception?.description ?? exceptionDetails.text);
+  return result.value;
+};
+
+// Helpers defined once in the page: $ (query), wait, click, type (an input
+// event, as typing does), key (a keydown), open (group then module).
+const HELPERS = `
+  window.$ = (s) => document.querySelector(s);
+  window.$$ = (s) => [...document.querySelectorAll(s)];
+  window.wait = (ms = 300) => new Promise((r) => setTimeout(r, ms));
+  window.text = (s) => (document.querySelector(s)?.textContent ?? '').replace(/\\s+/g, ' ').trim();
+  window.type = (s, value) => { const el = document.querySelector(s); el.value = value; el.dispatchEvent(new Event('input', { bubbles: true })); };
+  window.key = (s, key) => document.querySelector(s).dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+  window.open_ = async (group, module) => { $('[data-group=' + group + ']').click(); if (module) $('[data-module=' + module + ']').click(); await wait(200); };
+  return true;`;
+
+const checks = [];
+const check = (name, body, expected) => checks.push({ name, body, expected });
+
+// ---- the scenario ----
+check('panel opens on right click', `$('#pet').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true })); await wait(); return !$('#panel').hidden;`, true);
+check('three groups, none overflowing', `return $$('[data-group]').map((b) => b.textContent.trim() + (b.scrollWidth <= b.clientWidth ? '' : '!'));`, ['집중', '기록', '설정']);
+check('pomodoro opens first', `return $('[data-module][aria-selected=true]').dataset.module;`, 'pomodoro');
+check('arrow keys move between groups', `$('[data-group=focus]').focus(); key('[data-group=focus]', 'ArrowLeft'); await wait(100); return [document.activeElement.dataset.group, $$('[data-group]').map((b) => b.tabIndex)];`, ['settings', [-1, -1, 0]]);
+
+check('todo: empty list', `await open_('focus', 'todo'); return text('#todo-open');`, '할 일이 비었어요');
+check('todo: add with Enter', `type('#todo-input', '영어 단어'); key('#todo-input', 'Enter'); await wait(400); return [$('#todo-input').value, $$('#todo-open .todo-title').map((e) => e.textContent.trim())];`, ['', ['영어 단어']]);
+check('todo: estimate stays within 1..12', `const [down, up] = $$('.estimate button'); down.click(); await wait(50); const low = text('#todo-estimate'); for (let i = 0; i < 15; i++) up.click(); await wait(50); return [low, text('#todo-estimate')];`, ['1', '12']);
+check('todo: typed text survives a group switch', `type('#todo-input', '공부 중'); await open_('record'); await open_('focus'); return [$('#todo-input').value, $('[data-module][aria-selected=true]').dataset.module];`, ['공부 중', 'todo']);
+check('todo: check off and clear', `type('#todo-input', ''); $('#todo-open .todo-check').click(); await wait(400); const done = $$('#todo-done .todo').length; $('#todo-done-title button').click(); await wait(400); return [text('#todo-open'), done, $$('#todo-done .todo').length];`, ['할 일이 비었어요', 1, 0]);
+check('todo: filter opens', `$('#todo-funnel').click(); await wait(100); const shown = !$('#todo-filter').hidden; $('#todo-funnel').click(); return shown;`, true);
+
+check('pomodoro: idle', `await open_('focus', 'pomodoro'); return [text('#digits'), text('#controls')];`, ['25:00', '집중 시작']);
+check('pomodoro: start ticks', `$('#controls .primary').click(); await wait(1600); return [text('#digits'), text('#controls')];`, ['24:59', '일시정지 그만두기']);
+check('pomodoro: pause holds', `$('#controls .primary').click(); await wait(300); const a = text('#digits'); await wait(1200); return [a === text('#digits'), $('#digits').classList.contains('paused'), text('#controls')];`, [true, true, '재개 그만두기']);
+check('pomodoro: abandon resets', `$$('#controls button')[1].click(); await wait(300); return [text('#digits'), text('#controls')];`, ['25:00', '집중 시작']);
+
+check('notes: empty list', `await open_('record', 'notes'); return text('#note-list');`, '첫 메모를 남겨보세요');
+check('notes: new note opens the editor', `$('#note-browser .primary').click(); await wait(500); return [$('#note-editor').hidden, $('#note-title').value, document.activeElement === $('#note-title')];`, [false, '새 메모', true]);
+check('notes: autosave', `type('#note-body', '미적분 정리'); await wait(900); return text('#note-status');`, '저장됨');
+check('notes: pin, back, search, delete', `$('#note-pin').click(); await wait(400); const pin = text('#note-pin'); $('#note-editor .ghost').click(); await wait(200); const list = text('#note-list'); type('#note-search', '없는말'); await wait(400); const none = text('#note-list'); type('#note-search', ''); await wait(400); $('.note-card').click(); await wait(200); $('[aria-label="메모 삭제"]').click(); await wait(400); return [pin, list.startsWith('고정1개 새 메모'), none, text('#note-list')];`, ['고정됨', true, '검색 결과가 없어요', '첫 메모를 남겨보세요']);
+
+check('dashboard: tiles and empty log', `await open_('record', 'dashboard'); await wait(900); return [$$('#tiles .tile').length, text('#tile-today'), text('#tile-rate'), text('#log')];`, [4, '0m', '0%', '첫 뽀모도로를 끝내면 여기에 기록돼요']);
+check('dashboard: charts drawn', `return ['#week', '#hours', '#heat'].map((s) => $(s + ' svg') !== null);`, [true, true, true]);
+check('dashboard: log filter opens', `$('#log-funnel').click(); await wait(100); const shown = !$('#log-filter').hidden; $('#log-funnel').click(); return shown;`, true);
+
+check('chat: 크게 보기 opens 기록 › 대화', `$('#chat-quick-full').click(); await wait(200); return [$('[data-group][aria-selected=true]').dataset.group, $('[data-module][aria-selected=true]').dataset.module];`, ['record', 'chat']);
+check('settings: quit button under settings', `await open_('settings'); return $('[data-quit]') !== null;`, true);
+check('panel: 220px keeps both tab rows', `$('#panel').style.setProperty('--panel-height', '220px'); await wait(100); const p = $('#panel').getBoundingClientRect(), s = $('.ui-tabs.sub').getBoundingClientRect(); $('#panel').style.removeProperty('--panel-height'); return s.height > 0 && s.bottom <= p.bottom;`, true);
+
+// ---- run ----
+let failed = 0;
+try {
+  await send('Runtime.enable');
+  await send('Log.enable');
+  await send('Page.reload');
+  await sleep(2500);
+  await run(HELPERS);
+  for (const { name, body, expected } of checks) {
+    let actual;
+    try {
+      actual = await run(body);
+    } catch (error) {
+      actual = `THREW ${error.message.split('\n')[0]}`;
+    }
+    const ok = JSON.stringify(actual) === JSON.stringify(expected);
+    if (!ok) failed++;
+    console.log(`${ok ? '✓' : '✗'} ${name}${ok ? '' : `\n    expected ${JSON.stringify(expected)}\n    got      ${JSON.stringify(actual)}`}`);
+  }
+  if (problems.length) {
+    failed++;
+    console.log(`✗ console stayed clean\n    ${problems.join('\n    ')}`);
+  } else console.log('✓ console stayed clean');
+} finally {
+  ws.close();
+  cleanup();
+}
+console.log(failed ? `\n${failed} check(s) failed` : `\nall ${checks.length + 1} checks passed`);
+process.exit(failed ? 1 : 0);
