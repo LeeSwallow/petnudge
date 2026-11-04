@@ -13,7 +13,6 @@ import { faceToward } from './pet/gaze';
 import { dashboardModule } from './modules/dashboard';
 import { friendsModule } from './modules/friends';
 import type { ModuleId, PanelModule } from './modules/module';
-import { notesModule } from './modules/notes';
 import { playlistModule } from './modules/playlist';
 import { settingsModule } from './modules/settings';
 import { handleModeChange, handleNowPlaying, music, onMusic } from './music';
@@ -28,11 +27,12 @@ import { restoreModule } from '../ui/panel/groups';
 import type { AnyModule } from '../ui/modules/module';
 import { todoUi } from '../ui/modules/todo';
 import { pomodoroUi } from '../ui/modules/pomodoro';
+import { notesUi } from '../ui/modules/notes';
 import { bump } from '../ui/state/revision.svelte';
 import { installTokens } from '../ui/theme/install';
 
 const TRANSITION_STEP_MS = 1200;
-const MODULES: AnyModule[] = [todoUi, pomodoroUi, dashboardModule, playlistModule, notesModule, chatModule, friendsModule, settingsModule];
+const MODULES: AnyModule[] = [todoUi, pomodoroUi, dashboardModule, playlistModule, notesUi, chatModule, friendsModule, settingsModule];
 
 const panel = document.getElementById('panel')!;
 let panelUi: PanelController | null = null;
