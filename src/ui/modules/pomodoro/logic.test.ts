@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { intentText, phaseOf, untilLongBreak } from './logic';
+import { intentText, phaseOf, reflectionStarts, untilLongBreak } from './logic';
 
 const minutes = (m: number) => ({ startedAt: 0, endsAt: m * 60_000 });
 const lengths = { breakMinutes: 5, longBreakMinutes: 15 };
@@ -25,5 +25,12 @@ describe('pomodoro logic', () => {
     expect(untilLongBreak(0, 4)).toBe(4);
     expect(untilLongBreak(3, 4)).toBe(1);
     expect(untilLongBreak(4, 4)).toBe(4);
+  });
+
+  it('clears the reflection only when a new one opens, not on every change while it is open', () => {
+    expect(reflectionStarts(false, true)).toBe(true);
+    expect(reflectionStarts(true, true)).toBe(false);
+    expect(reflectionStarts(true, false)).toBe(false);
+    expect(reflectionStarts(false, false)).toBe(false);
   });
 });

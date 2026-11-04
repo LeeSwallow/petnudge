@@ -12,6 +12,9 @@
 
   let query = $state('');
   let openId = $state<string | null>(null);
+  // the open note as last seen: a search can drop it from data.notes while it
+  // is being edited, and the editor stays open regardless
+  let opened = $state.raw<Note | null>(null);
   // the editor's fields are set when a note opens, never by a list refresh,
   // so what is being typed (and an IME composition) is never overwritten
   let title = $state('');
@@ -35,7 +38,7 @@
   });
 
   const view = $derived.by(() => {
-    void revision.notes, filterRev;
+    void revision.notes, revision.shown, filterRev;
     const notes = data.notes;
     const list = visibleNotes(notes, filter?.bounds() ?? { from: null, to: null }, Boolean(filter?.state.pinned));
     return {
@@ -43,7 +46,7 @@
       filtered: filter?.active() ?? false,
       ...list,
       days: groupByDay(list.others, (n) => dateKeyOf(n.updatedAt)),
-      open: notes.find((n) => n.id === openId)
+      open: openId ? notes.find((n) => n.id === openId) ?? opened : null
     };
   });
 
@@ -55,6 +58,7 @@
   const openNote = async (id: string | null) => {
     openId = id;
     const note = data.notes.find((n) => n.id === id);
+    opened = note ?? null;
     if (!note) return;
     title = note.title;
     body = note.body;
@@ -70,6 +74,7 @@
     status = '저장 중…';
     saveTimer = setTimeout(async () => {
       await api.db.updateNote(id, { title, body });
+      if (opened?.id === id) opened = { ...opened, title, body, updatedAt: Date.now() };
       status = '저장됨';
       await refreshNotes();
     }, 400);
@@ -89,6 +94,7 @@
     const note = view.open;
     if (!note) return;
     await api.db.updateNote(note.id, { pinned: !note.pinned });
+    opened = { ...note, pinned: !note.pinned };
     await refreshNotes();
   };
 
@@ -109,7 +115,7 @@
   </li>
 {/snippet}
 
-<div id="note-browser" class="notes-browser" hidden={Boolean(view.open)}>
+<div id="note-browser" class="notes-browser" hidden={Boolean(openId)}>
   <div class="row">
     <input type="text" id="note-search" class="grow" placeholder="메모 검색" bind:value={query} oninput={search} />
     <span class="funnel-slot" bind:this={funnelSlot}>{@html funnelButton('note-funnel', 'note-filter')}</span>
@@ -133,7 +139,7 @@
     {/if}
   </ul>
 </div>
-<div id="note-editor" class="frame note-paper" hidden={!view.open} bind:this={editor}>
+<div id="note-editor" class="frame note-paper" hidden={!openId} bind:this={editor}>
   <div class="row">
     <button class="ghost" type="button" onclick={() => (openId = null)}>{@html pixelIcon('back')} 목록</button>
     <span class="grow hint" id="note-status">{status}</span>

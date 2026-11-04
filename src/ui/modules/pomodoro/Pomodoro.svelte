@@ -8,7 +8,7 @@
   import { formatMinutes } from '../../../shared/stats';
   import TextInput from '../../components/TextInput.svelte';
   import { revision } from '../../state/revision.svelte';
-  import { intentText, PHASE_COLOR, phaseOf, untilLongBreak, type PhaseKind } from './logic';
+  import { intentText, PHASE_COLOR, phaseOf, reflectionStarts, untilLongBreak, type PhaseKind } from './logic';
 
   const CHIPS: [PhaseKind, string][] = [
     ['focus', '집중'],
@@ -41,12 +41,15 @@
     return { mode: timer.mode, awaitingReflection, today, untilLong: untilLongBreak(progress.completedSessions, data.settings.longBreakEvery) };
   });
 
-  // a new reflection starts empty
+  // a new reflection starts empty; one being written is left alone
+  let reflectionOpen = false;
   $effect(() => {
-    if (session.awaitingReflection) {
+    const open = session.awaitingReflection;
+    if (reflectionStarts(reflectionOpen, open)) {
       mood = null;
       note = '';
     }
+    reflectionOpen = open;
   });
 
   const store = () => petStore.getState();

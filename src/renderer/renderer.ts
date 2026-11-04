@@ -48,6 +48,7 @@ const togglePanel = () => {
   if (!panel.hidden) cancelMods();
   emitMod(panel.hidden ? 'panelClose' : 'panelOpen', 'after');
   api.setPanelOpen(visible());
+  if (visible()) bump('shown');
   renderBubble(visible());
 };
 
@@ -178,6 +179,7 @@ const boot = async () => {
   panelUi = createPanel(panel, MODULES, {
     onQuit: () => api.quit(),
     onShow: (id, body, tab, animate) => {
+      bump('shown');
       void api.db.setKv('ui.module', id);
       tab?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
       if (animate) {

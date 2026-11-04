@@ -29,19 +29,22 @@
     onChat(() => {
       chatRev += 1;
     });
+    // her own conversations start unfolded
+    unfolded = [pack.id];
   });
 
-  // the character list follows the main pet (settings); her conversations open unfolded
+  // the character list is read again when the main pet changes or the tab opens
   $effect(() => {
-    void revision.settings;
+    void revision.settings, revision.shown;
     void api.listCharacters().then((list) => {
       friends = list;
     });
-    if (chatView.open === null && unfolded.length === 0) unfolded = [pack.id];
   });
 
   const view = $derived.by(() => {
-    void chatRev, revision.settings, friends;
+    void chatRev, revision.settings, revision.shown, friends;
+    // chat.ts changes sessions in place, so the view copies what it shows:
+    // the same session object would not count as a change
     const session = chatView.open ? sessionById(chatView.open) : undefined;
     const nameFor = (id: string) => (id === pack.id ? pack.name : friends.find((f) => f.id === id)?.name ?? id);
     if (!session) {
@@ -50,7 +53,7 @@
         friends: friendIds(pack.id, friends.map((f) => f.id), chatState.sessions.map((s) => s.characterId)).map((id) => ({
           id,
           name: nameFor(id),
-          sessions: sessionsFor(id)
+          sessions: sessionsFor(id).map((s) => ({ id: s.id, title: s.title, preview: preview(s), updatedAt: s.updatedAt }))
         }))
       } as const;
     }
@@ -58,7 +61,7 @@
     const pending = chatState.pending?.sessionId === session.id;
     const none = chatState.providers.length > 0 && !chatAvailable();
     return {
-      session,
+      session: { id: session.id, characterId: session.characterId, title: session.title, mirror: session.mirror, messages: [...session.messages] },
       name: nameFor(session.characterId),
       members,
       group: isGroup(members, session.messages),
@@ -70,6 +73,12 @@
       none,
       invitable: friends.filter((f) => !members.includes(f.id))
     } as const;
+  });
+
+  // a conversation deleted elsewhere (quick bar, MCP) closes
+  $effect(() => {
+    void chatRev;
+    if (chatView.open && !sessionById(chatView.open)) chatView.open = null;
   });
 
   // the newest line stays in view
@@ -148,7 +157,7 @@
             <ul class="chat-sessions">
               {#each f.sessions as s (s.id)}
                 <li class="chat-session-row">
-                  <button type="button" class="chat-session" onclick={() => open(s.id)}><b>{s.title}</b><span>{preview(s)}</span></button>
+                  <button type="button" class="chat-session" onclick={() => open(s.id)}><b>{s.title}</b><span>{s.preview}</span></button>
                   <span class="chat-session-when">{when(s.updatedAt, Date.now())}</span>
                   <button type="button" class="icon-button ghost" aria-label="대화 삭제" onclick={() => askDelete(s.id)}>{confirmDelete === s.id ? '?' : '×'}</button>
                 </li>
@@ -199,7 +208,7 @@
       </div>
     </div>
     <ul class="chat-log" id="chat-log" aria-live="polite" bind:this={log}>
-      {#each session.messages as m, i (i)}{@render bubble(m, '', view.group)}{/each}
+      {#each session.messages as m, i (`${i}:${m.text}`)}{@render bubble(m, '', view.group)}{/each}
       {#if view.pending}{@render bubble({ role: 'pet', text: view.live || '…', speaker: view.pendingSpeaker }, view.live ? '' : 'thinking', view.group)}{/if}
       {#if !session.messages.length && !view.pending}
         <li class="chat-bubble system">{view.name}에게 말을 걸어 봐요. 할 일 추가, 메모 정리, 타이머도 부탁할 수 있어요.</li>
