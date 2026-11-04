@@ -19,21 +19,14 @@ import { characterReady, pack, setCharacter } from './character';
 import { createPanel, type PanelController } from '../ui/panel/controller';
 import type { Cause } from '../ui/state/bridge';
 import { restoreModule } from '../ui/panel/groups';
-import type { ModuleId, UiModule } from '../ui/modules/module';
-import { todoUi } from '../ui/modules/todo';
-import { pomodoroUi } from '../ui/modules/pomodoro';
-import { notesUi } from '../ui/modules/notes';
-import { dashboardUi } from '../ui/modules/dashboard';
-import { playlistUi } from '../ui/modules/playlist';
-import { friendsUi } from '../ui/modules/friends';
-import { settingsUi } from '../ui/modules/settings';
-import { chatUi, showActiveSession } from '../ui/modules/chat';
+import type { ModuleId } from '../ui/modules/module';
+import { MODULES } from '../ui/modules/registry';
+import { showActiveSession } from '../ui/modules/chat';
 import { bump } from '../ui/state/revision.svelte';
 import { installTokens } from '../ui/theme/install';
 import { installErrorLogging, logError } from '../ui/log';
 
 const TRANSITION_STEP_MS = 1200;
-const MODULES: UiModule[] = [todoUi, pomodoroUi, dashboardUi, playlistUi, notesUi, chatUi, friendsUi, settingsUi];
 
 const panel = document.getElementById('panel')!;
 let panelUi: PanelController | null = null;
@@ -190,7 +183,7 @@ const boot = async () => {
       }
     }
   });
-  panelUi.show(restoreModule((await api.db.getKv('ui.module')) as string | null), false);
+  panelUi.show(restoreModule(MODULES, (await api.db.getKv('ui.module')) as string | null), false);
 
   onData((kind) => {
     if (kind === 'settings') {

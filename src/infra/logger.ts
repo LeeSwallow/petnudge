@@ -6,6 +6,8 @@ import { atLeast, formatLine, rotationPlan, type Level } from '../domain/logging
 // size, lines redacted by formatLine. Logging never throws: a log that cannot
 // be written must not take the app down with it.
 
+const PER_SECOND = 20;
+
 export type Logger = {
   log(level: Level, scope: string, message: string, detail?: string): void;
   // The latest warnings and errors, oldest first (for diagnostics).
@@ -18,6 +20,18 @@ type Options = { maxBytes?: number; keep?: number; min?: Level; now?: () => Date
 export const createLogger = (dir: string, { maxBytes = 1024 * 1024, keep = 3, min = 'info', now = () => new Date() }: Options = {}): Logger => {
   const file = path.join(dir, 'petnudge.log');
   const lastSeen = new Map<string, number>();
+  // at most PER_SECOND lines a second; the rest are counted and reported once
+  let second = -1, written = 0, dropped = 0;
+  let madeDir = false;
+
+  const append = (line: string) => {
+    if (!madeDir) {
+      mkdirSync(dir, { recursive: true });
+      madeDir = true;
+    }
+    if (existsSync(file) && statSync(file).size >= maxBytes) rotate();
+    appendFileSync(file, `${line}\n`);
+  };
 
   const rotate = () => {
     for (const [from, to] of rotationPlan(file, keep)) if (existsSync(from)) renameSync(from, to);
@@ -35,9 +49,19 @@ export const createLogger = (dir: string, { maxBytes = 1024 * 1024, keep = 3, mi
       lastSeen.set(key, at.getTime());
       if (lastSeen.size > 500) lastSeen.clear();
       try {
-        mkdirSync(dir, { recursive: true });
-        if (existsSync(file) && statSync(file).size >= maxBytes) rotate();
-        appendFileSync(file, `${formatLine({ at, level, scope, message, detail })}\n`);
+        const thisSecond = Math.floor(at.getTime() / 1000);
+        if (thisSecond !== second) {
+          if (dropped) append(formatLine({ at, level: 'warn', scope: 'log', message: `${dropped}줄 생략` }));
+          second = thisSecond;
+          written = 0;
+          dropped = 0;
+        }
+        if (written >= PER_SECOND) {
+          dropped += 1;
+          return;
+        }
+        written += 1;
+        append(formatLine({ at, level, scope, message, detail }));
       } catch (error) {
         process.stderr.write(`petnudge: could not write the log (${(error as Error).message})\n`);
       }

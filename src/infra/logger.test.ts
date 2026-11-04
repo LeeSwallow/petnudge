@@ -61,4 +61,16 @@ describe('file logger', () => {
     log.log('warn', 'c', 'three');
     expect(log.recent(5).map((l) => l.slice(25))).toEqual(['ERROR [b] two', 'WARN [c] three']);
   });
+
+  it('caps a flood at 20 lines a second and says how many it left out', () => {
+    const log = createLogger(temp(), { now });
+    clock += 5000;
+    for (let i = 0; i < 50; i++) log.log('error', 'loop', `frame ${i}`);
+    clock += 1000;
+    log.log('error', 'loop', 'after');
+    const lines = readFileSync(log.file, 'utf8').trim().split('\n');
+    expect(lines).toHaveLength(22);
+    expect(lines[20]).toMatch(/WARN \[log\] 30줄 생략$/);
+    expect(lines[21]).toMatch(/after$/);
+  });
 });

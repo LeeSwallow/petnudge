@@ -1,7 +1,7 @@
 import { BrowserWindow, app, dialog, globalShortcut, ipcMain, net, protocol, screen, shell } from 'electron';
 import os from 'node:os';
 import { createLogger } from '../infra/logger';
-import { installLogIpc } from './logIpc';
+import { describeThrown, installLogIpc } from './logIpc';
 import { execFile } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, watch } from 'node:fs';
 import path from 'node:path';
@@ -39,8 +39,24 @@ app.setName('Study Companion Pet');
 app.setPath('userData', process.env.PETNUDGE_PROFILE ? path.resolve(process.env.PETNUDGE_PROFILE) : path.join(app.getPath('appData'), 'Study Companion Pet'));
 // The app log (userData/logs/petnudge.log); see src/infra/logger.ts.
 const logger = createLogger(path.join(app.getPath('userData'), 'logs'));
-process.on('uncaughtException', (error) => logger.log('error', 'main', `uncaught: ${error.message}`, error.stack));
-process.on('unhandledRejection', (reason) => logger.log('error', 'main', `unhandled rejection: ${reason instanceof Error ? reason.message : String(reason)}`, reason instanceof Error ? reason.stack : undefined));
+// Electron's own handler (a dialog, then carry on) goes away once we listen,
+// so we keep its behaviour: write it down, print it, and tell the user once
+// per message. A rejection only warns, as Electron does.
+const shownErrors = new Set<string>();
+process.on('uncaughtException', (thrown) => {
+  const { message, detail } = describeThrown(thrown);
+  logger.log('error', 'main', `uncaught: ${message}`, detail);
+  process.stderr.write(`${detail ?? message}\n`);
+  if (app.isReady() && !shownErrors.has(message)) {
+    shownErrors.add(message);
+    dialog.showErrorBox('petnudge에 문제가 생겼어요', `${message}\n\n설정 › 문제 해결 › 진단 정보 복사로 알려 주세요.`);
+  }
+});
+process.on('unhandledRejection', (reason) => {
+  const { message, detail } = describeThrown(reason);
+  logger.log('error', 'main', `unhandled rejection: ${message}`, detail);
+  process.stderr.write(`unhandled rejection: ${detail ?? message}\n`);
+});
 installLogIpc(logger, { app: app.getVersion(), electron: process.versions.electron, os: `${process.platform} ${os.release()}` });
 // Dev (npm start) reads the built-in characters straight from assets/, so a
 // re-export (npm run watch:character) reloads the pet without a rebuild.
