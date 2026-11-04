@@ -221,11 +221,14 @@ const boot = async () => {
   installLayoutSync();
   installPetInput(togglePanel);
   startFriends();
-  installChatBar(() => {
+  const chatBar = installChatBar(() => {
     showActiveSession();
     if (!visible()) togglePanel();
     showModule('chat');
   });
+  // The tray menu and the chat shortcut (main/tray.ts, main.ts).
+  api.onTogglePanel(togglePanel);
+  api.onOpenQuickChat(chatBar.openInput);
   void startChat();
   startPetLoop();
 

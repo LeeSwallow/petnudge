@@ -12,6 +12,12 @@ describe('normalizeSettings', () => {
     expect(normalizeSettings({ musicSync: true }).musicSync).toBe(true);
   });
 
+  it('leaves the global chat shortcut off for a new profile (it takes keys from other apps)', () => {
+    expect(defaultSettings.chatShortcut).toBe(false);
+    expect(normalizeSettings({ chatShortcut: true }).chatShortcut).toBe(true);
+    expect(normalizeSettings({ chatShortcut: 'on' }).chatShortcut).toBe(false);
+  });
+
   it('keeps valid values, clamps numbers, and drops wrong types and unknown keys', () => {
     const settings = normalizeSettings({
       focusMinutes: 500,

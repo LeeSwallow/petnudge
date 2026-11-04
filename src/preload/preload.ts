@@ -57,6 +57,13 @@ const petApi = {
   resetPosition: () => ipcRenderer.send('reset-position'),
   reportPetLayout: (size: { petAreaHeight: number; petWidth: number }) => ipcRenderer.send('pet-layout', size),
   setPanelOpen: (open: boolean) => ipcRenderer.send('panel-open', open),
+  // The tray menu (main/tray.ts) and the chat shortcut ask the pet window to act.
+  onTogglePanel: (listener: () => void) => {
+    ipcRenderer.on('panel:toggle', () => listener());
+  },
+  onOpenQuickChat: (listener: () => void) => {
+    ipcRenderer.on('chat:open-quick', () => listener());
+  },
   onLayout: (listener: (layout: { below: boolean; petDx: number; panelHeight: number }) => void) => {
     ipcRenderer.on('layout', (_event, layout) => listener(layout));
   },
