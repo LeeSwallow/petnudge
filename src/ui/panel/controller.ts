@@ -14,7 +14,7 @@ type Options = {
 
 // The panel shell: big tabs (groups), small tabs (modules), each module a
 // Svelte component that follows `revision` by itself.
-export const createPanel = (target: HTMLElement, modules: UiModule[], options: Options): PanelController => {
+export const createPanel = (target: HTMLElement, modules: readonly UiModule[], options: Options): PanelController => {
   const panel = mount(Panel, {
     target,
     props: {

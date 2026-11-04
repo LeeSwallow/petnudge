@@ -6,10 +6,10 @@
   import EmptyState from '../components/EmptyState.svelte';
   import Tabs from '../components/Tabs.svelte';
   import { logError } from '../log';
-  import { DEFAULT_MODULE, GROUPS, groupOf, visibleGroups, type GroupId } from './groups';
+  import { DEFAULT_MODULE, groupOf, modulesIn, shownModules, visibleGroups, type GroupId } from './groups';
 
   type Props = {
-    modules: UiModule[];
+    modules: readonly UiModule[];
     // after a module is shown (persist it, animate)
     onshow: (id: ModuleId, animate: boolean) => void;
     onquit: () => void;
@@ -19,26 +19,24 @@
   let current = $state<ModuleId>(DEFAULT_MODULE);
   // the module each group showed last, so a group opens where it was left
   const lastIn: Partial<Record<GroupId, ModuleId>> = {};
-  const group = $derived(groupOf(current));
+  // only modules whose group is shown get a tab and a body
+  const shown = $derived(shownModules(modules));
+  const group = $derived(groupOf(modules, current));
   const groupItems = visibleGroups().map((g) => ({ id: g.id, label: g.label, icon: g.icon }));
-  const inGroup = $derived(
-    (GROUPS.find((g) => g.id === group)?.modules ?? [])
-      .map((id) => modules.find((m) => m.id === id))
-      .filter((m): m is UiModule => m !== undefined)
-      .map((m) => ({ id: m.id, label: m.label, icon: m.icon }))
-  );
+  const inGroup = $derived(modulesIn(shown, group).map((m) => ({ id: m.id, label: m.label, icon: m.icon })));
 
   export const show = (id: ModuleId, animate = true) => {
     current = id;
-    lastIn[groupOf(id)] = id;
+    lastIn[groupOf(modules, id)] = id;
     flushSync();
     onshow(id, animate);
   };
   export const active = () => current;
 
   const selectGroup = (id: string) => {
-    const g = GROUPS.find((x) => x.id === id);
-    if (g) show(lastIn[g.id] ?? g.modules[0]);
+    const g = visibleGroups().find((x) => x.id === id);
+    const first = g && modulesIn(shown, g.id)[0];
+    if (g && first) show(lastIn[g.id] ?? first.id);
   };
 </script>
 
@@ -48,7 +46,7 @@
     <Tabs variant="sub" key="module" label="기능" items={inGroup} selected={current} onselect={(id) => show(id as ModuleId)} />
   {/if}
   <div class="module-host">
-    {#each modules as module (module.id)}
+    {#each shown as module (module.id)}
       <div class="tab-body" role="tabpanel" aria-label={module.label} data-body={module.id} hidden={module.id !== current}>
         <!-- one tab failing leaves the others working; the failure goes to the log -->
         <svelte:boundary onerror={(error) => logError(`panel:${module.id}`, error)}>
