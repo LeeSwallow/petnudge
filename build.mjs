@@ -1,6 +1,8 @@
 import { build } from 'esbuild';
+import sveltePlugin from 'esbuild-svelte';
 import { cp, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { svelteOptions } from './scripts/svelte-options.mjs';
 
 const common = { bundle: true, sourcemap: true, logLevel: 'warning', target: 'es2022', metafile: true };
 const fonts = ['Galmuri11.woff2', 'Galmuri11-Bold.woff2', 'Galmuri9.woff2', 'GalmuriMono11.woff2', 'LICENSE.txt'];
@@ -12,7 +14,7 @@ await cp('assets/mods', 'dist/mods', { recursive: true });
 const results = await Promise.all([
   build({ ...common, entryPoints: ['src/main/main.ts'], outfile: 'dist/main.js', platform: 'node', format: 'cjs', external: ['electron'] }),
   build({ ...common, entryPoints: ['src/preload/preload.ts'], outfile: 'dist/preload.js', platform: 'node', format: 'cjs', external: ['electron'] }),
-  build({ ...common, entryPoints: ['src/renderer/renderer.ts'], outfile: 'dist/renderer/renderer.js', platform: 'browser', format: 'iife', loader: { '.png': 'dataurl' } })
+  build({ ...common, entryPoints: ['src/renderer/renderer.ts'], outfile: 'dist/renderer/renderer.js', platform: 'browser', format: 'iife', loader: { '.png': 'dataurl' }, plugins: [sveltePlugin(svelteOptions)] })
 ]);
 await Promise.all([
   ...['index.html', 'styles.css', 'data-views.css', 'fonts.css'].map((file) => cp(`src/renderer/${file}`, `dist/renderer/${file}`)),

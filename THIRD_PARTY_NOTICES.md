@@ -14,6 +14,7 @@ code by `build.mjs`; this table names the main ones.
 | LangChain.js (`@langchain/core`, `@langchain/anthropic`, `@langchain/openai`) | MIT | https://github.com/langchain-ai/langchainjs |
 | Zod | MIT | https://github.com/colinhacks/zod |
 | Zustand | MIT | https://github.com/pmndrs/zustand |
+| Svelte | MIT | https://github.com/sveltejs/svelte |
 
 The Galmuri license text ships next to the fonts (`dist/renderer/fonts/LICENSE.txt`).
 
