@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { backupCounts, cleanError, exportedOn, lockTip, stepperText } from './logic';
+import { backupCounts, cleanError, exportedOn, stepperText } from './logic';
 
 describe('settings logic', () => {
   it('writes each stepper value in its unit', () => {
@@ -22,9 +22,4 @@ describe('settings logic', () => {
     expect(exportedOn('어제')).toBe('');
   });
 
-  it('explains a locked outfit', () => {
-    expect(lockTip('리본', true, 10, 3)).toBe('잠김 · 10세션 완료 시 해금 (지금 3)');
-    expect(lockTip('리본', false, 10, 3)).toBe('리본');
-    expect(lockTip('리본', true, undefined, 3)).toBe('리본');
-  });
 });

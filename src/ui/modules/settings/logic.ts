@@ -18,6 +18,3 @@ export const exportedOn = (iso: string) => {
   const date = new Date(iso);
   return Number.isNaN(date.getTime()) ? '' : `${date.toLocaleDateString('ko-KR')} 백업`;
 };
-
-export const lockTip = (label: string, locked: boolean, requiredSessions: number | undefined, completed: number) =>
-  locked && requiredSessions !== undefined ? `잠김 · ${requiredSessions}세션 완료 시 해금 (지금 ${completed})` : label;

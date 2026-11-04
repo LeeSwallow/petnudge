@@ -37,7 +37,6 @@ const applyImportedSession = (raw: string | null) => {
     petStore.setState({
       ...(state.progress ? { progress: state.progress as typeof store.progress } : {}),
       ...(state.planner ? { planner: state.planner as typeof store.planner } : {}),
-      pendingUnlocks: [],
       activeTodoId
     });
     petStore.getState().applySettings(data.settings);

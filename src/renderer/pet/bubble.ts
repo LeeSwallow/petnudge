@@ -1,4 +1,3 @@
-import { unlockables } from '../../domain/progress/progress';
 import { formatRemaining, getRemainingMs, isTimerPaused } from '../../domain/pomodoro/timer';
 import { api } from '../api';
 import { data } from '../data';
@@ -6,7 +5,7 @@ import { typewrite } from '../fx';
 import { petStore } from '../store';
 import { activeAction, currentReaction, pet } from './state';
 
-// The speech bubble above her: action lines, unlocks, break dialogue, the
+// The speech bubble above her: action lines, break dialogue, the
 // timer, sleep, or a hint. She moves her mouth while a line is typed.
 
 const dialogueLines = [
@@ -36,9 +35,8 @@ export const sayNow = (line: string, holdMs = 2500) => {
 
 export const renderBubble = (panelOpen: boolean) => {
   pet.panelShown = panelOpen;
-  const { scene, timer, pendingUnlocks } = petStore.getState();
+  const { scene, timer } = petStore.getState();
   const acting = activeAction();
-  const unlock = unlockables.find((u) => u.id === pendingUnlocks[0]);
   let key: string;
   let render: () => void;
   if (Date.now() < holdUntil) return;
@@ -49,9 +47,6 @@ export const renderBubble = (panelOpen: boolean) => {
     key = `action:${acting.startedAt}`;
     const line = acting.line;
     render = () => say(line);
-  } else if (unlock) {
-    key = `unlock:${unlock.id}`;
-    render = () => say(`해금! ${unlock.kind === 'place' ? '새 장소' : '새 옷'}: ${unlock.title} ✨`);
   } else if (scene.phase === 'break_dialogue_active') {
     key = `dialogue:${scene.dialogueTurn}`;
     render = () => say(dialogueLines[Math.min(scene.dialogueTurn, dialogueLines.length - 1)]);
@@ -72,7 +67,7 @@ export const renderBubble = (panelOpen: boolean) => {
       panelOpen ? (bubble.textContent = '') : say(data.settings.nickname ? `${data.settings.nickname}, 공부할 준비 됐어?` : '나를 눌러봐! 공부 같이 하자');
   }
 
-  bubble.classList.toggle('clickable', key.startsWith('unlock') || key.startsWith('dialogue'));
+  bubble.classList.toggle('clickable', key.startsWith('dialogue'));
   if (key === lastBubbleKey) return;
   lastBubbleKey = key;
   render();
@@ -80,6 +75,5 @@ export const renderBubble = (panelOpen: boolean) => {
 
 bubble.addEventListener('click', () => {
   const state = petStore.getState();
-  if (state.pendingUnlocks.length > 0) state.dismissUnlock();
-  else if (state.scene.phase === 'break_dialogue_active') state.advanceDialogue();
+  if (state.scene.phase === 'break_dialogue_active') state.advanceDialogue();
 });

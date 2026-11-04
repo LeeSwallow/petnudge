@@ -1,19 +1,17 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
-  import { unlockables } from '../../../domain/progress/progress';
   import { api } from '../../../renderer/api';
   import { pack, setCharacter } from '../../../renderer/character';
   import { onChat } from '../../../renderer/chat';
   import { data, updateSettings } from '../../../renderer/data';
   import { pixelIcon } from '../../../renderer/icons';
   import { modStatus, onModStatus } from '../../../renderer/pet/mods';
-  import { petStore } from '../../../renderer/store';
   import type { CharacterChoice } from '../../../shared/characterImport';
   import { avatarFor, type AppSettings } from '../../../shared/settings';
   import { revision } from '../../state/revision.svelte';
   import { aiSummary, mountAiSettings, showAiSettings } from './aiSettings';
   import { backupSection, mountBackup } from './backup';
-  import { lockTip, stepperText, type BoolKey, type NumberKey } from './logic';
+  import { stepperText, type BoolKey, type NumberKey } from './logic';
 
   const STEPPERS: [NumberKey, string, number][] = [
     ['focusMinutes', '집중 시간', 5],
@@ -103,25 +101,19 @@
   const editable = $derived(characters.find((c) => c.id === mainId)?.editable ?? false);
 
   const dressUp = $derived.by(() => {
-    void revision.settings, revision.session, characterBusy;
-    const { unlockedIds, completedSessions } = petStore.getState().progress;
+    void revision.settings, characterBusy;
     return Object.entries(pack.slots).map(([slot, def]) => {
       const chosen = avatarFor(pack, data.settings)[slot] ?? Object.keys(def.variants)[0];
       return {
         slot,
         label: def.label,
-        variants: Object.entries(def.variants).map(([id, variant]) => {
-          const locked = Boolean(variant.unlock && !unlockedIds.includes(variant.unlock));
-          const need = unlockables.find((u) => u.id === variant.unlock);
-          return {
-            id,
-            label: variant.label,
-            selected: id === chosen,
-            locked,
-            swatch: def.swatch ? variant.recolor?.map[def.swatch] ?? def.swatch : null,
-            tip: lockTip(variant.label, locked, need?.requiredSessions, completedSessions)
-          };
-        })
+        // every outfit can be chosen from the start (unlocks were removed, #38)
+        variants: Object.entries(def.variants).map(([id, variant]) => ({
+          id,
+          label: variant.label,
+          selected: id === chosen,
+          swatch: def.swatch ? variant.recolor?.map[def.swatch] ?? def.swatch : null
+        }))
       };
     });
   });
@@ -207,7 +199,7 @@
     {#each dressUp as row (row.slot)}
       <div class="slot-row"><span class="slot-label">{row.label}</span><div class="swatches">
         {#each row.variants as v (v.id)}
-          <button type="button" class="swatch" class:selected={v.selected} disabled={v.locked} data-tip={v.tip} onclick={() => chooseAvatar(row.slot, v.id)}>{#if v.swatch}<i style:background={v.swatch}></i>{/if}{v.label}{#if v.locked}&nbsp;{@html pixelIcon('lock')}{/if}</button>
+          <button type="button" class="swatch" class:selected={v.selected} data-tip={v.label} onclick={() => chooseAvatar(row.slot, v.id)}>{#if v.swatch}<i style:background={v.swatch}></i>{/if}{v.label}</button>
         {/each}
       </div></div>
     {/each}
