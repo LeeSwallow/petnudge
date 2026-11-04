@@ -2,27 +2,32 @@
   import { onMount } from 'svelte';
   import { Button, EmptyState, Tabs } from '../components';
   import { editorApi, logEditorError } from './api';
-  import { CANVAS, DEFAULT_ZOOM, drawChecker } from './canvas';
-  import { EDITOR_SLOTS } from './slots';
+  import { CANVAS, DEFAULT_ZOOM, GUIDES, ZOOMS, type Guides, type Zoom } from './canvas';
+  import Canvas from './Canvas.svelte';
+  import { editor, redo, undo } from './draft.svelte';
+  import PartList from './PartList.svelte';
 
   // The editor's frame (#26 C): top bar, 부위/캐릭터 tabs, and three panes —
-  // 부위 목록, 캔버스, 미리보기. Import, placement, preview and saving come
-  // in later issues; their buttons stay disabled until then.
+  // 부위 목록, 캔버스, 미리보기. Placing parts and undo are #58 (draft.svelte.ts);
+  // import, preview and saving come in later issues, their buttons disabled until then.
 
   const TABS = [
     { id: 'parts', label: '부위' },
     { id: 'character', label: '캐릭터' }
   ];
   let tab = $state('parts');
-  let selected = $state(EDITOR_SLOTS[0].id);
   let characterCount = $state<number | null>(null);
-  const zoom = DEFAULT_ZOOM;
-  let canvas = $state<HTMLCanvasElement>();
+  let zoom = $state<Zoom>(DEFAULT_ZOOM);
+  let guides = $state<Guides>({ border: true, feet: true, head: true });
 
-  $effect(() => {
-    const ctx = canvas?.getContext('2d');
-    if (ctx) drawChecker(ctx);
-  });
+  // ⌘Z / Ctrl+Z undoes, with Shift redoes; a text field keeps its own undo.
+  const onkeydown = (e: KeyboardEvent) => {
+    if (!(e.metaKey || e.ctrlKey) || e.altKey || e.key.toLowerCase() !== 'z') return;
+    if (e.target instanceof Element && e.target.closest('input, textarea, [contenteditable]')) return;
+    e.preventDefault();
+    if (e.shiftKey) redo();
+    else undo();
+  };
 
   onMount(async () => {
     const result = await editorApi.listCharacters();
@@ -31,6 +36,8 @@
   });
 </script>
 
+<svelte:window {onkeydown} />
+
 <div class="editor-root">
   <header class="topbar">
     <h1>캐릭터 에디터</h1>
@@ -38,6 +45,20 @@
       <Button disabled data-action="new" title="다음 업데이트에서 열려요">새로 만들기</Button>
       <Button disabled data-action="open" title="다음 업데이트에서 열려요">열기</Button>
       <Button variant="primary" disabled data-action="save" title="다음 업데이트에서 열려요">저장</Button>
+    </div>
+    <div class="actions" role="toolbar" aria-label="편집">
+      <Button variant="ghost" data-history="undo" disabled={!editor.canUndo} onclick={undo} title="실행 취소 (⌘Z)">되돌리기</Button>
+      <Button variant="ghost" data-history="redo" disabled={!editor.canRedo} onclick={redo} title="다시 실행 (⇧⌘Z)">다시</Button>
+    </div>
+    <div class="toggles" role="group" aria-label="확대">
+      {#each ZOOMS as z (z)}
+        <button type="button" class="toggle" data-zoom-option={z} aria-pressed={zoom === z} onclick={() => (zoom = z)}>{z}×</button>
+      {/each}
+    </div>
+    <div class="toggles" role="group" aria-label="안내선">
+      {#each GUIDES as g (g.id)}
+        <button type="button" class="toggle" data-guide={g.id} aria-pressed={guides[g.id]} onclick={() => (guides[g.id] = !guides[g.id])}>{g.label}</button>
+      {/each}
     </div>
     <span class="count" data-character-count>{characterCount === null ? '' : `캐릭터 ${characterCount}개`}</span>
   </header>
@@ -48,32 +69,13 @@
     <main class="panes">
       <section class="pane slots" data-pane="slots" aria-labelledby="slots-title">
         <h2 id="slots-title">부위</h2>
-        <ol class="slot-list">
-          {#each EDITOR_SLOTS as slot (slot.id)}
-            <li>
-              <button type="button" class="slot" data-slot={slot.id} aria-pressed={slot.id === selected} onclick={() => (selected = slot.id)}>
-                <span class="slot-label">{slot.label}</span>
-                {#if slot.required}<span class="required" title="꼭 있어야 해요">필수</span>{/if}
-                <span class="slot-state">비어 있음</span>
-              </button>
-            </li>
-          {/each}
-        </ol>
+        <PartList />
       </section>
 
       <section class="pane stage" data-pane="canvas" aria-labelledby="canvas-title">
         <h2 id="canvas-title">캔버스 <small>{CANVAS.width}×{CANVAS.height} · {zoom}배</small></h2>
         <div class="stage-well">
-          <canvas
-            bind:this={canvas}
-            data-canvas
-            data-zoom={zoom}
-            width={CANVAS.width}
-            height={CANVAS.height}
-            style:width="{CANVAS.width * zoom}px"
-            style:height="{CANVAS.height * zoom}px"
-            aria-label="캐릭터 캔버스 {CANVAS.width}×{CANVAS.height}, {zoom}배 확대"
-          ></canvas>
+          <Canvas {zoom} {guides} />
         </div>
       </section>
 
@@ -107,6 +109,19 @@
   }
   h1 { margin: 0; font: bold var(--type-body) var(--font); color: var(--color-goal); }
   .actions { display: flex; gap: var(--space-2); }
+  .toggles { display: flex; }
+  .toggle {
+    font: var(--type-small) var(--font-small);
+    color: var(--color-ink-2);
+    background: var(--color-panel);
+    border: var(--stroke-frame) solid var(--color-shadow);
+    border-radius: 0;
+    padding: 2px var(--space-1);
+    cursor: pointer;
+  }
+  .toggle + .toggle { border-left: none; }
+  .toggle[aria-pressed='true'] { color: var(--color-well); background: var(--color-focus); }
+  .toggle:focus-visible { outline: var(--stroke-frame) solid var(--color-goal); outline-offset: -2px; }
   .count { margin-left: auto; font: var(--type-small) var(--font-small); color: var(--color-muted); }
 
   .panes {
@@ -135,33 +150,7 @@
   }
   h2 small { font: var(--type-small) var(--font-small); color: var(--color-muted); }
 
-  .slot-list { list-style: none; margin: 0; padding: var(--space-1); overflow-y: auto; display: grid; gap: var(--space-1); }
-  .slot {
-    width: 100%;
-    display: flex;
-    align-items: baseline;
-    gap: var(--space-1);
-    padding: var(--space-1) var(--space-2);
-    font: var(--type-body) var(--font);
-    color: var(--color-ink-2);
-    text-align: left;
-    background: var(--color-well);
-    border: var(--stroke-frame) solid var(--color-shadow);
-    border-radius: 0;
-    cursor: pointer;
-  }
-  .slot[aria-pressed='true'] { color: var(--color-ink); border-color: var(--color-focus); }
-  .slot:focus-visible { outline: var(--stroke-frame) solid var(--color-goal); outline-offset: -2px; }
-  .required { font: var(--type-small) var(--font-small); color: var(--color-focus); }
-  .slot-state { margin-left: auto; font: var(--type-small) var(--font-small); color: var(--color-muted); }
-
   .stage-well { flex: 1; min-height: 0; display: grid; place-items: center; overflow: auto; background: var(--color-well); }
-  canvas {
-    display: block;
-    image-rendering: pixelated;
-    border: var(--stroke-frame) solid var(--color-edge-hi);
-    box-sizing: content-box;
-  }
 
   .preview-frame {
     flex: 1;

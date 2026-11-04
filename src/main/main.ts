@@ -509,7 +509,13 @@ ipcMain.handle('characters:clone', (_event, from: unknown, name: unknown) => cha
 ipcMain.handle('characters:rebuild', (_event, id: unknown) => characters.rebuild(id));
 
 // The character editor (#26): its own window, preload and editor:* channels.
-const editor = createEditorWindow({ page: path.join(__dirname, 'editor', 'index.html'), preload: path.join(__dirname, 'editor-preload.js') });
+// PETNUDGE_EDITOR_TEST=1 (set by scripts/editor-check.mjs) opens it with its
+// dev-only test hooks (src/ui/editor/testHooks.ts); never in a normal run.
+const editor = createEditorWindow({
+  page: path.join(__dirname, 'editor', 'index.html'),
+  preload: path.join(__dirname, 'editor-preload.js'),
+  testHooks: process.env.PETNUDGE_EDITOR_TEST === '1'
+});
 installEditorIpc({
   listCharacters: () => characters.list(),
   closeEditor: () => editor.close(),

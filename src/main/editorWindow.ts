@@ -14,7 +14,9 @@ export type EditorWindow = {
 
 export const EDITOR_SIZE = { width: 960, height: 640, minWidth: 720, minHeight: 480 } as const;
 
-export const createEditorWindow = ({ page, preload }: { page: string; preload: string }): EditorWindow => {
+// `testHooks`: open the page with ?test=1, which turns on the editor check's
+// hooks (src/ui/editor/testHooks.ts).
+export const createEditorWindow = ({ page, preload, testHooks = false }: { page: string; preload: string; testHooks?: boolean }): EditorWindow => {
   let win: BrowserWindow | null = null;
   const current = () => (win && !win.isDestroyed() ? win : null);
   const open = () => {
@@ -40,7 +42,7 @@ export const createEditorWindow = ({ page, preload }: { page: string; preload: s
     // The editor never navigates or opens windows of its own.
     created.webContents.on('will-navigate', (event) => event.preventDefault());
     created.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
-    void created.loadFile(page);
+    void created.loadFile(page, testHooks ? { query: { test: '1' } } : undefined);
     return created;
   };
   return { open, close: () => current()?.close(), current };

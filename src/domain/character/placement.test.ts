@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildPack } from './buildPack';
 import { blank, bounds, hexToPixel, type Pixels } from './pixels';
 import { FRAME, STANDARD_SLOTS, type CharacterDraft } from './standard';
-import { bringForward, clampMove, composite, drawOrder, emptyDraft, feetLine, fullOrder, headBox, movePart, moveSlot, removePart, sendBackward, setOrder, setPart, slotOrder } from './placement';
+import { bringForward, clampMove, partAt, composite, drawOrder, emptyDraft, feetLine, fullOrder, headBox, movePart, moveSlot, removePart, sendBackward, setOrder, setPart, slotOrder } from './placement';
 
 const RED = hexToPixel('#ff0000');
 const BLUE = hexToPixel('#0000ff');
@@ -106,6 +106,13 @@ describe('drawing order', () => {
     expect(slotOrder(moved)[0]).toBe('eyes');
     expect(fullOrder(moved).slice(0, 4)).toEqual(['eye.L.open', 'eye.L.closed', 'eye.R.open', 'eye.R.closed']);
     expect(moveSlot(moved, 'eyes', 0)).toBe(moved);
+  });
+
+  it('picks the front-most part under a pixel', () => {
+    expect(partAt(two(), 40, 45)).toBe('head');
+    expect(partAt(setOrder(two(), 'head', 0), 40, 45)).toBe('torso.chest');
+    expect(partAt(two(), 31, 80)).toBe('torso.chest');
+    expect([partAt(two(), 0, 0), partAt(two(), -1, 45), partAt(two(), 96, 45)]).toEqual([undefined, undefined, undefined]);
   });
 
   it('composites the drawn layers back to front', () => {

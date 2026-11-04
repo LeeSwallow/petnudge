@@ -101,6 +101,12 @@ export const moveSlot = (draft: CharacterDraft, slot: SlotId, toIndex: number): 
   return withOrder(draft, slots.flatMap((s) => order.filter((name) => slotOf(name) === s)));
 };
 
+// The front-most layer with an opaque pixel at (x, y), for picking a part on the canvas.
+export const partAt = (draft: CharacterDraft, x: number, y: number): string | undefined => {
+  if (x < 0 || y < 0 || x >= FRAME.w || y >= FRAME.h) return undefined;
+  return drawOrder(draft).reverse().find((name) => draft.parts[name].data[y * FRAME.w + x] >>> 24 !== 0);
+};
+
 // The drawn parts flattened back to front (pixel art: any opaque pixel wins).
 export const composite = (draft: CharacterDraft): Pixels => {
   const out = blank(FRAME.w, FRAME.h);
