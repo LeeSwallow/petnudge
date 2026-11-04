@@ -679,6 +679,25 @@ select:focus {
   box-shadow: 3px 3px 0 var(--shadow);
   text-align: center;
   font: 12px var(--font);
+  /* wraps at spaces, as ui/bubble/text.ts counts its three lines */
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+/* "더 보기 ▸" after a chat line cut at three lines: opens 기록 › 대화 */
+#bubble .bubble-more {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--goal);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+#bubble .bubble-more:hover,
+#bubble .bubble-more:focus-visible {
+  text-decoration: underline;
 }
 
 #bubble::after {

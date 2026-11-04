@@ -5,7 +5,8 @@ import { pack, setCharacter } from './character';
 import { data, updateSettings } from './data';
 import { music } from './music';
 import { runAction } from './pet/behavior';
-import { sayNow } from './pet/bubble';
+import { sayLine, sayNow } from './pet/bubble';
+import { bubbleText, speak } from '../ui/bubble/text';
 import { around } from './pet/mods';
 import { markActivity, scriptFace, scriptFx } from './pet/state';
 import { petStore } from './store';
@@ -206,7 +207,22 @@ const status = () => {
   return parts.join(', ');
 };
 
-const short = (text: string) => (text.length > 120 ? `${text.slice(0, 118)}…` : text);
+// The bubble's "더 보기 ▸" opens a conversation in 기록 › 대화; renderer.ts
+// knows how (the panel), friend windows ask the main one (main/friends.ts).
+let openChatTab = (_sessionId: string) => {};
+export const onOpenChat = (open: (sessionId: string) => void) => (openChatTab = open);
+
+// The sentences of the reply in progress her bubble has shown (ui/bubble/text.ts).
+let said: string[] = [];
+const sayReply = (sessionId: string, reply: string, final: boolean) => {
+  const next = speak(said, reply, final);
+  if (next === said && !final) return;
+  said = next;
+  if (said.length) sayLine(said.join(' '), { holdMs: final ? 10_000 : 60_000, final, onMore: () => openChatTab(sessionId) });
+  else if (final) sayNow('', 0); // an empty reply: no "생각 중" left behind
+};
+const sayMirror = (sessionId: string, name: string, text: string, holdMs: number) =>
+  sayLine(bubbleText(`${name}: ${text}`), { holdMs, onMore: () => openChatTab(sessionId) });
 
 const toolLine = (session: ChatSession, event: Extract<ChatEvent, { type: 'tool' }>) => {
   const mark = event.ok === undefined ? '…' : event.ok ? '✓' : '✗';
@@ -250,6 +266,7 @@ const replyAs = async (session: ChatSession, speaker: string): Promise<boolean> 
   const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   chatState.pending = { id, sessionId: session.id, speaker };
   chatState.live = '';
+  said = [];
   changed();
   if (mine) sayNow('음… 생각 중', 60_000);
   let ok = true;
@@ -268,9 +285,9 @@ const replyAs = async (session: ChatSession, speaker: string): Promise<boolean> 
       // CLI providers only report a tool call starting; the reply means it ran.
       for (const m of session.messages) if (m.role === 'tool' && m.text.endsWith(' …')) m.text = `${m.text.slice(0, -2)} ✓`;
       session.messages.push({ role: 'pet', text: reply, speaker, at: Date.now() });
-      if (mine) sayNow(short(reply), 10_000);
-      else if (friendsOnScreen.has(speaker)) api.friendSay(speaker, short(reply), 10_000);
-      else if (mirror) sayNow(short(`${nameOf(speaker)}: ${reply}`), 10_000);
+      if (mine) sayReply(session.id, reply, true);
+      else if (friendsOnScreen.has(speaker)) api.friendSay(speaker, bubbleText(reply), 10_000, session.id);
+      else if (mirror) sayMirror(session.id, nameOf(speaker), reply, 10_000);
     });
   } catch (error) {
     ok = false;
@@ -355,7 +372,7 @@ const guestPost = async (sessionId: string, name: string, text: string, reply: b
   session.updatedAt = Date.now();
   saveSessions();
   changed();
-  if (session.mirror !== false && chatState.active[pack.id] === session.id) sayNow(short(`${name}: ${text}`), 8000);
+  if (session.mirror !== false && chatState.active[pack.id] === session.id) sayMirror(session.id, name, text, 8000);
   if (reply && !chatState.busy) {
     await refreshNames();
     await replies(session, respondersFor(session, text));
@@ -389,6 +406,8 @@ export const startChat = async () => {
     if (event.type === 'delta') {
       chatState.live = event.text;
       liveListeners.forEach((listener) => listener());
+      // her own reply shows in her bubble as it comes, a sentence at a time
+      if (pending.speaker === pack.id) sayReply(pending.sessionId, event.text, false);
       return;
     }
     if (session) toolLine(session, event);

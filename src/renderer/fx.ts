@@ -58,9 +58,13 @@ export const confetti = async (from: Element) => {
 // The typing currently running in each element; a new line cancels it.
 const typing = new WeakMap<HTMLElement, AbortController>();
 
+// Stops the typing in an element (its text stays as it is).
+export const stopTyping = (el: HTMLElement) => typing.get(el)?.abort();
+
 // Typewriter text: one character per frame, holds at punctuation, click to finish.
-// Returns roughly how long the typing takes (ms).
-export const typewrite = (el: HTMLElement, text: string) => {
+// Returns roughly how long the typing takes (ms). `from` characters show at
+// once (a line that grows goes on typing from what is already there).
+export const typewrite = (el: HTMLElement, text: string, from = 0) => {
   typing.get(el)?.abort();
   if (reducedMotion()) {
     el.textContent = text;
@@ -68,8 +72,8 @@ export const typewrite = (el: HTMLElement, text: string) => {
   }
   const run = new AbortController();
   typing.set(el, run);
-  let shown = 0;
-  el.textContent = '';
+  let shown = Math.min(from, text.length);
+  el.textContent = text.slice(0, shown);
   const finish = () => {
     run.abort();
     el.textContent = text;
@@ -77,6 +81,7 @@ export const typewrite = (el: HTMLElement, text: string) => {
   el.addEventListener('click', finish, { once: true, signal: run.signal });
   const step = () => {
     if (run.signal.aborted || !el.isConnected) return;
+    if (shown >= text.length) return;
     shown += 1;
     el.textContent = text.slice(0, shown);
     if (shown >= text.length) return;
@@ -84,7 +89,7 @@ export const typewrite = (el: HTMLElement, text: string) => {
     setTimeout(step, hold);
   };
   step();
-  return [...text].reduce((ms, ch) => ms + (/[.,!?…]/.test(ch) ? FRAME_MS * 3 : 34), 0);
+  return [...text.slice(from)].reduce((ms, ch) => ms + (/[.,!?…]/.test(ch) ? FRAME_MS * 3 : 34), 0);
 };
 
 // Count a number up on the frame clock (dashboard tiles).

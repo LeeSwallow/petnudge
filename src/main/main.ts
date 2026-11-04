@@ -346,8 +346,14 @@ ipcMain.on('friends:close', (event, id: unknown) => {
   if (self) return self.win.close(); // a friend closing itself
   if (typeof id === 'string') friends.close(id);
 });
-ipcMain.on('friends:say', (_event, id: unknown, text: unknown, ms: unknown) => {
-  if (typeof id === 'string' && typeof text === 'string') friends.say(id, text.slice(0, 300), typeof ms === 'number' ? ms : 6000);
+ipcMain.on('friends:say', (_event, id: unknown, text: unknown, ms: unknown, sessionId: unknown) => {
+  if (typeof id === 'string' && typeof text === 'string') friends.say(id, text.slice(0, 300), typeof ms === 'number' ? ms : 6000, typeof sessionId === 'string' ? sessionId : undefined);
+});
+// A friend's bubble "더 보기 ▸": the main pet opens that conversation.
+ipcMain.on('friends:open-chat', (_event, sessionId: unknown) => {
+  if (typeof sessionId !== 'string') return;
+  summon();
+  win?.webContents.send('chat:open-session', sessionId);
 });
 ipcMain.on('friends:hold', (_event, id: unknown, ms: unknown, faceDx: unknown) => {
   if (typeof id === 'string' && typeof ms === 'number') friends.hold(id, Math.min(ms, 300_000), typeof faceDx === 'number' ? faceDx : 0);
