@@ -165,7 +165,7 @@ try {
   current = 'reuse';
   const editors = (await targets()).filter(isEditor);
   result('editor: opening twice reuses the one window', [editors.length, editors[0]?.id === editorTarget.id], [1, true]);
-  await check('editor: same page, not reloaded', editor, `return [window.__sameEditor === true, document.hasFocus()];`, [true, true]);
+  await check('editor: same page, not reloaded', editor, `return window.__sameEditor === true;`, true); // focus is not checked: an unfocused desktop (other apps, CI) cannot give it
 
   if (process.env.EDITOR_CHECK_SHOT) {
     const { data } = await editor.send('Page.captureScreenshot', { format: 'png' });
