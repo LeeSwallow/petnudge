@@ -4,14 +4,14 @@
   import { pack } from '../../../renderer/character';
   import {
     cancelChat, chatAvailable, chatState, deleteSession, friendsOnScreen, inviteToSession, membersOf, nameOf, newSession,
-    onChat, openSession, providerLabel, removeFromSession, renameSession, sendChat, sessionById, sessionsFor, setMirror, talkTogether
+    onChat, onChatLive, openSession, providerLabel, removeFromSession, renameSession, sendChat, sessionById, sessionsFor, setMirror, talkTogether
   } from '../../../renderer/chat';
   import { PROVIDER_INFO, routeFor, type ChatMessage } from '../../../shared/chat';
   import type { CharacterChoice } from '../../../shared/characterImport';
   import TextInput from '../../components/TextInput.svelte';
   import { logError } from '../../log';
   import { revision } from '../../state/revision.svelte';
-  import { friendIds, isGroup, preview, when } from './logic';
+  import { followBottom, friendIds, isGroup, preview, when } from './logic';
   import { chatView } from './view.svelte';
 
   // The 대화 tab, like a messenger: each character is a friend you can unfold
@@ -25,13 +25,28 @@
   let turns = $state(6);
   let log = $state<HTMLElement>();
   let input = $state<HTMLElement>();
+  let live = $state(''); // the reply so far, apart from the view
+  let frame = 0;
+  // whether new lines pull the view down (the reader is near the bottom);
+  // not reactive: only the scroll handler and the jump button change it
+  let following = true;
+  let newBelow = $state(false);
 
   onMount(() => {
     onChat(() => {
       chatRev += 1;
+      live = chatState.live;
+    });
+    // a streamed delta redraws only the reply in progress, once a frame
+    onChatLive(() => {
+      frame ||= requestAnimationFrame(() => {
+        frame = 0;
+        live = chatState.live;
+      });
     });
     // her own conversations start unfolded
     unfolded = [pack.id];
+    return () => cancelAnimationFrame(frame);
   });
 
   // the character list is read again when the main pet changes or the tab opens
@@ -67,7 +82,6 @@
       members,
       group: isGroup(members, session.messages),
       pending,
-      live: chatState.live,
       pendingSpeaker: chatState.pending?.speaker,
       busy: chatState.busy === session.id,
       anyBusy: Boolean(chatState.busy),
@@ -82,11 +96,42 @@
     if (chatView.open && !sessionById(chatView.open)) chatView.open = null;
   });
 
-  // the newest line stays in view
+  const toBottom = () => {
+    following = true;
+    newBelow = false;
+    log?.scrollTo({ top: log.scrollHeight });
+  };
+
+  // an opened conversation starts at its newest line
+  const openId = $derived(view.session?.id);
   $effect(() => {
-    void view;
-    if (view.session) void tick().then(() => log?.scrollTo({ top: log.scrollHeight }));
+    void openId;
+    following = true;
+    newBelow = false;
   });
+
+  // what moves the bottom: a new line, an edited last line, the reply so far
+  const content = $derived.by(() => {
+    const s = view.session;
+    return s ? [s.id, s.messages.length, s.messages.at(-1)?.text, view.pending, live].join('\u0000') : '';
+  });
+
+  // new lines are followed only from near the bottom; otherwise the reader
+  // keeps their place and gets a "새 메시지 ↓" button
+  $effect(() => {
+    if (!content) return;
+    void tick().then(() => {
+      if (!log) return;
+      if (following) log.scrollTo({ top: log.scrollHeight });
+      else newBelow = true;
+    });
+  });
+
+  const scrolled = () => {
+    if (!log) return;
+    following = followBottom(log.scrollTop, log.scrollHeight, log.clientHeight);
+    if (following) newBelow = false;
+  };
 
   const focusInput = async () => {
     await tick();
@@ -208,13 +253,16 @@
         {/if}
       </div>
     </div>
-    <ul class="chat-log" id="chat-log" aria-live="polite" bind:this={log}>
+    <div class="chat-log-wrap">
+    <ul class="chat-log" id="chat-log" aria-live="polite" bind:this={log} onscroll={scrolled}>
       {#each session.messages as m, i (`${i}:${m.text}`)}{@render bubble(m, '', view.group)}{/each}
-      {#if view.pending}{@render bubble({ role: 'pet', text: view.live || '…', speaker: view.pendingSpeaker }, view.live ? '' : 'thinking', view.group)}{/if}
+      {#if view.pending}{@render bubble({ role: 'pet', text: live || '…', speaker: view.pendingSpeaker }, live ? '' : 'thinking', view.group)}{/if}
       {#if !session.messages.length && !view.pending}
         <li class="chat-bubble system">{view.name}에게 말을 걸어 봐요. 할 일 추가, 메모 정리, 타이머도 부탁할 수 있어요.</li>
       {/if}
     </ul>
+    {#if newBelow}<button type="button" class="mini chat-new-below" id="chat-new-below" onclick={toBottom}>새 메시지 ↓</button>{/if}
+    </div>
     <div class="row">
       <span class="grow" bind:this={input}>
         <TextInput id="chat-input" maxlength={2000} bind:value={message} onenter={send} disabled={view.anyBusy || view.none}
@@ -224,3 +272,16 @@
     </div>
   {/if}
 </div>
+
+<style>
+  .chat-log-wrap {
+    position: relative;
+  }
+
+  .chat-new-below {
+    position: absolute;
+    left: 50%;
+    bottom: 14px;
+    transform: translateX(-50%);
+  }
+</style>

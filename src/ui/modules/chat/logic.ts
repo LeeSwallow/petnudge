@@ -21,5 +21,11 @@ export const friendIds = (petId: string, characterIds: string[], sessionCharacte
   ...new Set([petId, ...characterIds, ...sessionCharacterIds])
 ];
 
-export const isGroup = (members: string[], messages: ChatMessage[]) =>
+// Whether the conversation should follow new lines down: only when the reader
+// is at the bottom or within `threshold` px of it, so scrolling up to read
+// back is not undone by a reply streaming in.
+export const followBottom = (scrollTop: number, scrollHeight: number, clientHeight: number, threshold = 40) =>
+  scrollHeight - scrollTop - clientHeight <= threshold;
+
+export const isGroup =(members: string[], messages: ChatMessage[]) =>
   members.length > 1 || messages.some((m) => m.speaker?.startsWith('guest:'));

@@ -6,7 +6,7 @@
 // behaviour.
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -14,7 +14,26 @@ const port = Number(process.env.UI_CHECK_PORT ?? 9343); // set it to run checks 
 const profile = mkdtempSync(path.join(tmpdir(), 'petnudge-ui-check-'));
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const electron = createRequire(import.meta.url)('electron');
-const app = spawn(electron, ['.', `--remote-debugging-port=${port}`], { env: { ...process.env, PETNUDGE_PROFILE: profile }, stdio: 'ignore' });
+
+// The chat talks to a stand-in `claude` CLI in a throwaway home (main looks in
+// ~/.local/bin first), never to your real one: it streams 40 numbered lines,
+// one every 50ms, in the CLI's stream-json format.
+const home = path.join(profile, 'home');
+mkdirSync(path.join(home, '.local', 'bin'), { recursive: true });
+writeFileSync(path.join(home, '.local', 'bin', 'claude'), `#!/usr/bin/env node
+const out = (event) => process.stdout.write(JSON.stringify(event) + '\\n');
+out({ type: 'stream_event', event: { type: 'message_start' } });
+let i = 0;
+const timer = setInterval(() => {
+  i += 1;
+  out({ type: 'stream_event', event: { type: 'content_block_delta', delta: { type: 'text_delta', text: i + '번째 줄이에요.\\n' } } });
+  if (i === 40) {
+    clearInterval(timer);
+    out({ type: 'result', subtype: 'success', is_error: false, result: '' });
+  }
+}, 50);
+`, { mode: 0o755 });
+const app = spawn(electron, ['.', `--remote-debugging-port=${port}`], { env: { ...process.env, PETNUDGE_PROFILE: profile, HOME: home }, stdio: 'ignore' });
 
 const cleanup = () => {
   app.kill();
@@ -76,6 +95,9 @@ const HELPERS = `
   window.type = (s, value) => { const el = document.querySelector(s); el.value = value; el.dispatchEvent(new Event('input', { bubbles: true })); };
   window.key = (s, key) => document.querySelector(s).dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
   window.open_ = async (group, module) => { $('[data-group=' + group + ']').click(); if (module) $('[data-module=' + module + ']').click(); await wait(200); };
+  window.until = async (ok, ms = 10000) => { for (let t = 0; t < ms && !ok(); t += 50) await wait(50); return ok(); };
+  window.atBottom = (el) => el.scrollHeight - el.scrollTop - el.clientHeight <= 40;
+  window.replies = () => $$('#chat-log .chat-bubble.pet:not(.thinking)').length;
   return true;`;
 
 const checks = [];
@@ -139,6 +161,9 @@ check('chat: back to the friend list, pet unfolded', `$('[aria-label="목록으�
 check('chat: the pet stays folded when folded', `const head = $('.chat-friend.open .chat-friend-head'); head.click(); await wait(300); const folded = $$('.chat-friend.open').length === 0; head.click(); await wait(300); return [folded, $$('.chat-friend.open').length];`, [true, 1]);
 check('chat: a sent line shows in the conversation', `$('.chat-friend.open .chat-new').click(); await wait(300); type('#chat-input', '안녕'); key('#chat-input', 'Enter'); await wait(800); const shown = $$('#chat-log .chat-bubble.user').map((b) => b.textContent.trim()); const title = $('#chat-title-input').value; $('[aria-label="목록으로"]').click(); await wait(300); return [shown, title, text('.chat-friend.open .chat-session').includes('안녕')];`, [['안녕'], '안녕', true]);
 check('chat: new conversation, rename, delete with a second press', `$('.chat-friend.open .chat-new').click(); await wait(300); const t = $('#chat-title-input'); t.value = '수학 질문'; t.dispatchEvent(new Event('change', { bubbles: true })); await wait(200); $('[aria-label="목록으로"]').click(); await wait(300); const titles = $$('.chat-friend.open .chat-session b').map((b) => b.textContent); const before = $$('.chat-friend.open .chat-session-row').length; const del = () => $$('.chat-friend.open .chat-session-row').find((r) => r.textContent.includes('수학 질문')).querySelector('[aria-label="대화 삭제"]'); del().click(); await wait(100); const asked = del().textContent; del().click(); await wait(300); return [titles.includes('수학 질문'), asked, $$('.chat-friend.open .chat-session-row').length === before - 1];`, [true, '?', true]);
+check('chat: a streamed reply follows the bottom', `$('.chat-friend.open .chat-new').click(); await wait(300); await until(() => !$('#chat-input').disabled); type('#chat-input', '길게 말해 줘'); key('#chat-input', 'Enter'); const log = $('#chat-log'); await until(() => replies() === 1); await wait(1200); const mid = [text('#chat-send'), log.scrollHeight > log.clientHeight, atBottom(log)]; await until(() => text('#chat-send') === '보내기'); await wait(100); return [mid, atBottom(log), $('#chat-new-below') === null];`, [['멈춤', true, true], true, true]);
+check('chat: scrolled up, a streamed reply keeps the place and offers 새 메시지 ↓', `type('#chat-input', '또'); key('#chat-input', 'Enter'); const log = $('#chat-log'); await until(() => replies() === 2); log.scrollTop = 0; await wait(150); const height = log.scrollHeight; await wait(600); return [text('#chat-send'), log.scrollTop, log.scrollHeight > height, text('#chat-new-below')];`, ['멈춤', 0, true, '새 메시지 ↓']);
+check('chat: 새 메시지 ↓ goes to the bottom and follows again', `const log = $('#chat-log'); $('#chat-new-below').click(); await wait(150); const jumped = [atBottom(log), $('#chat-new-below') === null]; await until(() => text('#chat-send') === '보내기'); await wait(100); const done = [atBottom(log), $('#chat-new-below') === null, replies()]; $('[aria-label="목록으로"]').click(); await wait(300); return [jumped, done];`, [[true, true], [true, true, 2]]);
 check('settings: quit button under settings', `await open_('settings'); return $('[data-quit]') !== null;`, true);
 check('panel: 220px keeps both tab rows', `$('#panel').style.setProperty('--panel-height', '220px'); await wait(100); const p = $('#panel').getBoundingClientRect(), s = $('.ui-tabs.sub').getBoundingClientRect(); $('#panel').style.removeProperty('--panel-height'); return s.height > 0 && s.bottom <= p.bottom;`, true);
 
