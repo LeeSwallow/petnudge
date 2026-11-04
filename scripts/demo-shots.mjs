@@ -130,8 +130,10 @@ try {
   await evaluate('window.petApi.closeFriend(); true');
   await evaluate("document.querySelector('canvas').dispatchEvent(new KeyboardEvent('keydown', { key: 'ContextMenu', bubbles: true })); true");
   await sleep(800);
+  // The panel's big tab (data-group) first, then the module's small tab.
+  const groupOf = { todo: 'focus', pomodoro: 'focus', dashboard: 'record', settings: 'settings' };
   for (const tab of ['todo', 'pomodoro', 'dashboard', 'settings']) {
-    await evaluate(`document.querySelector('[data-module=${tab}]').click(); true`);
+    await evaluate(`document.querySelector('[data-group=${groupOf[tab]}]').click(); document.querySelector('[data-module=${tab}]').click(); true`);
     await sleep(900);
     const shot = await send('Page.captureScreenshot', { format: 'png' });
     writeFileSync(path.join(out, `panel-${tab}.png`), Buffer.from(shot.data, 'base64'));

@@ -25,83 +25,27 @@ import { petStore, whenHydrated } from './store';
 import { installTooltip } from './tooltip';
 import { pixelIcon } from './icons';
 import { characterReady, pack, setCharacter } from './character';
-import { mountProbe } from '../ui/mount';
+import { createPanel, type PanelController, type RenderCause } from '../ui/panel/controller';
+import { restoreModule } from '../ui/panel/groups';
 import { installTokens } from '../ui/theme/install';
 
 const TRANSITION_STEP_MS = 1200;
 const MODULES: PanelModule[] = [todoModule, pomodoroModule, dashboardModule, playlistModule, notesModule, chatModule, friendsModule, settingsModule];
 
 const panel = document.getElementById('panel')!;
-const tabs = document.getElementById('tabs')!;
-const host = document.getElementById('module-host')!;
-const bodies = new Map<ModuleId, HTMLElement>();
-let active: ModuleId = 'pomodoro';
+let panelUi: PanelController | null = null;
 
 const visible = () => !panel.hidden;
-const activeModule = () => MODULES.find((m) => m.id === active)!;
 
-const renderActive = (cause: DataKind | 'session' | 'clock' | 'music') => {
-  if (!visible()) return;
-  const module = activeModule();
-  if (module.watches.includes(cause)) module.render();
-};
-
-// ---------- dock navigation ----------
-
-const buildDock = () => {
-  tabs.innerHTML = MODULES.map(
-    (m) => `<button class="tab" role="tab" type="button" data-module="${m.id}" aria-selected="false"><span class="tab-icon">${pixelIcon(m.icon)}</span>${m.label}</button>`
-  ).join('') + `<button class="dock-quit" type="button" data-quit aria-label="펫 종료" data-tip="펫 종료">${pixelIcon('power')}<span>나가기</span></button>`;
-  tabs.style.setProperty('--tab-count', String(MODULES.length));
-  for (const module of MODULES) {
-    const body = document.createElement('div');
-    body.className = 'tab-body';
-    body.setAttribute('role', 'tabpanel');
-    body.hidden = true;
-    host.append(body);
-    module.mount(body);
-    bodies.set(module.id, body);
-  }
-  tabs.addEventListener('click', (event) => {
-    if (event.target instanceof Element && event.target.closest('[data-quit]')) return api.quit();
-    const button = event.target instanceof Element ? (event.target.closest('[data-module]') as HTMLElement | null) : null;
-    if (button) showModule(button.dataset.module as ModuleId);
-  });
-  tabs.addEventListener('keydown', (event) => {
-    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
-    const buttons = [...tabs.querySelectorAll<HTMLButtonElement>('.tab')];
-    const index = buttons.indexOf(document.activeElement as HTMLButtonElement);
-    if (index < 0) return;
-    event.preventDefault();
-    const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1 :
-      (index + (event.key === 'ArrowRight' ? 1 : -1) + buttons.length) % buttons.length;
-    buttons[next].focus();
-    showModule(buttons[next].dataset.module as ModuleId);
-  });
-};
-
-const showModule = (id: ModuleId, animate = true) => {
-  active = id;
-  void api.db.setKv('ui.module', id);
-  tabs.querySelectorAll<HTMLElement>('.tab').forEach((tab) => {
-    const selected = tab.dataset.module === id;
-    tab.setAttribute('aria-selected', String(selected));
-    tab.tabIndex = selected ? 0 : -1;
-    if (selected) tab.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-    if (selected && animate) pop(tab);
-  });
-  bodies.forEach((body, key) => (body.hidden = key !== id));
-  const body = bodies.get(id)!;
-  activeModule().render();
-  if (animate) enter(body, 'settle');
-};
+const renderActive = (cause: RenderCause) => panelUi?.render(cause);
+const showModule = (id: ModuleId, animate = true) => panelUi?.show(id, animate);
 
 const togglePanel = () => {
   panel.hidden = !panel.hidden;
   if (!panel.hidden) cancelMods();
   emitMod(panel.hidden ? 'panelClose' : 'panelOpen', 'after');
   api.setPanelOpen(visible());
-  if (visible()) activeModule().render();
+  if (visible()) panelUi?.refresh();
   renderBubble(visible());
 };
 
@@ -162,7 +106,7 @@ const watchSession = () => {
       if (before === 'focus' && after === 'break') {
         void recordFocus(previous.timer, true, previous.pauseCount, previous.activeTodoId);
         react('celebrate', 2500);
-        const tab = tabs.querySelector('[data-module="pomodoro"]');
+        const tab = panel.querySelector('[data-module="pomodoro"]') ?? panel.querySelector('[data-group="focus"]');
         if (tab) void confetti(tab);
       }
       if (before === 'focus' && after === 'idle') void recordFocus(previous.timer, false, previous.pauseCount, previous.activeTodoId);
@@ -229,10 +173,19 @@ const boot = async () => {
   petStore.getState().applySettings(data.settings);
   music.setVolume(data.settings.musicVolume);
 
-  buildDock();
-  mountProbe(panel);
-  const saved = (await api.db.getKv('ui.module')) as ModuleId | null;
-  showModule(saved && MODULES.some((m) => m.id === saved) ? saved : 'pomodoro', false);
+  panelUi = createPanel(panel, MODULES, {
+    visible,
+    onQuit: () => api.quit(),
+    onShow: (id, body, tab, animate) => {
+      void api.db.setKv('ui.module', id);
+      tab?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      if (animate) {
+        if (tab) pop(tab);
+        enter(body, 'settle');
+      }
+    }
+  });
+  panelUi.show(restoreModule((await api.db.getKv('ui.module')) as string | null), false);
 
   onData((kind) => {
     if (kind === 'settings') {
@@ -293,7 +246,7 @@ const boot = async () => {
       lockedSince = null;
     }
     if (data.todayKey !== toDateKey(new Date(now))) void refreshStats();
-    if (visible() && active === 'pomodoro') renderPomodoroClock();
+    if (visible() && panelUi?.active() === 'pomodoro') renderPomodoroClock();
     renderBubble(visible());
   }, 250);
 
