@@ -11,6 +11,7 @@ await rm('dist', { recursive: true, force: true });
 await mkdir('dist/renderer/fonts', { recursive: true });
 await cp('assets/characters', 'dist/characters', { recursive: true, filter: (f) => !f.endsWith('.md') });
 await cp('assets/mods', 'dist/mods', { recursive: true });
+await cp('assets/tray', 'dist/tray', { recursive: true });
 const results = await Promise.all([
   build({ ...common, entryPoints: ['src/main/main.ts'], outfile: 'dist/main.js', platform: 'node', format: 'cjs', external: ['electron'] }),
   build({ ...common, entryPoints: ['src/preload/preload.ts'], outfile: 'dist/preload.js', platform: 'node', format: 'cjs', external: ['electron'] }),

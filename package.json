@@ -34,6 +34,7 @@
     "dist:win": "node build.mjs && electron-builder --win nsis",
     "build:character": "node scripts/build-character.mjs lila",
     "watch:character": "node scripts/build-character.mjs lila --watch",
+    "build:tray-icon": "node scripts/tray-icon.mjs",
     "dist:linux": "node build.mjs && electron-builder --linux AppImage",
     "check:ui": "node build.mjs && node scripts/ui-check.mjs",
     "demo:shots": "node scripts/demo-shots.mjs && node scripts/compose-images.mjs"
