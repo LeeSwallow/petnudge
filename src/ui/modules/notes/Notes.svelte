@@ -23,7 +23,7 @@
   let filterPanel: HTMLElement;
   let editor: HTMLElement;
   let titleInput: HTMLInputElement;
-  let filter: ReturnType<typeof createFilter<DateRange & { pinned: boolean }>> | null = null;
+  let filter: ReturnType<typeof createFilter<DateRange & { pinned: boolean }>> | null = $state.raw(null);
 
   onMount(() => {
     filter = createFilter(funnelSlot.querySelector<HTMLButtonElement>('#note-funnel')!, filterPanel, {

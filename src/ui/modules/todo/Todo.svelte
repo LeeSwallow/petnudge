@@ -25,7 +25,7 @@
   let filterRev = $state(0);
   let funnelSlot: HTMLElement;
   let filterPanel: HTMLElement;
-  let filter: ReturnType<typeof createFilter<DateRange & { status: string }>> | null = null;
+  let filter: ReturnType<typeof createFilter<DateRange & { status: string }>> | null = $state.raw(null);
 
   onMount(() => {
     filter = createFilter(funnelSlot.querySelector<HTMLButtonElement>('#todo-funnel')!, filterPanel, {
