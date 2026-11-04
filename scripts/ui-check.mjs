@@ -101,13 +101,21 @@ const HELPERS = `
   return true;`;
 
 const checks = [];
-const check = (name, body, expected) => checks.push({ name, body, expected });
+// { reload: true } reloads the window (and its helpers) before the check.
+const check = (name, body, expected, { reload = false } = {}) => checks.push({ name, body, expected, reload });
 
 // ---- the scenario ----
 check('panel opens on right click', `$('#pet').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true })); await wait(); return !$('#panel').hidden;`, true);
-check('three groups, none overflowing', `return $$('[data-group]').map((b) => b.textContent.trim() + (b.scrollWidth <= b.clientWidth ? '' : '!'));`, ['집중', '기록', '설정']);
+check('four groups, home first, none overflowing', `return $$('[data-group]').map((b) => b.textContent.trim() + (b.scrollWidth <= b.clientWidth ? '' : '!'));`, ['홈', '집중', '기록', '설정']);
 check('pomodoro opens first', `return $('[data-module][aria-selected=true]').dataset.module;`, 'pomodoro');
-check('arrow keys move between groups', `$('[data-group=focus]').focus(); key('[data-group=focus]', 'ArrowLeft'); await wait(150); return [$('[data-group][aria-selected=true]').dataset.group, $$('[data-group]').map((b) => b.tabIndex)];`, ['settings', [-1, -1, 0]]);
+check('arrow keys move between groups', `$('[data-group=focus]').focus(); key('[data-group=focus]', 'ArrowLeft'); await wait(150); const left = [$('[data-group][aria-selected=true]').dataset.group, $$('[data-group]').map((b) => b.tabIndex)]; key('[data-group=home]', 'ArrowLeft'); await wait(150); return [left, $('[data-group][aria-selected=true]').dataset.group];`, [['home', [0, -1, -1, -1]], 'settings']);
+
+check('home: the board shows the default four widgets', `await open_('home'); return [$$('[data-module]').length, $$('[data-widget]').map((e) => e.dataset.widget), $$('[data-widget]').map((e) => e.getBoundingClientRect().width > 0)];`, [0, ['timer', 'todos', 'pinned', 'music'], [true, true, true, true]]);
+check('home: empty widgets say so', `return [text('[data-pinned-empty]'), text('[data-todos-empty]'), text('[data-music-empty]'), text('[data-timer-digits]'), text('[data-timer-phase]')];`, ['고정한 메모가 없어요', '할 일이 비었어요', '재생 중인 음악이 없어요', '25:00', '대기']);
+check('home: the timer widget starts and pauses the pomodoro', `$('[data-timer-action=start]').click(); await wait(2300); const running = [text('[data-timer-digits]').startsWith('24:5'), text('[data-timer-phase]'), $('[data-timer-action]').dataset.timerAction]; $('[data-timer-action=pause]').click(); await wait(300); const paused = $('[data-timer-action]').dataset.timerAction; await open_('focus', 'pomodoro'); const tab = text('#controls'); $$('#controls button')[1].click(); await wait(300); await open_('home'); return [running, paused, tab, text('[data-timer-digits]'), $('[data-timer-action]').dataset.timerAction];`, [[true, '집중', 'pause'], 'resume', '재개 그만두기', '25:00', 'start']);
+check('home: remove a widget, and only it can be added back', `$('[aria-label="할 일 요약 설정"]').click(); await wait(100); $('[data-widget=todos] [data-widget-action=remove]').click(); await wait(200); const left = $$('[data-widget]').map((e) => e.dataset.widget); $('[data-widget-add]').click(); await wait(100); return [left, $$('[data-widget-add-menu] [data-add]').map((e) => e.dataset.add)];`, [['timer', 'pinned', 'music'], ['todos']]);
+check('home: add a widget at the end and move one up', `$('[data-add=todos]').click(); await wait(200); const added = $$('[data-widget]').map((e) => e.dataset.widget); $('[aria-label="음악 설정"]').click(); await wait(100); const upDisabled = $('[data-widget=music] [data-widget-action=up]').disabled; $('[data-widget=music] [data-widget-action=up]').click(); await wait(200); return [added, upDisabled, $$('[data-widget]').map((e) => e.dataset.widget), $('[data-widget-add]').disabled];`, [['timer', 'pinned', 'music', 'todos'], false, ['timer', 'music', 'pinned', 'todos'], true]);
+check('home: the layout is saved and survives closing the panel', `$('#pet').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true })); await wait(); const closed = $('#panel').hidden; $('#pet').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true })); await wait(); return [closed, $$('[data-widget]').map((e) => e.dataset.widget), await window.petApi.db.getKv('widgets.board')];`, [true, ['timer', 'music', 'pinned', 'todos'], '["timer","music","pinned","todos"]']);
 
 check('todo: empty list', `await open_('focus', 'todo'); return text('#todo-open');`, '할 일이 비었어요');
 check('todo: add with Enter', `type('#todo-input', '영어 단어'); key('#todo-input', 'Enter'); await wait(400); return [$('#todo-input').value, $$('#todo-open .todo-title').map((e) => e.textContent.trim())];`, ['', ['영어 단어']]);
@@ -168,6 +176,8 @@ check('chat: scrolled up, a streamed reply keeps the place and offers 새 메시
 check('chat: 새 메시지 ↓ goes to the bottom and follows again', `const log = $('#chat-log'); $('#chat-new-below').click(); await wait(150); const jumped = [atBottom(log), $('#chat-new-below') === null]; await until(() => text('#chat-send') === '보내기'); await wait(100); const done = [atBottom(log), $('#chat-new-below') === null, replies()]; $('[aria-label="목록으로"]').click(); await wait(300); return [jumped, done];`, [[true, true], [true, true, 2]]);
 check('settings: quit button under settings', `await open_('settings'); return $('[data-quit]') !== null;`, true);
 check('panel: 220px keeps both tab rows', `$('#panel').style.setProperty('--panel-height', '220px'); await wait(100); const p = $('#panel').getBoundingClientRect(), s = $('.ui-tabs.sub').getBoundingClientRect(); $('#panel').style.removeProperty('--panel-height'); return s.height > 0 && s.bottom <= p.bottom;`, true);
+check('home: opened last, so it is saved as the module to reopen', `await open_('home'); return $('[data-group][aria-selected=true]').dataset.group;`, 'home');
+check('home: the saved layout is restored after a reload', `$('#pet').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true })); await wait(600); return [$('[data-group][aria-selected=true]').dataset.group, $$('[data-widget]').map((e) => e.dataset.widget)];`, ['home', ['timer', 'music', 'pinned', 'todos']], { reload: true });
 
 // ---- run ----
 let failed = 0;
@@ -177,10 +187,15 @@ try {
   await send('Page.reload');
   await sleep(2500);
   await run(HELPERS);
-  for (const { name, body, expected } of checks) {
+  for (const { name, body, expected, reload } of checks) {
     current = name;
     let actual;
     try {
+      if (reload) {
+        await send('Page.reload');
+        await sleep(2500);
+        await run(HELPERS);
+      }
       actual = await run(body);
     } catch (error) {
       actual = `THREW ${error.message.split('\n')[0]}`;
