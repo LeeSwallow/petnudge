@@ -3,11 +3,11 @@ import { getRemainingMs, type TimerState } from '../domain/pomodoro/timer';
 import { api } from './api';
 import { data, onData, refreshAll, refreshNotes, refreshSettings, refreshStats, refreshTodos, type DataKind } from './data';
 import { confetti, enter, pop } from './fx';
-import { startChat } from './chat';
+import { onOpenChat, startChat } from './chat';
 import { installChatBar } from './pet/chatbar';
 import { nearestFriend, onNearChange, startFriends } from './pet/friends';
 import { holdStill, pauseWalking } from './pet/behavior';
-import { sayNow } from './pet/bubble';
+import { sayLine } from './pet/bubble';
 import { faceToward } from './pet/gaze';
 import { handleModeChange, handleNowPlaying, music, onMusic } from './music';
 import { installPetInput, isDragging, markActivity, react, renderBubble, resizePet, startPetLoop } from './pet';
@@ -20,7 +20,7 @@ import type { Cause } from '../ui/state/bridge';
 import { restoreModule } from '../ui/panel/groups';
 import type { ModuleId } from '../ui/modules/module';
 import { MODULES } from '../ui/modules/registry';
-import { showActiveSession } from '../ui/modules/chat';
+import { showActiveSession, showSession } from '../ui/modules/chat';
 import { bump } from '../ui/state/revision.svelte';
 import { installTokens } from '../ui/theme/install';
 import { installErrorLogging, logError } from '../ui/log';
@@ -211,11 +211,17 @@ const boot = async () => {
   installLayoutSync();
   installPetInput(togglePanel);
   startFriends();
-  const chatBar = installChatBar(() => {
-    showActiveSession();
+  // 기록 › 대화 on a conversation: the quick bar's 크게 보기 (her current one)
+  // and a bubble's "더 보기 ▸", hers or a friend's (the one the line is from).
+  const openChat = (sessionId?: string) => {
+    if (sessionId) showSession(sessionId);
+    else showActiveSession();
     if (!visible()) togglePanel();
     showModule('chat');
-  }, document.getElementById('dock-talk')!);
+  };
+  onOpenChat(openChat);
+  api.onOpenChatSession(openChat);
+  const chatBar = installChatBar(() => openChat(), document.getElementById('dock-talk')!);
   // The tray menu and the chat shortcut (main/tray.ts, main.ts).
   api.onTogglePanel(togglePanel);
   api.onOpenQuickChat(chatBar.openInput);
@@ -260,8 +266,8 @@ const bootFriend = async (id: string) => {
   startPetLoop();
   const bubble = document.getElementById('bubble')!;
   let clear: ReturnType<typeof setTimeout> | undefined;
-  api.onFriendSay((text, ms) => {
-    sayNow(text, ms);
+  api.onFriendSay((text, ms, sessionId) => {
+    sayLine(text, { holdMs: ms, onMore: sessionId ? () => api.openChatSession(sessionId) : undefined });
     clearTimeout(clear);
     clear = setTimeout(() => (bubble.textContent = ''), ms + text.length * 60);
   });

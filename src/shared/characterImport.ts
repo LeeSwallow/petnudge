@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { hasFace, validatePack, type CharacterPack } from './characterPack';
+import { hasFace, PACK_FORMATS, validatePack, type CharacterPack } from './characterPack';
 
 const integer = z.number().int();
 const name = z.string().regex(/^[a-zA-Z][a-zA-Z0-9._@#-]{0,79}$/);
@@ -8,10 +8,10 @@ const box = z.tuple([integer.min(0), integer.min(0), integer.min(1), integer.min
 const move = z.tuple([integer.min(-32).max(32), integer.min(-32).max(32)]);
 const frame = z.object({
   ms: integer.min(16).max(60_000), dx: integer.min(-32).max(32).optional(), dy: integer.min(-32).max(32).optional(),
-  face: name.optional(), head: name.optional(), pose: name.optional(), move: z.record(name, move).optional()
+  face: name.optional(), head: name.optional(), pose: name.optional(), move: z.record(name, move).optional(), flip: z.boolean().optional()
 });
 const schema = z.object({
-  format: z.literal('study-pet-character@2'), id: z.string().regex(/^[a-z][a-z0-9-]{0,47}$/), name: z.string().min(1).max(80), persona: z.string().max(600).optional(),
+  format: z.enum(PACK_FORMATS), editor: z.object({ version: z.literal(1) }).optional(), id: z.string().regex(/^[a-z][a-z0-9-]{0,47}$/), name: z.string().min(1).max(80), persona: z.string().max(600).optional(),
   frame: z.object({ w: integer.min(1).max(256), h: integer.min(1).max(256) }), feetY: integer.min(0), sheet: z.literal('sheet.png'),
   cells: z.record(name, z.tuple([integer.min(0), integer.min(0)])),
   layers: z.array(z.object({
@@ -21,7 +21,7 @@ const schema = z.object({
     ignore: z.array(name).max(16).optional()
   })).min(1).max(64),
   expressions: z.record(name, z.record(name, name)).optional(),
-  poses: z.record(name, z.union([name, z.object({ cell: name, whole: z.boolean().optional(), outfits: z.array(z.object({ when: z.record(name, name), cell: name })).max(16).optional() })])).optional(),
+  poses: z.record(name, z.union([name, z.object({ cell: name, whole: z.boolean().optional(), wears: z.record(name, name).optional(), outfits: z.array(z.object({ when: z.record(name, name), cell: name })).max(16).optional() })])).optional(),
   mirror: z.record(name, name).optional(),
   regions: z.record(name, z.array(box).min(1).max(32)),
   states: z.record(name, z.object({

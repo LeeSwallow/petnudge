@@ -9,17 +9,23 @@ const fonts = ['Galmuri11.woff2', 'Galmuri11-Bold.woff2', 'Galmuri9.woff2', 'Gal
 
 await rm('dist', { recursive: true, force: true });
 await mkdir('dist/renderer/fonts', { recursive: true });
+await mkdir('dist/editor/fonts', { recursive: true });
 await cp('assets/characters', 'dist/characters', { recursive: true, filter: (f) => !f.endsWith('.md') });
 await cp('assets/mods', 'dist/mods', { recursive: true });
 await cp('assets/tray', 'dist/tray', { recursive: true });
 const results = await Promise.all([
   build({ ...common, entryPoints: ['src/main/main.ts'], outfile: 'dist/main.js', platform: 'node', format: 'cjs', external: ['electron'] }),
   build({ ...common, entryPoints: ['src/preload/preload.ts'], outfile: 'dist/preload.js', platform: 'node', format: 'cjs', external: ['electron'] }),
-  build({ ...common, entryPoints: ['src/renderer/renderer.ts'], outfile: 'dist/renderer/renderer.js', platform: 'browser', format: 'iife', loader: { '.png': 'dataurl' }, plugins: [sveltePlugin(svelteOptions)] })
+  build({ ...common, entryPoints: ['src/renderer/renderer.ts'], outfile: 'dist/renderer/renderer.js', platform: 'browser', format: 'iife', loader: { '.png': 'dataurl' }, plugins: [sveltePlugin(svelteOptions)] }),
+  // The character editor window (#26): its own preload and page.
+  build({ ...common, entryPoints: ['src/preload/editor.ts'], outfile: 'dist/editor-preload.js', platform: 'node', format: 'cjs', external: ['electron'] }),
+  build({ ...common, entryPoints: ['src/ui/editor/main.ts'], outfile: 'dist/editor/editor.js', platform: 'browser', format: 'iife', loader: { '.png': 'dataurl' }, plugins: [sveltePlugin(svelteOptions)] })
 ]);
 await Promise.all([
   ...['index.html', 'styles.css', 'data-views.css', 'fonts.css'].map((file) => cp(`src/renderer/${file}`, `dist/renderer/${file}`)),
-  ...fonts.map((file) => cp(`node_modules/galmuri/dist/${file}`, `dist/renderer/fonts/${file}`)),
+  ...['renderer', 'editor'].flatMap((page) => fonts.map((file) => cp(`node_modules/galmuri/dist/${file}`, `dist/${page}/fonts/${file}`))),
+  ...['index.html', 'editor.css'].map((file) => cp(`src/ui/editor/${file}`, `dist/editor/${file}`)),
+  cp('src/renderer/fonts.css', 'dist/editor/fonts.css'),
   cp('LICENSE', 'dist/LICENSE'),
   cp('THIRD_PARTY_NOTICES.md', 'dist/THIRD_PARTY_NOTICES.md')
 ]);

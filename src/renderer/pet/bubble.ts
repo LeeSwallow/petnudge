@@ -1,7 +1,8 @@
 import { formatRemaining, getRemainingMs, isTimerPaused } from '../../domain/pomodoro/timer';
 import { api } from '../api';
 import { data } from '../data';
-import { typewrite } from '../fx';
+import { stopTyping, typewrite } from '../fx';
+import { fitBubble, linePx, MORE_LABEL } from '../../ui/bubble/text';
 import { petStore } from '../store';
 import { activeAction, currentReaction, pet } from './state';
 
@@ -30,6 +31,60 @@ export const sayNow = (line: string, holdMs = 2500) => {
   lastBubbleKey = `script:${Date.now()}`;
   bubble.classList.remove('clickable');
   say(line);
+  holdUntil = talkUntil + holdMs;
+};
+
+// The widest the bubble gets: her width while a tall dock stands beside her
+// (--head-width), else the window's.
+const bubbleWidth = () => {
+  const unit = bubble.parentElement!;
+  const head = parseFloat(getComputedStyle(unit).getPropertyValue('--head-width'));
+  const area = unit.parentElement?.clientWidth || window.innerWidth;
+  return Number.isFinite(head) ? Math.min(head, area) : area;
+};
+
+// A chat line (plain text, ui/bubble/text.ts): at most three lines, cut with
+// "… 더 보기 ▸" (which calls `onMore`) when longer. While a reply streams
+// (`final` false) each call passes the line so far; when it only grew, the
+// typing goes on from what is shown instead of starting over.
+export const sayLine = (line: string, { holdMs, final = true, onMore }: { holdMs: number; final?: boolean; onMore?: () => void }) => {
+  const fit = fitBubble(line, linePx(bubbleWidth()), { final });
+  let text = bubble.querySelector<HTMLSpanElement>(':scope > .bubble-text');
+  const said = text?.dataset.say ?? '';
+  const chat = text !== null && lastBubbleKey.startsWith('chat:');
+  if (chat && fit.text === said) {
+    holdUntil = Math.max(talkUntil, Date.now()) + holdMs;
+    return;
+  }
+  // what was said, less a "…" that cut it
+  const base = bubble.querySelector('.bubble-more') ? said.replace(/…$/, '') : said;
+  const grows = chat && fit.text.startsWith(base);
+  if (!grows || !text) {
+    lastBubbleKey = `chat:${Date.now()}`;
+    bubble.classList.remove('clickable');
+    stopTyping(bubble); // a line typed into the bubble itself ("음… 생각 중") would type over it
+    bubble.textContent = '';
+    text = document.createElement('span');
+    text.className = 'bubble-text';
+    bubble.append(text);
+  }
+  text.dataset.say = fit.text;
+  const button = bubble.querySelector('.bubble-more');
+  if (!fit.more) button?.remove();
+  if (fit.more && onMore && !button) {
+    const more = document.createElement('button');
+    more.type = 'button';
+    more.className = 'bubble-more';
+    more.textContent = MORE_LABEL;
+    more.addEventListener('click', (event) => {
+      event.stopPropagation();
+      onMore();
+    });
+    bubble.append(' ', more);
+  }
+  const typed = text.textContent ?? '';
+  const from = grows && fit.text.startsWith(typed) ? typed.length : grows ? Math.min(typed.length, base.length) : 0;
+  talkUntil = Date.now() + typewrite(text, fit.text, from);
   holdUntil = talkUntil + holdMs;
 };
 

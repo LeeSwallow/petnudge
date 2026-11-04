@@ -1,3 +1,4 @@
+import { closestOutfit } from '../domain/character/outfits';
 import type { Avatar, CharacterPack } from './characterPack';
 
 export type AppSettings = {
@@ -23,11 +24,10 @@ export type AppSettings = {
   // shortcut takes the keys away from every other app.
   chatShortcut: boolean;
   nickname: string;
-  // Character customisation: variant ids of the active character pack's slots.
-  avatarHair: string;
+  // Lila's outfit before per-character avatars (characterAvatars); hair and
+  // glow colours were removed with the colour slots (#50).
   avatarOutfit: string;
   avatarHeadwear: string;
-  avatarLed: string;
 };
 
 export const defaultSettings: AppSettings = {
@@ -50,24 +50,25 @@ export const defaultSettings: AppSettings = {
   reduceMotion: false,
   chatShortcut: false,
   nickname: '',
-  avatarHair: 'lavender',
   avatarOutfit: 'jacket',
-  avatarHeadwear: 'catphones',
-  avatarLed: 'violet'
+  avatarHeadwear: 'catphones'
 };
 
 // Which setting holds the chosen variant of each character pack slot.
 export const avatarSettingFor: Record<string, keyof AppSettings> = {
-  hair: 'avatarHair',
   outer: 'avatarOutfit',
-  headwear: 'avatarHeadwear',
-  glow: 'avatarLed'
+  headwear: 'avatarHeadwear'
 };
 
-export const avatarFor = (pack: CharacterPack, settings: AppSettings): Avatar =>
-  settings.characterAvatars[pack.id] ?? (pack.id === 'lila'
+// The outfit she wears: the saved one, or the closest combination every
+// pose has a drawing for (#50). Saved slots the pack no longer has (old
+// colour choices) are ignored.
+export const avatarFor = (pack: CharacterPack, settings: AppSettings): Avatar => {
+  const saved = settings.characterAvatars[pack.id] ?? (pack.id === 'lila'
     ? Object.fromEntries(Object.entries(avatarSettingFor).map(([slot, key]) => [slot, String(settings[key])]))
     : {});
+  return closestOutfit(pack, saved) ?? Object.fromEntries(Object.entries(saved).filter(([slot]) => pack.slots[slot]));
+};
 
 const ranges: Partial<Record<keyof AppSettings, [number, number]>> = {
   focusMinutes: [1, 120],

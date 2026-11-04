@@ -3,7 +3,7 @@ import { toPxo } from './character/convert.mjs';
 import { exportCharacter } from './character/export.mjs';
 import { sourceIn } from './character/source.mjs';
 import { watchCharacter } from './character/watch.mjs';
-// Builds a layered character (pack format study-pet-character@2):
+// Builds a layered character (pack format study-pet-character@2 or the standard @3):
 //   assets/characters/<id>/<id>.aseprite|.pxo  pixels, one layer per cell (source of truth)
 //   assets/characters/<id>/<id>.pack.json      layers order, regions, states, slots
 // into character.json + sheet.png, which the renderer imports.

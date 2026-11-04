@@ -1,7 +1,8 @@
-import { faceTurns, hasFace, hasHead, type CharacterPack, type FrameDef, type Move, type StateDef } from './pack';
+import { faceTurns, hasFace, hasHead, resolveHead, type CharacterPack, type FrameDef, type Move, type StateDef } from './pack';
 
 // `head`: a turned-head cell variant ("turnL"/"turnR"), when the cursor is far off.
-export type Pose = { face: string; dx: number; dy: number; moves: Record<string, Move>; head?: string; pose?: string };
+// `flip`: the frame is drawn mirrored left-right (a standard pack walking right).
+export type Pose = { face: string; dx: number; dy: number; moves: Record<string, Move>; head?: string; pose?: string; flip?: boolean };
 
 // Faces a blink may interrupt (a smile or sleep already has its own eyes).
 const BLINKABLE = new Set(['open', 'focused']);
@@ -65,7 +66,7 @@ export const poseAt = (pack: CharacterPack, state: string, elapsed: number, now:
   let face = frame.face ?? def.face ?? 'open';
   if (def.blink && BLINKABLE.has(face) && isBlinking(now, def.blink)) face = 'closed';
   const moves = { ...frame.move };
-  const pose: Pose = { face, dx: frame.dx ?? 0, dy: frame.dy ?? 0, moves, head: frame.head, pose: frame.pose };
+  const pose: Pose = { face, dx: frame.dx ?? 0, dy: frame.dy ?? 0, moves, head: frame.head, pose: frame.pose, ...(frame.flip ? { flip: true } : {}) };
   if (!def.look || (look === 0 && tilt === 0) || pose.head || pose.pose) return pose;
   // Turn only when this face exists for the turned head (else glance).
   const canTurn = (head: string) => hasHead(pack, head) && faceTurns(pack, face, head);
@@ -98,4 +99,15 @@ export const poseAt = (pack: CharacterPack, state: string, elapsed: number, now:
     moves.eyes = [dx + Math.sign(look), dy + Math.sign(tilt)];
   }
   return pose;
+};
+
+// How a pose is composed and drawn: the head cells, the region moves, and
+// whether the composed frame is drawn mirrored around the frame centre. A
+// mirrored head direction draws the other one flipped, its sideways moves
+// composed reversed so they come out the intended way after the flip; a
+// flipped frame mirrors that whole picture again (L/R parts flip with it).
+export const drawView = (pack: CharacterPack, pose: Pose): { head?: string; moves: Record<string, Move>; flip: boolean } => {
+  const { head, flip: headFlip } = resolveHead(pack, pose.head);
+  const moves = headFlip ? Object.fromEntries(Object.entries(pose.moves).map(([r, [mx, my]]) => [r, [-mx, my] as Move])) : pose.moves;
+  return { head, moves, flip: headFlip !== Boolean(pose.flip) };
 };

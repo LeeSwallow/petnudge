@@ -37,6 +37,8 @@
     "build:tray-icon": "node scripts/tray-icon.mjs",
     "dist:linux": "node build.mjs && electron-builder --linux AppImage",
     "check:ui": "node build.mjs && node scripts/ui-check.mjs",
+    "check:editor": "node build.mjs && node scripts/editor-check.mjs",
+    "check:ui:changed": "node build.mjs && node scripts/ui-check.mjs --changed",
     "demo:shots": "node scripts/demo-shots.mjs && node scripts/compose-images.mjs"
   },
   "devDependencies": {

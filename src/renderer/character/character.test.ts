@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import lila from '../../../assets/characters/lila/character.json';
+import { selectableOutfits } from '../../domain/character/outfits';
+import { avatarFor, defaultSettings } from '../../shared/settings';
 import { faceTurns, layerCells, recolorsFor, resolveHead, validatePack, variantOf, type CharacterPack } from './pack';
 import { applyMoves, blank, clipTo, hexToPixel, moveRegion, over, recolor, rimUnder, shift, type Pixels } from './pixels';
-import { frameAt, isBlinking, poseAt, stateLength, talkFace } from './timeline';
+import { drawView, frameAt, isBlinking, poseAt, stateLength, talkFace } from './timeline';
 import { actionForArea, areaAt, menuActions, pickLine } from './actions';
 
 const makePack = (): CharacterPack => ({
@@ -289,6 +292,22 @@ describe('timeline', () => {
     expect(poseAt(pack, 'idle', 0, 0, 0, 2).face).toBe('closed');
   });
 
+  it('mirrors a flipped frame around the frame centre, L/R parts and all', () => {
+    const pack = makePartPack();
+    pack.states.walk = { loop: [{ ms: 100, flip: true, dx: 1, move: { upper: [1, 0] } }, { ms: 100 }] };
+    expect(() => validatePack(pack)).not.toThrow();
+    const pose = poseAt(pack, 'walk', 0, 0, 0);
+    expect(pose).toMatchObject({ flip: true, dx: 1 });
+    expect(poseAt(pack, 'walk', 150, 0, 0).flip).toBeFalsy();
+    // the frame is composed as authored (same cells, same moves) and drawn mirrored
+    expect(drawView(pack, pose)).toEqual({ head: undefined, moves: { upper: [1, 0] }, flip: true });
+    expect(drawView(pack, { ...pose, flip: false })).toEqual({ head: undefined, moves: { upper: [1, 0] }, flip: false });
+    // a mirrored head direction composes reversed moves and flips; a flipped frame flips that back
+    pack.mirror = { turnR: 'turnL' };
+    expect(drawView(pack, { ...pose, head: 'turnR', flip: false })).toEqual({ head: 'turnL', moves: { upper: [-1, 0] }, flip: true });
+    expect(drawView(pack, { ...pose, head: 'turnR' })).toEqual({ head: 'turnL', moves: { upper: [-1, 0] }, flip: false });
+  });
+
   it('measures one play-through of a state', () => {
     expect(stateLength(makePack().states.celebrate)).toBe(150);
   });
@@ -395,5 +414,38 @@ describe('pixels', () => {
     expect(show(dst)).toEqual(['12', '11']);
     recolor(dst, new Map([[hexToPixel('#000011'), hexToPixel('#000099')]]), [[0, 0, 2, 1]]);
     expect(show(dst)).toEqual(['92', '11']);
+  });
+});
+
+describe('lila walking in a chosen outfit (#50)', () => {
+  const pack = validatePack(lila);
+  const walkCells = (avatar: Record<string, string>) =>
+    [...(pack.states.walkL.start ?? []), ...pack.states.walkL.loop].map((frame) => layerCells(pack, avatar, 'open', undefined, frame.pose).map((c) => c.cell));
+  const choose = (avatar: Record<string, string>) => avatarFor(pack, { ...defaultSettings, characterAvatars: { lila: avatar } });
+
+  it('has no colour slots left', () => {
+    expect(Object.keys(pack.slots)).toEqual(['outer', 'headwear', 'hairpin']);
+    expect(Object.values(pack.slots).flatMap((slot) => Object.values(slot.variants)).some((v) => v.recolor)).toBe(false);
+  });
+
+  it('can choose exactly the outfits every walk frame has a drawing for', () => {
+    expect(selectableOutfits(pack).map(({ outer, headwear }) => `${outer}+${headwear}`)).toEqual([
+      'jacket+catphones', 'jacket+catphones', 'cardigan+none', 'cardigan+none', 'none+none', 'none+none'
+    ]);
+  });
+
+  it('walks in the chosen outfit\'s own walk cells', () => {
+    expect(walkCells(choose({ outer: 'cardigan', headwear: 'none', hairpin: 'none' }))).toEqual(
+      Array.from({ length: 8 }, (_, i) => [`pose.walk${i + 1}.cardigan`])
+    );
+    expect(walkCells(choose({ outer: 'jacket', headwear: 'catphones' }))).toEqual(
+      Array.from({ length: 8 }, (_, i) => [`pose.walk${i + 1}.jacket`])
+    );
+    // the base drawing wears no outer and no headwear: no overlays on it
+    expect(walkCells(choose({ outer: 'none', headwear: 'none' }))).toEqual(
+      Array.from({ length: 8 }, (_, i) => [`pose.walk${i + 1}`, `hair.back#walk${i + 1}`])
+    );
+    // a combination with no walk drawing walks in the closest one
+    expect(walkCells(choose({ outer: 'cardigan', headwear: 'catphones' }))[0]).toEqual(['pose.walk1.cardigan']);
   });
 });

@@ -24,6 +24,8 @@ const petApi = {
   editCharacter: (id: string): Promise<void> => ipcRenderer.invoke('characters:edit', id),
   rebuildCharacter: (id: string): Promise<CharacterAsset> => ipcRenderer.invoke('characters:rebuild', id),
   cloneCharacter: (from: string, name: string): Promise<string> => ipcRenderer.invoke('characters:clone', from, name),
+  // The character editor window (main/editorWindow.ts); focuses it when open.
+  openEditor: (): Promise<void> => ipcRenderer.invoke('editor:open'),
   onCharacterError: (listener: (id: string, message: string) => void) => {
     ipcRenderer.on('characters:error', (_event, id: string, message: string) => listener(id, message));
   },
@@ -94,7 +96,8 @@ const petApi = {
   listFriends: (): Promise<string[]> => ipcRenderer.invoke('friends:list'),
   openFriend: (id: string): Promise<void> => ipcRenderer.invoke('friends:open', id),
   closeFriend: (id?: string) => ipcRenderer.send('friends:close', id),
-  friendSay: (id: string, text: string, ms = 6000) => ipcRenderer.send('friends:say', id, text, ms),
+  // `sessionId`: the conversation the line is from (its "더 보기 ▸" opens it).
+  friendSay: (id: string, text: string, ms = 6000, sessionId?: string) => ipcRenderer.send('friends:say', id, text, ms, sessionId),
   friendHold: (id: string, ms: number, faceDx: number) => ipcRenderer.send('friends:hold', id, ms, faceDx),
   onFriends: (listener: (ids: string[]) => void) => {
     ipcRenderer.on('friends:list', (_event, ids) => listener(ids));
@@ -102,8 +105,13 @@ const petApi = {
   onFriendNear: (listener: (info: { id: string; near: boolean; dx: number; since: number }) => void) => {
     ipcRenderer.on('friend-near', (_event, info) => listener(info));
   },
-  onFriendSay: (listener: (text: string, ms: number) => void) => {
-    ipcRenderer.on('friend-say', (_event, text, ms) => listener(text, ms));
+  onFriendSay: (listener: (text: string, ms: number, sessionId?: string) => void) => {
+    ipcRenderer.on('friend-say', (_event, text, ms, sessionId) => listener(text, ms, sessionId));
+  },
+  // A friend's "더 보기 ▸": the main window opens that conversation.
+  openChatSession: (sessionId: string) => ipcRenderer.send('friends:open-chat', sessionId),
+  onOpenChatSession: (listener: (sessionId: string) => void) => {
+    ipcRenderer.on('chat:open-session', (_event, sessionId) => listener(sessionId));
   },
   onFriendHold: (listener: (ms: number, faceDx: number) => void) => {
     ipcRenderer.on('friend-hold', (_event, ms, faceDx) => listener(ms, faceDx));

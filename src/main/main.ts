@@ -26,6 +26,9 @@ import { bridgePower } from '../infra/electron/power';
 import { installLinks } from '../infra/electron/links';
 import { createTray } from './tray';
 import { CHAT_SHORTCUT, RESET_SHORTCUT, type TrayAction } from './trayMenu';
+import { createEditorWindow } from './editorWindow';
+import { installEditorIpc } from './editorIpc';
+import { OPEN_EDITOR_CHANNEL } from '../domain/character-editor/ipc';
 const NOW_PLAYING_POLL_MS = 2000;
 
 const AUDIO_EXTENSIONS = ['mp3', 'm4a', 'aac', 'wav', 'ogg', 'oga', 'flac', 'opus', 'webm'];
@@ -343,8 +346,14 @@ ipcMain.on('friends:close', (event, id: unknown) => {
   if (self) return self.win.close(); // a friend closing itself
   if (typeof id === 'string') friends.close(id);
 });
-ipcMain.on('friends:say', (_event, id: unknown, text: unknown, ms: unknown) => {
-  if (typeof id === 'string' && typeof text === 'string') friends.say(id, text.slice(0, 300), typeof ms === 'number' ? ms : 6000);
+ipcMain.on('friends:say', (_event, id: unknown, text: unknown, ms: unknown, sessionId: unknown) => {
+  if (typeof id === 'string' && typeof text === 'string') friends.say(id, text.slice(0, 300), typeof ms === 'number' ? ms : 6000, typeof sessionId === 'string' ? sessionId : undefined);
+});
+// A friend's bubble "더 보기 ▸": the main pet opens that conversation.
+ipcMain.on('friends:open-chat', (_event, sessionId: unknown) => {
+  if (typeof sessionId !== 'string') return;
+  summon();
+  win?.webContents.send('chat:open-session', sessionId);
 });
 ipcMain.on('friends:hold', (_event, id: unknown, ms: unknown, faceDx: unknown) => {
   if (typeof id === 'string' && typeof ms === 'number') friends.hold(id, Math.min(ms, 300_000), typeof faceDx === 'number' ? faceDx : 0);
@@ -504,6 +513,24 @@ ipcMain.handle('characters:edit', async (_event, id: unknown) => {
 });
 ipcMain.handle('characters:clone', (_event, from: unknown, name: unknown) => characters.clone(from, name));
 ipcMain.handle('characters:rebuild', (_event, id: unknown) => characters.rebuild(id));
+
+// The character editor (#26): its own window, preload and editor:* channels.
+// PETNUDGE_EDITOR_TEST=1 (set by scripts/editor-check.mjs) opens it with its
+// dev-only test hooks (src/ui/editor/testHooks.ts); never in a normal run.
+const editor = createEditorWindow({
+  page: path.join(__dirname, 'editor', 'index.html'),
+  preload: path.join(__dirname, 'editor-preload.js'),
+  testHooks: process.env.PETNUDGE_EDITOR_TEST === '1'
+});
+installEditorIpc({
+  listCharacters: () => characters.list(),
+  closeEditor: () => editor.close(),
+  editorContents: () => editor.current()?.webContents ?? null,
+  logger
+});
+ipcMain.handle(OPEN_EDITOR_CHANNEL, () => {
+  editor.open();
+});
 
 ipcMain.on('quit', () => app.quit());
 

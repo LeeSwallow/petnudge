@@ -7,3 +7,8 @@ export const chatView = $state({ open: null as string | null });
 export const showActiveSession = () => {
   chatView.open = activeSession().id;
 };
+
+// The bubble's "더 보기 ▸" opens the conversation the line came from.
+export const showSession = (id: string) => {
+  chatView.open = id;
+};

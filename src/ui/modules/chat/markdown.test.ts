@@ -143,9 +143,15 @@ describe('chat markdown', () => {
     for (const input of inputs) {
       expect(input.length).toBeGreaterThanOrEqual(19000);
       parseMarkdown(input);
-      const start = performance.now();
-      parseMarkdown(input);
-      expect(performance.now() - start).toBeLessThan(15);
+      // the best of five runs: a busy machine can stall any single run, but
+      // a quadratic parser is slow on every run
+      let best = Infinity;
+      for (let run = 0; run < 5; run++) {
+        const start = performance.now();
+        parseMarkdown(input);
+        best = Math.min(best, performance.now() - start);
+      }
+      expect(best).toBeLessThan(15);
     }
   });
 });

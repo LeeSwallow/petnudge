@@ -1,23 +1,9 @@
 import type { Box, CharacterPack } from './pack';
 
-// Interactions ("actions") are data in the pack: where they trigger (a hit
-// area on the sprite, and/or the right-click menu), which state plays, for how
-// long, with what effect and what she says. Adding one is a pack change only.
-
-export type Fx = 'hearts' | 'stars' | 'anger' | 'sweat' | 'sparkles';
-
-export type ActionDef = {
-  label: string;
-  // Hit area that triggers it on right-click (left-click too for `tap`).
-  area?: string;
-  tap?: boolean;
-  // Listed in the right-click menu.
-  menu?: boolean;
-  state: string;
-  ms: number;
-  fx?: Fx;
-  lines?: string[];
-};
+// Interactions ('actions', typed in src/domain/character/pack.ts) are data in
+// the pack: where they trigger, which state plays, for how long, with what
+// effect and what she says. Adding one is a pack change only.
+export type { ActionDef, Fx } from './pack';
 
 const inside = (boxes: Box[], x: number, y: number) =>
   boxes.some(([x0, y0, x1, y1]) => x >= x0 && x < x1 && y >= y0 && y < y1);
