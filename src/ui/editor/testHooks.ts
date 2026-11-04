@@ -12,7 +12,7 @@ export type EditorTestHooks = {
   // `rgba`: 96×112×4 bytes, row by row.
   setPart(layer: string, rgba: ArrayLike<number>): void;
   reset(): void;
-  state(): { selected: string | null; drawn: string[]; order: string[]; boxes: Record<string, number[] | null>; canUndo: boolean; canRedo: boolean };
+  state(): { selected: string | null; drawn: string[]; order: string[]; boxes: Record<string, number[] | null>; canUndo: boolean; canRedo: boolean; hidden: string[]; locked: string[]; hovered: string | null };
 };
 
 declare global {
@@ -40,7 +40,10 @@ export const installTestHooks = (target: Window = window) => {
         order: fullOrder(draft),
         boxes: Object.fromEntries(Object.entries(draft.parts).map(([name, px]) => [name, bounds(px) ?? null])),
         canUndo: editor.canUndo,
-        canRedo: editor.canRedo
+        canRedo: editor.canRedo,
+        hidden: [...editor.hidden],
+        locked: [...editor.locked],
+        hovered: editor.hovered
       };
     }
   };

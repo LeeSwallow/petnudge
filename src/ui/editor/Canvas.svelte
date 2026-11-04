@@ -1,15 +1,19 @@
 <script lang="ts">
   import { bounds } from '../../domain/character/pixels';
-  import { composite, feetLine, headBox, partAt } from '../../domain/character/placement';
+  import { composite, drawOrder, feetLine, headBox, partAt } from '../../domain/character/placement';
   import type { CharacterDraft } from '../../domain/character/standard';
   import { arrowStep, CANVAS, dragOffset, drawChecker, pixelAt, type Guides } from './canvas';
-  import { editor, move, moveFrom, removePart, select } from './draft.svelte';
+  import { editor, move, moveFrom, removePart, select, setHover } from './draft.svelte';
+  import { carriesFiles, droppedFile, dropPicture, notice } from './pictures.svelte';
 
   // The editor canvas (#58): the parts back to front over a checkerboard at a
   // whole-number zoom, and an overlay at screen resolution for the guides and
   // the selected part's 1px outline. Drag a part to move it (snapped to whole
   // pixels); arrows move the selected part 1px, Shift+arrows 8px; Delete
   // empties it. Every change goes through the draft store, so it can be undone.
+  // Hidden parts (the layer panel's eye) are not drawn; hidden and locked parts
+  // cannot be picked. The part under the pointer (here or in the panel) stays
+  // bright while the others dim. A PNG dropped here fills the selected layer.
 
   let { zoom, guides }: { zoom: number; guides: Guides } = $props();
 
@@ -24,14 +28,29 @@
   const feet = $derived(feetLine(editor.draft));
   const head = $derived(headBox(editor.draft));
 
+  // Hidden or locked parts are passed over when picking on the canvas.
+  const unpickable = $derived(new Set([...editor.hidden, ...editor.locked]));
+  const lit = $derived(editor.hovered && editor.draft.parts[editor.hovered] && !editor.hidden.has(editor.hovered) ? editor.hovered : null);
+
   // The art, in canvas pixels.
   $effect(() => {
     const ctx = art?.getContext('2d');
     if (!ctx) return;
-    const px = composite(editor.draft);
-    scratch.getContext('2d')!.putImageData(new ImageData(new Uint8ClampedArray(px.data.buffer), CANVAS.width, CANVAS.height), 0, 0);
+    const put = (data: Uint32Array) => scratch.getContext('2d')!.putImageData(new ImageData(new Uint8ClampedArray(data.buffer), CANVAS.width, CANVAS.height), 0, 0);
     drawChecker(ctx);
-    ctx.drawImage(scratch, 0, 0);
+    if (!lit) {
+      put(composite(editor.draft, editor.hidden).data);
+      ctx.drawImage(scratch, 0, 0);
+      return;
+    }
+    // One part lit: the others drawn faint, in their order.
+    for (const name of drawOrder(editor.draft)) {
+      if (editor.hidden.has(name)) continue;
+      put(editor.draft.parts[name].data);
+      ctx.globalAlpha = name === lit ? 1 : 0.3;
+      ctx.drawImage(scratch, 0, 0);
+    }
+    ctx.globalAlpha = 1;
   });
 
   // Guides and the selection outline, in screen pixels: 1px lines on the pixel grid.
@@ -68,7 +87,7 @@
     if (e.button !== 0 || !overlay) return;
     stage?.focus();
     const [x, y] = pixelAt(e.clientX, e.clientY, overlay.getBoundingClientRect(), zoom);
-    const layer = partAt(editor.draft, x, y);
+    const layer = partAt(editor.draft, x, y, unpickable);
     if (!layer) return;
     select(layer);
     drag = { start: editor.draft, layer, x: e.clientX, y: e.clientY, id: String(++drags), at: [0, 0] };
@@ -80,7 +99,10 @@
     e.preventDefault();
   };
   const onpointermove = (e: PointerEvent) => {
-    if (!drag) return;
+    if (!drag) {
+      if (overlay) setHover(partAt(editor.draft, ...pixelAt(e.clientX, e.clientY, overlay.getBoundingClientRect(), zoom), unpickable) ?? null);
+      return;
+    }
     const [dx, dy] = dragOffset(drag.x, drag.y, e.clientX, e.clientY, zoom);
     if (dx === drag.at[0] && dy === drag.at[1]) return;
     drag.at = [dx, dy];
@@ -92,6 +114,17 @@
 
   // Arrows and Delete act on the selected part, wherever the focus is, except
   // in text fields and tab bars (which use the arrows themselves).
+  const ondragover = (e: DragEvent) => {
+    if (carriesFiles(e)) e.preventDefault();
+  };
+  const ondrop = (e: DragEvent) => {
+    e.preventDefault();
+    const file = droppedFile(e);
+    if (!file) return;
+    if (editor.selected) void dropPicture(file, { layer: editor.selected });
+    else notice.text = '그림을 넣을 칸을 먼저 골라 주세요';
+  };
+
   const onkeydown = (e: KeyboardEvent) => {
     if (e.metaKey || e.ctrlKey || e.altKey || !editor.selected) return;
     if (e.target instanceof Element && e.target.closest('input, textarea, select, [contenteditable], [role=tablist]')) return;
@@ -99,7 +132,7 @@
     if (step) {
       e.preventDefault();
       move(step[0], step[1], { merge: 'nudge' });
-    } else if (e.key === 'Delete' || e.key === 'Backspace') {
+    } else if ((e.key === 'Delete' || e.key === 'Backspace') && !editor.locked.has(editor.selected)) {
       e.preventDefault();
       removePart(editor.selected);
     }
@@ -133,6 +166,10 @@
     {onpointermove}
     {onpointerup}
     onpointercancel={onpointerup}
+    onpointerleave={() => setHover(null)}
+    {ondragover}
+    {ondrop}
+    data-hovered={lit ?? ''}
     aria-hidden="true"
   ></canvas>
 </div>

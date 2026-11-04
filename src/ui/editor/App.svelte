@@ -5,7 +5,8 @@
   import { CANVAS, DEFAULT_ZOOM, GUIDES, ZOOMS, type Guides, type Zoom } from './canvas';
   import Canvas from './Canvas.svelte';
   import { editor, redo, undo } from './draft.svelte';
-  import PartList from './PartList.svelte';
+  import LayerPanel from './LayerPanel.svelte';
+  import { notice } from './pictures.svelte';
 
   // The editor's frame (#26 C): top bar, 부위/캐릭터 tabs, and three panes —
   // 부위 목록, 캔버스, 미리보기. Placing parts and undo are #58 (draft.svelte.ts);
@@ -68,8 +69,8 @@
   {#if tab === 'parts'}
     <main class="panes">
       <section class="pane slots" data-pane="slots" aria-labelledby="slots-title">
-        <h2 id="slots-title">부위</h2>
-        <PartList />
+        <h2 id="slots-title">레이어</h2>
+        <div class="pane-scroll"><LayerPanel /></div>
       </section>
 
       <section class="pane stage" data-pane="canvas" aria-labelledby="canvas-title">
@@ -77,6 +78,7 @@
         <div class="stage-well">
           <Canvas {zoom} {guides} />
         </div>
+        <p class="notice" role="status" data-notice>{notice.text}</p>
       </section>
 
       <section class="pane preview" data-pane="preview" aria-labelledby="preview-title">
@@ -128,7 +130,7 @@
     flex: 1;
     min-height: 0;
     display: grid;
-    grid-template-columns: 180px 1fr 220px;
+    grid-template-columns: 200px 1fr 200px;
     gap: var(--space-2);
     padding: var(--space-2);
   }
@@ -150,6 +152,8 @@
   }
   h2 small { font: var(--type-small) var(--font-small); color: var(--color-muted); }
 
+  .pane-scroll { flex: 1; min-height: 0; overflow-y: auto; }
+  .notice { margin: 0; min-height: 1.5em; padding: 0 var(--space-2); font: var(--type-small) var(--font-small); color: var(--color-focus); }
   .stage-well { flex: 1; min-height: 0; display: grid; place-items: center; overflow: auto; background: var(--color-well); }
 
   .preview-frame {
