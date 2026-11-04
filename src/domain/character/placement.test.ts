@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildPack } from './buildPack';
 import { blank, bounds, hexToPixel, type Pixels } from './pixels';
 import { FRAME, STANDARD_SLOTS, type CharacterDraft } from './standard';
-import { bringForward, clampMove, partAt, composite, drawOrder, emptyDraft, feetLine, fullOrder, headBox, movePart, moveSlot, removePart, sendBackward, setOrder, setPart, slotOrder } from './placement';
+import { bringForward, clampMove, customName, framePicture, partAt, placeBeside, composite, drawOrder, emptyDraft, feetLine, fullOrder, headBox, movePart, moveSlot, removePart, sendBackward, setOrder, setPart, slotOrder } from './placement';
 
 const RED = hexToPixel('#ff0000');
 const BLUE = hexToPixel('#0000ff');
@@ -135,5 +135,43 @@ describe('guides', () => {
     const draft = setPart(setPart(setPart(emptyDraft(), 'head', rect(30, 10, 60, 40)), 'hair.front', rect(28, 8, 50, 20)), 'torso.chest', rect(0, 50, 96, 112));
     expect(headBox(draft)).toEqual([28, 8, 60, 40]);
     expect(headBox(setPart(emptyDraft(), 'torso.chest', rect(0, 0, 2, 2)))).toBeUndefined();
+  });
+});
+
+describe('layer panel helpers', () => {
+  const two = () => setPart(setPart(emptyDraft(), 'torso.chest', rect(30, 40, 60, 90, RED)), 'head', rect(35, 20, 55, 50, BLUE));
+
+  it('puts a layer just in front of or behind another', () => {
+    const behind = placeBeside(two(), 'head', 'torso.chest', 'back');
+    expect(drawOrder(behind)).toEqual(['head', 'torso.chest']);
+    expect(drawOrder(placeBeside(behind, 'head', 'torso.chest', 'front'))).toEqual(['torso.chest', 'head']);
+    const draft = two();
+    expect(drawOrder(placeBeside(draft, 'head', 'torso.chest', 'front'))).toEqual(['torso.chest', 'head']);
+    expect(placeBeside(draft, 'head', 'head', 'back')).toBe(draft);
+    const twice = placeBeside(draft, 'head', 'torso.chest', 'front');
+    expect(placeBeside(twice, 'head', 'torso.chest', 'front')).toBe(twice);
+  });
+
+  it('leaves hidden layers out of the picture and skipped layers out of picking', () => {
+    const hidden = new Set(['head']);
+    expect(composite(two(), hidden).data[45 * FRAME.w + 40]).toBe(RED);
+    expect(partAt(two(), 40, 45, hidden)).toBe('torso.chest');
+    expect(partAt(two(), 40, 25, hidden)).toBeUndefined();
+  });
+
+  it('frames a picture of at most 96×112 at the middle of the canvas', () => {
+    const framed = framePicture(4, 2, new Uint32Array(4 * 2).fill(RED));
+    expect([framed.w, framed.h]).toEqual([96, 112]);
+    expect(bounds(framed)).toEqual([46, 55, 50, 57]);
+    expect(framePicture(96, 112, new Uint32Array(96 * 112).fill(BLUE)).data[0]).toBe(BLUE);
+    expect(() => framePicture(97, 10, new Uint32Array(970))).toThrow(/96×112/);
+  });
+
+  it('names a decoration from a file name, unique in the draft', () => {
+    expect(customName('bow.png', {})).toBe('custom.bow');
+    expect(customName('My Hat (2).png', {})).toBe('custom.MyHat2');
+    expect(customName('123.png', {})).toBe('custom.deco');
+    const draft = setPart(emptyDraft(), 'custom.bow', rect(0, 0, 1, 1));
+    expect(customName('bow.png', draft.parts)).toBe('custom.bow-2');
   });
 });

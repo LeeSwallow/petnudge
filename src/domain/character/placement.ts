@@ -101,17 +101,46 @@ export const moveSlot = (draft: CharacterDraft, slot: SlotId, toIndex: number): 
   return withOrder(draft, slots.flatMap((s) => order.filter((name) => slotOf(name) === s)));
 };
 
-// The front-most layer with an opaque pixel at (x, y), for picking a part on the canvas.
-export const partAt = (draft: CharacterDraft, x: number, y: number): string | undefined => {
-  if (x < 0 || y < 0 || x >= FRAME.w || y >= FRAME.h) return undefined;
-  return drawOrder(draft).reverse().find((name) => draft.parts[name].data[y * FRAME.w + x] >>> 24 !== 0);
+// Puts `layer` just in front of (drawn after) or behind `target` (the layer panel's drop).
+export const placeBeside = (draft: CharacterDraft, layer: string, target: string, side: 'front' | 'back'): CharacterDraft => {
+  const order = fullOrder(draft);
+  if (layer === target || !order.includes(layer) || !order.includes(target)) return draft;
+  const rest = order.filter((name) => name !== layer);
+  rest.splice(rest.indexOf(target) + (side === 'front' ? 1 : 0), 0, layer);
+  return withOrder(draft, rest);
 };
 
-// The drawn parts flattened back to front (pixel art: any opaque pixel wins).
-export const composite = (draft: CharacterDraft): Pixels => {
+// The front-most layer with an opaque pixel at (x, y), for picking a part on
+// the canvas; layers in `skip` (hidden or locked) are passed over.
+export const partAt = (draft: CharacterDraft, x: number, y: number, skip: ReadonlySet<string> = new Set()): string | undefined => {
+  if (x < 0 || y < 0 || x >= FRAME.w || y >= FRAME.h) return undefined;
+  return drawOrder(draft).reverse().find((name) => !skip.has(name) && draft.parts[name].data[y * FRAME.w + x] >>> 24 !== 0);
+};
+
+// The drawn parts flattened back to front (pixel art: any opaque pixel wins), without `hidden`.
+export const composite = (draft: CharacterDraft, hidden: ReadonlySet<string> = new Set()): Pixels => {
   const out = blank(FRAME.w, FRAME.h);
-  for (const name of drawOrder(draft)) over(out, draft.parts[name]);
+  for (const name of drawOrder(draft)) if (!hidden.has(name)) over(out, draft.parts[name]);
   return out;
+};
+
+// A picture of at most 96×112 (RGBA as uint32, row by row) as a full-canvas
+// part: a smaller one goes in the middle, to be moved from there.
+export const framePicture = (w: number, h: number, data: Uint32Array): Pixels => {
+  if (w > FRAME.w || h > FRAME.h) throw new Error(`그림이 ${w}×${h}예요. ${FRAME.w}×${FRAME.h} 이하로 줄여 주세요 (격자 정리)`);
+  if (w === FRAME.w && h === FRAME.h) return { w, h, data: data.slice() };
+  const out = blank(FRAME.w, FRAME.h);
+  const [x0, y0] = [Math.floor((FRAME.w - w) / 2), Math.floor((FRAME.h - h) / 2)];
+  for (let y = 0; y < h; y++) out.data.set(data.subarray(y * w, y * w + w), (y0 + y) * FRAME.w + x0);
+  return out;
+};
+
+// A decoration layer name (`custom.<name>`) from a file name, not yet in `parts`.
+export const customName = (fileName: string, parts: Record<string, unknown>): string => {
+  const base = fileName.replace(/\.[^.]*$/, '').replace(/[^a-zA-Z0-9-]/g, '').replace(/^[^a-zA-Z]+/, '').slice(0, 28) || 'deco';
+  let name = `custom.${base}`;
+  for (let n = 2; parts[name]; n++) name = `custom.${base}-${n}`;
+  return name;
 };
 
 const boxes = (draft: CharacterDraft, pick: (layer: string) => boolean): Box[] =>
