@@ -7,7 +7,10 @@ const deps = (closeEditor = vi.fn()) => ({
     { id: 'lila', name: '릴라', persona: '명랑', builtin: true, editable: true },
     { id: 'mine', name: '내 펫', builtin: false, editable: false }
   ],
-  closeEditor
+  closeEditor,
+  importImage: async () => null,
+  importLayered: async () => ({ name: 'a.pxo', layers: [] }),
+  importCharacter: async (id: unknown) => ({ draft: { id: String(id), name: '', persona: '', lines: { pat: [], pokeChest: [], pokeBelly: [] }, parts: {}, order: [] }, dropped: [] })
 });
 
 describe('editor IPC', () => {
@@ -28,9 +31,17 @@ describe('editor IPC', () => {
     expect(close).toHaveBeenCalledOnce();
   });
 
-  it('answers not_implemented for import, save and apply', async () => {
+  it('answers the imports: null when the dialog is cancelled', async () => {
     const handlers = editorHandlers(deps());
-    for (const channel of [EDITOR_CHANNEL.importImage, EDITOR_CHANNEL.importLayered, EDITOR_CHANNEL.save, EDITOR_CHANNEL.apply]) {
+    expect(await handlers[EDITOR_CHANNEL.importImage]()).toEqual({ ok: true, value: null });
+    expect(await handlers[EDITOR_CHANNEL.importLayered]()).toEqual({ ok: true, value: { name: 'a.pxo', layers: [] } });
+    const character = await handlers[EDITOR_CHANNEL.importCharacter]('lila');
+    expect(character.ok && (character.value as { draft: { id: string } }).draft.id).toBe('lila');
+  });
+
+  it('answers not_implemented for save and apply', async () => {
+    const handlers = editorHandlers(deps());
+    for (const channel of [EDITOR_CHANNEL.save, EDITOR_CHANNEL.apply]) {
       const result = await handlers[channel]();
       expect(result.ok ? null : result.error.code).toBe('not_implemented');
     }

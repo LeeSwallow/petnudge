@@ -28,6 +28,7 @@ import { createTray } from './tray';
 import { CHAT_SHORTCUT, RESET_SHORTCUT, type TrayAction } from './trayMenu';
 import { createEditorWindow } from './editorWindow';
 import { installEditorIpc } from './editorIpc';
+import { characterDraft, imageFromPng, layersFromBytes, layersFromFile, MAX_IMAGE_BYTES } from './editorImport';
 import { OPEN_EDITOR_CHANNEL } from '../domain/character-editor/ipc';
 const NOW_PLAYING_POLL_MS = 2000;
 
@@ -522,9 +523,37 @@ const editor = createEditorWindow({
   preload: path.join(__dirname, 'editor-preload.js'),
   testHooks: process.env.PETNUDGE_EDITOR_TEST === '1'
 });
+// A file picked in a dialog over the editor window, or null when cancelled.
+const pickForEditor = async (title: string, filters: Electron.FileFilter[]) => {
+  const parent = editor.current();
+  const options: Electron.OpenDialogOptions = { title, properties: ['openFile'], filters };
+  const { canceled, filePaths } = parent ? await dialog.showOpenDialog(parent, options) : await dialog.showOpenDialog(options);
+  return canceled || !filePaths[0] ? null : filePaths[0];
+};
+const editorTest = process.env.PETNUDGE_EDITOR_TEST === '1';
 installEditorIpc({
   listCharacters: () => characters.list(),
   closeEditor: () => editor.close(),
+  importImage: async () => {
+    const file = await pickForEditor('그림 불러오기', [{ name: 'PNG 그림', extensions: ['png'] }]);
+    if (!file) return null;
+    if ((await stat(file)).size > MAX_IMAGE_BYTES) throw new Error('그림 파일이 너무 커요');
+    return imageFromPng(path.basename(file), await readFile(file));
+  },
+  importLayered: async () => {
+    const file = await pickForEditor('레이어 파일 불러오기', [{ name: '레이어 파일', extensions: ['pxo', 'aseprite', 'ase'] }]);
+    return file ? { name: path.basename(file), layers: await layersFromFile(file) } : null;
+  },
+  importCharacter: async (id) => characterDraft(await characters.sourceOf(id)),
+  // The editor check's door: the same imports from bytes, never in a normal run.
+  testImport: editorTest
+    ? async (kind, name, bytes) => {
+        if (typeof name !== 'string' || !(bytes instanceof Uint8Array)) throw new Error('test import: name and bytes expected');
+        if (kind === 'image') return imageFromPng(name, bytes);
+        if (kind === 'layered') return { name, layers: await layersFromBytes(name, bytes) };
+        throw new Error(`test import: unknown kind ${String(kind)}`);
+      }
+    : undefined,
   editorContents: () => editor.current()?.webContents ?? null,
   logger
 });
