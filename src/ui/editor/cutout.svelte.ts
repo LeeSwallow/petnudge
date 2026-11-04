@@ -1,10 +1,9 @@
-import { boxMask, combine, countMask, emptyMask, fullMask, maskBounds, sameColor, type Mask, type SelectMode } from '../../domain/character/cutout';
+import { boxMask, combine, countMask, emptyMask, fullMask, maskBounds, sameColor, type CutTarget, type Mask, type SelectMode } from '../../domain/character/cutout';
 import type { Box } from '../../domain/character/pack';
 import type { Pixels } from '../../domain/character/pixels';
-import { customName } from '../../domain/character/placement';
-import { FRAME, type SlotId } from '../../domain/character/standard';
+import { framePicture } from '../../domain/character/placement';
 import { editorApi, logEditorError } from './api';
-import { cutInto, editor, layerForSlot, setUnderlay } from './draft.svelte';
+import { cutInto, editor, setUnderlay } from './draft.svelte';
 import { notice } from './pictures.svelte';
 
 // The cut-out flow's view state (#57): the canvas tool and the pixel
@@ -12,7 +11,7 @@ import { notice } from './pictures.svelte';
 // itself goes through the draft store (cutInto), one undo step.
 //
 //   cutout.tool   'move' (pick and drag parts) | 'box' (drag a box) | 'color' (click a colour)
-//   cutout.mask   the selection, or null
+//   cutout.mask   the selection, or null (also when the canvas size changed under it)
 // A new selection replaces the old one; with Shift it is added, with Alt taken away.
 
 export type Tool = 'move' | 'box' | 'color';
@@ -22,24 +21,31 @@ export const TOOLS: readonly { id: Tool; label: string; hint: string }[] = [
   { id: 'color', label: '같은 색 선택', hint: '누른 곳과 이어진 같은 색을 골라요' }
 ];
 
-// Dragging the selection onto a layer row puts it there.
+// Dragging the selection onto a part row puts it there.
 export const SELECTION_TYPE = 'application/x-petnudge-selection';
 
 let mask = $state.raw<Mask | null>(null);
 let tool = $state<Tool>('move');
+
+const current = () => {
+  const { w, h } = editor.draft.canvas;
+  return editor.underlay && mask && mask.w === w && mask.h === h ? mask : null;
+};
 
 export const cutout = {
   get tool() {
     return tool;
   },
   get mask() {
-    return editor.underlay ? mask : null;
+    return current();
   },
   get count() {
-    return editor.underlay && mask ? countMask(mask) : 0;
+    const m = current();
+    return m ? countMask(m) : 0;
   },
   get box(): Box | undefined {
-    return editor.underlay && mask ? maskBounds(mask) : undefined;
+    const m = current();
+    return m ? maskBounds(m) : undefined;
   }
 };
 
@@ -50,13 +56,15 @@ export const setTool = (next: Tool) => {
 };
 
 const apply = (next: Mask, mode: SelectMode) => {
-  mask = combine(mask ?? emptyMask(FRAME.w, FRAME.h), next, mode);
+  const { w, h } = editor.draft.canvas;
+  mask = combine(current() ?? emptyMask(w, h), next, mode);
 };
 
 // A box from one pixel to another, both included.
 export const selectBox = (from: [number, number], to: [number, number], mode: SelectMode) => {
   if (!editor.underlay) return;
-  apply(boxMask(FRAME.w, FRAME.h, [Math.min(from[0], to[0]), Math.min(from[1], to[1]), Math.max(from[0], to[0]) + 1, Math.max(from[1], to[1]) + 1]), mode);
+  const { w, h } = editor.draft.canvas;
+  apply(boxMask(w, h, [Math.min(from[0], to[0]), Math.min(from[1], to[1]), Math.max(from[0], to[0]) + 1, Math.max(from[1], to[1]) + 1]), mode);
 };
 
 export const selectColor = (x: number, y: number, mode: SelectMode) => {
@@ -66,15 +74,15 @@ export const selectColor = (x: number, y: number, mode: SelectMode) => {
 };
 
 export const selectAll = () => {
-  if (editor.underlay) mask = fullMask(FRAME.w, FRAME.h);
+  if (editor.underlay) mask = fullMask(editor.draft.canvas.w, editor.draft.canvas.h);
 };
 export const clearSelection = () => {
   mask = null;
 };
 
-// The picture to cut parts out of; the box tool is ready for it.
+// The picture to cut parts out of, fitted to the canvas; the box tool is ready for it.
 export const loadUnderlay = (name: string, pixels: Pixels) => {
-  setUnderlay(name, pixels);
+  setUnderlay(name, framePicture(pixels.w, pixels.h, pixels.data, editor.draft.canvas));
   mask = null;
   tool = 'box';
   notice.text = '';
@@ -88,21 +96,19 @@ export const importImage = async () => {
     logEditorError('editor', result, 'warn');
     return;
   }
-  if (result.value) loadUnderlay(result.value.name, result.value.pixels);
+  try {
+    if (result.value) loadUnderlay(result.value.name, result.value.pixels);
+  } catch (error) {
+    notice.text = error instanceof Error ? error.message : String(error);
+  }
 };
 
-// Where 칸에 넣기 puts the selection: a layer name, or a slot (its layer), or a new decoration.
-export type CutTarget = { layer: string } | { slot: SlotId };
-export const targetLayer = (target: CutTarget): string | null =>
-  'layer' in target ? target.layer : target.slot === 'custom' ? customName('cut', editor.draft.parts) : layerForSlot(editor.draft, target.slot);
-
-// 칸에 넣기: the selected pixels into a layer, at the same place.
+// 부위에 넣기: the selected pixels into a part (or a variant, or a new part), at the same place.
 export const cutSelection = (target: CutTarget) => {
   try {
-    if (!mask) throw new Error('먼저 넣을 픽셀을 골라 주세요');
-    const layer = targetLayer(target);
-    if (!layer) throw new Error('넣을 칸을 골라 주세요');
-    cutInto(layer, mask);
+    const m = current();
+    if (!m) throw new Error('먼저 넣을 픽셀을 골라 주세요');
+    cutInto(target, m);
     mask = null;
     notice.text = '';
   } catch (error) {

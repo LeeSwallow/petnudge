@@ -9,7 +9,7 @@ import { blank, clipTo, hexToPixel, over, recolor, rimUnder } from '../../src/do
 import { layerCells, recolorsFor } from '../../src/shared/characterPack.ts';
 import { validateImportedPack } from '../../src/shared/characterImport.ts';
 
-// The three built-in @2 packs, converted to standard drafts from their real
+// The three built-in @2 packs, converted to drafts of parts from their real
 // source art (.pxo), as the editor's "start from an existing character" does.
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../assets/characters');
@@ -73,7 +73,7 @@ describe.each(['lila', 'moa', 'maru'])('converting %s', (id) => {
   it('makes a draft that builds into a pack the importer accepts', async () => {
     const { built } = await convert(id);
     expect(() => validateImportedPack(JSON.parse(JSON.stringify(built.pack)), built.layers.length * W, H)).not.toThrow();
-    expect(built.layers.map((l) => l.name)).toEqual(expect.arrayContaining(['torso.chest', 'torso.belly', 'head', 'eye.L.open', 'eye.L.closed', 'mouth.closed', 'mouth.open', 'custom.outer', 'custom.headwear']));
+    expect(built.layers.map((l) => l.name)).toEqual(expect.arrayContaining(['body', 'belly', 'head', 'leg.l', 'leg.r', 'eye.l.open', 'eye.l.closed', 'mouth.closed', 'mouth.open', 'outer', 'headwear']));
   });
 
   it('carries over the persona and the reaction lines', async () => {
@@ -91,7 +91,7 @@ describe.each(['lila', 'moa', 'maru'])('converting %s', (id) => {
     for (const { cell } of layerCells(pack, {}, 'open')) expect(names).not.toContain(cell);
     // each left-out layer is listed once
     expect(names.size).toBe(dropped.length);
-    expect(draft.order.length).toBeGreaterThan(0);
+    expect(draft.parts.length).toBeGreaterThan(0);
   });
 
   it('looks like the original from the front, but for the contact rims and a few reordered pixels', async () => {
@@ -122,7 +122,7 @@ describe('converting lila', () => {
 describe('converting maru', () => {
   it('leaves out the back hair the default shark hood hides', async () => {
     const { draft, dropped } = await convert('maru');
-    expect(draft.parts['hair.back']).toBeUndefined();
+    expect(draft.parts.find((p) => p.id === 'hair.back')).toBeUndefined();
     expect(dropped.find((d) => d.name === 'hair.back')?.reason).toMatch(/headwear\.sharkhood/);
   });
 });

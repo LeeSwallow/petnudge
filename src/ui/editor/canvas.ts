@@ -1,8 +1,7 @@
-// The editor canvas: the pet's 96×112 drawing area, shown at a whole-number
-// zoom (2, 4 or 6; 4 by default) over a checkerboard that marks
-// transparent pixels.
+// The editor canvas: the character's drawing area (its size is the draft's,
+// 48–160 × 48–192), shown at a whole-number zoom (2, 4 or 6; 4 by default)
+// over a checkerboard that marks transparent pixels.
 
-export const CANVAS = { width: 96, height: 112 } as const;
 export const ZOOMS = [2, 4, 6] as const;
 export type Zoom = (typeof ZOOMS)[number];
 export const DEFAULT_ZOOM: Zoom = 4;
@@ -34,6 +33,10 @@ export const arrowStep = (key: string, shift: boolean): [number, number] | undef
   const n = shift ? BIG_STEP : 1;
   return ({ ArrowLeft: [-n, 0], ArrowRight: [n, 0], ArrowUp: [0, -n], ArrowDown: [0, n] } as Record<string, [number, number]>)[key];
 };
+
+// Whether a canvas pixel is on (or right next to) a point: grabbing the pivot cross.
+export const nearPoint = ([x, y]: [number, number], [px, py]: [number, number], reach = 1) => Math.abs(x - px) <= reach && Math.abs(y - py) <= reach;
+
 // One checker square, in canvas pixels.
 export const CHECKER = 4;
 export const CHECKER_COLORS = ['#3a2f4f', '#2f2642'] as const;
@@ -50,7 +53,7 @@ export const checkerSquares = (width: number, height: number, size = CHECKER): [
   return squares;
 };
 
-export const drawChecker = (ctx: CanvasRenderingContext2D, width = CANVAS.width, height = CANVAS.height) => {
+export const drawChecker = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
   ctx.fillStyle = CHECKER_COLORS[0];
   ctx.fillRect(0, 0, width, height);
   ctx.fillStyle = CHECKER_COLORS[1];

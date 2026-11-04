@@ -18,15 +18,16 @@ let dir = '';
 afterAll(() => rm(dir, { recursive: true, force: true }));
 
 describe('importing one picture', () => {
-  it('decodes a PNG into a full canvas, a smaller one in the middle, colours exact', () => {
+  it('decodes a PNG at its own size, colours exact (the editor fits it to its canvas)', () => {
     const { name, pixels } = imageFromPng('me.png', encodePng(10, 4, square(10, 4, [0, 0, 10, 4], [12, 34, 56])));
     expect(name).toBe('me.png');
-    expect([pixels.w, pixels.h, bounds(pixels)]).toEqual([96, 112, [43, 54, 53, 58]]);
-    expect(pixels.data[54 * 96 + 43].toString(16)).toBe('ff38220c');
+    expect([pixels.w, pixels.h, bounds(pixels)]).toEqual([10, 4, [0, 0, 10, 4]]);
+    expect(pixels.data[0].toString(16)).toBe('ff38220c');
   });
 
-  it('refuses a picture bigger than the canvas with the size guidance', () => {
-    expect(() => imageFromPng('big.png', encodePng(100, 20, new Uint8Array(100 * 20 * 4)))).toThrow('96×112 이하로 줄여 주세요');
+  it('refuses a picture bigger than the largest canvas with the size guidance', () => {
+    expect(imageFromPng('ok.png', encodePng(100, 20, new Uint8Array(100 * 20 * 4))).pixels.w).toBe(100);
+    expect(() => imageFromPng('big.png', encodePng(170, 20, new Uint8Array(170 * 20 * 4)))).toThrow('160×192 이하로 줄여 주세요');
   });
 
   it('refuses something that is not a PNG', () => {
@@ -58,11 +59,12 @@ describe('importing a layered file', () => {
 });
 
 describe('importing another character', () => {
-  it('converts lila (@2) to standard parts and lists what it drops', async () => {
+  it('converts lila (@2) to parts and lists what it drops', async () => {
     const { draft, dropped } = await characterDraft({ source: path.join(root, 'lila/lila.pxo'), manifest: path.join(root, 'lila/lila.pack.json') });
     expect(draft.id).toBe('lila');
-    expect(Object.keys(draft.parts)).toEqual(expect.arrayContaining(['torso.chest', 'head', 'hair.front']));
-    expect(Object.values(draft.parts).every((p) => p.w === 96 && p.h === 112)).toBe(true);
+    expect(draft.parts.map((p) => p.id)).toEqual(expect.arrayContaining(['body', 'head', 'hair.front', 'leg.l', 'leg.r']));
+    expect(draft.canvas).toEqual({ w: 96, h: 112 });
+    expect(draft.parts.every((p) => p.pixels.w === 96 && p.pixels.h === 112)).toBe(true);
     expect(dropped.length).toBeGreaterThan(0);
     expect(dropped.every((d) => d.reason.length > 0)).toBe(true);
   });

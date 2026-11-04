@@ -1,40 +1,61 @@
+import { findPart, isPartId, restVariant, type CharacterDraft } from './parts';
 import { blank, bounds, over, type Pixels } from './pixels';
-import { framePicture, setPart } from './placement';
-import { standardPart, type CharacterDraft } from './standard';
+import { addPart, framePicture, newPartId, partIds, setPixels } from './placement';
+import { legacyPart } from './standard';
 
-// Bringing in many pictures at once (#57): the layers of a layered file
-// (.pxo, .aseprite) or the parts of another character. Layers named like a
-// standard layer fill that slot; the others wait for the user to pick a slot
-// or skip them. Placing them is one change to the draft (one undo step).
+// Bringing in many pictures at once (#57, #71): the layers of a layered file
+// (.pxo, .aseprite). A layer named like a part fills it (`<id>.<variant>` a
+// variant; an old fixed name like `torso.chest` its part), and every other
+// layer becomes a new part named after it: nothing is dropped or asked about.
+// Placing them all is one change to the draft (one undo step).
 
 export type NamedPicture = { name: string; pixels: Pixels };
-export type Matched = NamedPicture & { layer: string };
+export type Placed = { name: string; part: string; variant?: string; created: boolean };
 
-// Every layer as a full 96×112 picture (a smaller file in the middle, all its
-// layers by the same offset; a bigger one throws the size guidance), empty
-// layers left out, split into those with a standard name and the rest.
-export const matchLayers = (layers: readonly NamedPicture[]): { matched: Matched[]; unmatched: NamedPicture[] } => {
-  const matched: Matched[] = [];
-  const unmatched: NamedPicture[] = [];
-  for (const { name, pixels } of layers) {
-    const framed = framePicture(pixels.w, pixels.h, pixels.data);
-    if (!bounds(framed)) continue;
-    if (standardPart(name) && !matched.some((m) => m.layer === name)) matched.push({ name, layer: name, pixels: framed });
-    else unmatched.push({ name, pixels: framed });
+type Where = { part: string; variant?: string };
+
+// The part (and variant) a layer name fills in the draft, if it names one.
+const whereIn = (draft: CharacterDraft, name: string): Where | undefined => {
+  if (findPart(draft, name)) return { part: name };
+  const dot = name.lastIndexOf('.');
+  const part = dot > 0 ? findPart(draft, name.slice(0, dot)) : undefined;
+  if (part) {
+    const variant = name.slice(dot + 1);
+    return variant === restVariant(part) ? { part: part.id } : { part: part.id, variant };
   }
-  return { matched, unmatched };
+  const old = legacyPart(name);
+  if (old && findPart(draft, old.id)) {
+    const p = findPart(draft, old.id)!;
+    return !old.variant || old.variant === restVariant(p) ? { part: p.id } : { part: p.id, variant: old.variant };
+  }
+  return undefined;
 };
 
-// Puts each picture in its layer: the first one for a layer replaces what the
-// draft had there, later ones for the same layer are drawn over it.
-export const placeParts = (draft: CharacterDraft, parts: readonly { layer: string; pixels: Pixels }[]): CharacterDraft => {
-  const merged = new Map<string, Pixels>();
-  for (const { layer, pixels } of parts) {
-    const into = merged.get(layer) ?? blank(pixels.w, pixels.h);
-    over(into, pixels);
-    merged.set(layer, into);
-  }
+export const importLayers = (draft: CharacterDraft, layers: readonly NamedPicture[]): { draft: CharacterDraft; placed: Placed[] } => {
   let next = draft;
-  for (const [layer, pixels] of merged) next = setPart(next, layer, pixels);
-  return next;
+  const placed: Placed[] = [];
+  const started = new Set<string>(); // parts (and variants) this import has drawn into
+  for (const { name, pixels } of layers) {
+    const framed = framePicture(pixels.w, pixels.h, pixels.data, draft.canvas);
+    if (!bounds(framed)) continue;
+    let where = whereIn(next, name);
+    let created = false;
+    if (!where) {
+      const old = legacyPart(name);
+      const id = old && isPartId(old.id) && !findPart(next, old.id) ? old.id : newPartId(name, partIds(next));
+      const parent = old && findPart(next, old.parent) ? old.parent : undefined;
+      next = addPart(next, { id, label: old?.label ?? name, ...(old ? { role: old.role } : {}), ...(parent ? { parent } : {}) }).draft;
+      where = old?.variant && old.variant !== restVariant(old) ? { part: id, variant: old.variant } : { part: id };
+      created = true;
+    }
+    const key = `${where.part}.${where.variant ?? ''}`;
+    const part = findPart(next, where.part)!;
+    const under = started.has(key) ? (where.variant ? part.variants?.[where.variant] : part.pixels) : undefined;
+    const merged: Pixels = under ? { ...under, data: under.data.slice() } : blank(framed.w, framed.h);
+    over(merged, framed);
+    next = setPixels(next, where.part, merged, where.variant);
+    started.add(key);
+    placed.push({ name, part: where.part, ...(where.variant ? { variant: where.variant } : {}), created });
+  }
+  return { draft: next, placed };
 };

@@ -1,18 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { arrowStep, CANVAS, checkerSquares, DEFAULT_ZOOM, dragOffset, pixelAt, ZOOMS } from './canvas';
-import { EDITOR_SLOTS } from './slots';
+import { fromTemplate } from '../../domain/character/standard';
+import { arrowStep, checkerSquares, DEFAULT_ZOOM, dragOffset, nearPoint, pixelAt, ZOOMS } from './canvas';
+import { picturesFor, ROLE_CHOICES } from './roles';
 
 describe('editor canvas', () => {
-  it('is the pet canvas, 96×112', () => {
-    expect(CANVAS).toEqual({ width: 96, height: 112 });
-  });
-
-  it('checkers every other square and stays inside the canvas', () => {
+  it('checkers every other square and stays inside any canvas size', () => {
     const squares = checkerSquares(8, 6, 4);
     expect(squares).toEqual([[4, 0, 4, 4], [0, 4, 4, 2]]);
-    const all = checkerSquares(CANVAS.width, CANVAS.height);
-    expect(all.length).toBe((96 / 4) * (112 / 4) / 2);
-    expect(all.every(([x, y, w, h]) => x + w <= 96 && y + h <= 112)).toBe(true);
+    for (const [w, h] of [[96, 112], [64, 160], [72, 72]]) {
+      const all = checkerSquares(w, h);
+      expect(all.length).toBe((w / 4) * (h / 4) / 2);
+      expect(all.every(([x, y, sw, sh]) => x + sw <= w && y + sh <= h)).toBe(true);
+    }
   });
 });
 
@@ -39,12 +38,22 @@ describe('canvas input', () => {
     expect(arrowStep('ArrowDown', true)).toEqual([0, 8]);
     expect(arrowStep('a', false)).toBeUndefined();
   });
+
+  it('grabs the pivot on its pixel or next to it', () => {
+    expect([nearPoint([10, 10], [11, 9]), nearPoint([10, 10], [12, 10])]).toEqual([true, false]);
+  });
 });
 
-describe('editor slots', () => {
-  it('lists the standard slots back to front, only the body required', () => {
-    expect(EDITOR_SLOTS.map((s) => s.id)).toEqual(['hairBack', 'torso', 'legs', 'arms', 'head', 'eyes', 'mouth', 'hairFront', 'custom']);
-    expect(EDITOR_SLOTS.map((s) => s.label)).toEqual(['뒷머리', '몸통', '다리', '팔', '머리(얼굴)', '눈', '입', '앞머리', '장식']);
-    expect(EDITOR_SLOTS.filter((s) => s.required).map((s) => s.id)).toEqual(['torso']);
+describe('part roles', () => {
+  it('offers every role in Korean', () => {
+    expect(ROLE_CHOICES.map((r) => r.label)).toEqual(['몸', '머리', '눈', '입', '발·다리', '손·팔', '머리카락', '귀', '꼬리', '장식']);
+  });
+
+  it('lists where a picture can go in a part: at rest, and the closed eye or open mouth', () => {
+    const parts = fromTemplate('critter').parts;
+    const of = (id: string) => picturesFor(parts.find((p) => p.id === id)!);
+    expect(of('body')).toEqual([{ variant: '', label: '몸' }]);
+    expect(of('eye.l')).toEqual([{ variant: '', label: '왼눈 · 뜬 눈' }, { variant: 'closed', label: '왼눈 · 감은 눈' }]);
+    expect(of('mouth')).toEqual([{ variant: '', label: '입 · 닫은 입' }, { variant: 'open', label: '입 · 연 입' }]);
   });
 });

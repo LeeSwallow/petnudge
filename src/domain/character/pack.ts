@@ -89,10 +89,16 @@ export type ActionDef = {
 export type PoseOutfit = { when: Record<string, string>; cell: string };
 export type PoseDef = string | { cell: string; whole?: boolean; wears?: Record<string, string>; outfits?: PoseOutfit[] };
 
+// The editor's part structure (#71), kept in a standard pack so the editor
+// can open it again: the body category and each part's label, parent, role
+// and pivot. The runtime does not read it (layers already follow their parents).
+export type EditorPartMeta = { id: string; label: string; parent: string; role?: string; pivot?: [number, number] };
+export type EditorMeta = { version: 1; body?: { kind: 'biped' | 'legless'; merged: boolean }; parts?: EditorPartMeta[] };
+
 export type CharacterPack = {
   format: PackFormat;
   // Standard packs (@3) made by the character editor.
-  editor?: { version: 1 };
+  editor?: EditorMeta;
   id: string;
   name: string;
   // The language `lines` and `persona` are written in when they are plain

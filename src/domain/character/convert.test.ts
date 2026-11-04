@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildPack } from './buildPack';
 import { convertPack } from './convert';
 import type { CharacterPack, LayerDef } from './pack';
+import type { CharacterDraft } from './parts';
 import { blank, hexToPixel, type Pixels } from './pixels';
 
 const W = 96;
@@ -12,7 +13,7 @@ const rect = ([x0, y0, x1, y1]: Rect, color = '#336699'): Pixels => {
   for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) px.data[y * W + x] = hexToPixel(color);
   return px;
 };
-const at = (px: Pixels, x: number, y: number) => px.data[y * W + x];
+const at = (px: Pixels | undefined, x: number, y: number) => px!.data[y * W + x];
 const C = (hex: string) => hexToPixel(hex);
 
 const layer = (id: string, extra: Partial<LayerDef> = {}): LayerDef => ({ id, ...extra });
@@ -113,77 +114,84 @@ const art: Record<string, Pixels> = {
   'pose.walk1': rect([30, 10, 66, 110]),
   'outer.jacket#walk1': rect([28, 48, 68, 70])
 };
+// A part's picture at rest, or one of its variants.
+const pic = (draft: CharacterDraft, id: string, variant?: string): Pixels | undefined => {
+  const part = draft.parts.find((p) => p.id === id);
+  return variant ? part?.variants?.[variant] : part?.pixels;
+};
 const layers = (names = Object.keys(art)) => names.map((name) => ({ name, pixels: art[name] }));
 const reasons = (dropped: { name: string; reason: string }[]) => Object.fromEntries(dropped.map((d) => [d.name, d.reason]));
 
 describe('convertPack', () => {
   it('turns @2 layers into standard parts, in the pack order back to front', () => {
     const { draft } = convertPack(makePack(), layers());
-    expect(draft.order).toEqual([
-      'hair.back', 'leg.L', 'leg.R', 'arm.L', 'arm.R', 'torso.belly', 'torso.chest', 'custom.outer',
-      'head', 'mouth.closed', 'mouth.open', 'eye.L.open', 'eye.L.closed', 'eye.R.open', 'eye.R.closed', 'hair.front'
+    expect(draft.parts.map((p) => [p.id, p.role, p.parent])).toEqual([
+      ['hair.back', 'hair', 'head'], ['leg.l', 'foot', 'root'], ['leg.r', 'foot', 'root'], ['arm.l', 'hand', 'body'], ['arm.r', 'hand', 'body'],
+      ['belly', 'body', 'root'], ['body', 'body', 'root'], ['outer', 'accessory', 'body'],
+      ['head', 'head', 'body'], ['mouth', 'mouth', 'head'], ['eye.l', 'eye', 'head'], ['eye.r', 'eye', 'head'], ['hair.front', 'hair', 'head']
     ]);
-    expect(Object.keys(draft.parts).sort()).toEqual([...draft.order].sort());
-    expect(Object.values(draft.parts).every((p) => p.w === W && p.h === H)).toBe(true);
+    expect(draft.canvas).toEqual({ w: W, h: H });
+    expect(draft.parts.flatMap((p) => [p.pixels, ...Object.values(p.variants ?? {})]).every((p) => p.w === W && p.h === H)).toBe(true);
+    expect(draft.parts.filter((p) => p.variants).map((p) => [p.id, Object.keys(p.variants!)])).toEqual([['mouth', ['open']], ['eye.l', ['closed']], ['eye.r', ['closed']]]);
   });
 
   it('draws each iris over its eye, clipped by the socket, and leaves the closed eye bare', () => {
     const { draft } = convertPack(makePack(), layers());
-    const eye = draft.parts['eye.L.open'];
+    const eye = pic(draft, 'eye.l');
     expect(at(eye, 38, 28)).toBe(C('#0000ff')); // iris inside the socket
     expect(at(eye, 36, 26)).toBe(C('#ffffff')); // eye white outside the socket
     expect(at(eye, 35, 25)).toBe(0); // iris outside the socket is cut away
-    expect(at(draft.parts['eye.L.closed'], 38, 29)).toBe(C('#000000'));
-    expect(at(draft.parts['eye.L.closed'], 38, 28)).toBe(0);
+    expect(at(pic(draft, 'eye.l', 'closed'), 38, 29)).toBe(C('#000000'));
+    expect(at(pic(draft, 'eye.l', 'closed'), 38, 28)).toBe(0);
   });
 
   it('merges shoes into the legs, neck into the chest and bottom into the belly', () => {
     const { draft } = convertPack(makePack(), layers());
-    expect(at(draft.parts['leg.L'], 40, 90)).toBe(C('#d0a080'));
-    expect(at(draft.parts['leg.L'], 35, 106)).toBe(C('#101010'));
-    expect(at(draft.parts['leg.R'], 60, 106)).toBe(C('#101010'));
-    expect(at(draft.parts['torso.chest'], 45, 47)).toBe(C('#d0a080')); // neck
-    expect(at(draft.parts['torso.belly'], 40, 84)).toBe(C('#000080')); // bottom
-    expect(at(draft.parts['torso.belly'], 40, 80)).toBe(C('#000080')); // bottom over the belly
+    expect(at(pic(draft, 'leg.l'), 40, 90)).toBe(C('#d0a080'));
+    expect(at(pic(draft, 'leg.l'), 35, 106)).toBe(C('#101010'));
+    expect(at(pic(draft, 'leg.r'), 60, 106)).toBe(C('#101010'));
+    expect(at(pic(draft, 'body'), 45, 47)).toBe(C('#d0a080')); // neck
+    expect(at(pic(draft, 'belly'), 40, 84)).toBe(C('#000080')); // bottom
+    expect(at(pic(draft, 'belly'), 40, 80)).toBe(C('#000080')); // bottom over the belly
   });
 
   it('merges everything into one torso picture when the pack has one', () => {
     const pack = makePack({ layers: makePack().layers.filter((l) => l.id !== 'torso.belly') });
     const { draft } = convertPack(pack, layers(Object.keys(art).filter((n) => n !== 'torso.belly')));
-    expect(draft.parts['torso.belly']).toBeUndefined();
-    expect(at(draft.parts['torso.chest'], 40, 84)).toBe(C('#000080'));
-    expect(at(draft.parts['torso.chest'], 45, 47)).toBe(C('#d0a080'));
+    expect(pic(draft, 'belly')).toBeUndefined();
+    expect(at(pic(draft, 'body'), 40, 84)).toBe(C('#000080'));
+    expect(at(pic(draft, 'body'), 45, 47)).toBe(C('#d0a080'));
   });
 
   it('merges the face shade the open face shows into the head', () => {
     const pack = makePack({ expressions: { ...makePack().expressions, open: { 'iris.L': 'open', 'iris.R': 'open', shade: 'closed' } } });
     const { draft } = convertPack(pack, layers());
-    expect(at(draft.parts.head, 31, 31)).toBe(C('#ff8080'));
+    expect(at(pic(draft, 'head'), 31, 31)).toBe(C('#ff8080'));
     // the default open face shows no shade here, so the head stays plain
-    expect(at(convertPack(makePack(), layers()).draft.parts.head, 31, 31)).toBe(C('#f0c0a0'));
+    expect(at(pic(convertPack(makePack(), layers()).draft, 'head')!, 31, 31)).toBe(C('#f0c0a0'));
   });
 
   it('makes the resting mouth closed and the talking one open', () => {
     const { draft } = convertPack(makePack(), layers());
-    expect(draft.parts['mouth.closed']).toEqual(art['mouth.open']); // what the open face shows
-    expect(draft.parts['mouth.open']).toEqual(art['mouth.talkA']);
+    expect(pic(draft, 'mouth')).toEqual(art['mouth.open']); // what the open face shows
+    expect(pic(draft, 'mouth', 'open')).toEqual(art['mouth.talkA']);
     const noTalk = makePack({ expressions: { ...makePack().expressions } });
     delete noTalk.expressions!.talkA;
-    expect(convertPack(noTalk, layers()).draft.parts['mouth.open']).toEqual(art['mouth.smile']);
+    expect(pic(convertPack(noTalk, layers()).draft, 'mouth', 'open')).toEqual(art['mouth.smile']);
   });
 
   it('keeps only the default outfit, as a decoration, recoloured like the default avatar', () => {
     const { draft } = convertPack(makePack(), layers());
-    expect(draft.parts['custom.outer']).toEqual(art['outer.jacket']);
-    expect(draft.parts['custom.headwear']).toBeUndefined(); // default is none
-    expect(at(draft.parts['hair.front'], 30, 10)).toBe(C('#112233'));
+    expect(pic(draft, 'outer')).toEqual(art['outer.jacket']);
+    expect(pic(draft, 'headwear')).toBeUndefined(); // default is none
+    expect(at(pic(draft, 'hair.front'), 30, 10)).toBe(C('#112233'));
   });
 
   it('leaves out layers a default outfit hides', () => {
     const pack = makePack();
     pack.slots.outer.variants.jacket.hides = ['hair.back'];
     const { draft, dropped } = convertPack(pack, layers());
-    expect(draft.parts['hair.back']).toBeUndefined();
+    expect(pic(draft, 'hair.back')).toBeUndefined();
     expect(reasons(dropped)['hair.back']).toMatch(/outer\.jacket/);
   });
 
@@ -207,8 +215,8 @@ describe('convertPack', () => {
   it('keeps unknown body layers as decorations and drops layers the pack never uses', () => {
     const pack = makePack({ layers: [...makePack().layers, layer('tail')] });
     const { draft, dropped } = convertPack(pack, [...layers(), { name: 'tail', pixels: rect([70, 70, 80, 80]) }, { name: 'sketch', pixels: rect([0, 0, 4, 4]) }]);
-    expect(draft.parts['custom.tail']).toBeDefined();
-    expect(draft.order.at(-1)).toBe('custom.tail');
+    expect(pic(draft, 'tail')).toBeDefined();
+    expect(draft.parts.at(-1)!.id).toBe('tail');
     expect(reasons(dropped).sketch).toMatch(/[가-힣]/);
   });
 
@@ -222,8 +230,8 @@ describe('convertPack', () => {
   it('makes a draft buildPack accepts', () => {
     const { pack, layers: built } = buildPack(convertPack(makePack(), layers()).draft);
     expect(pack.format).toBe('study-pet-character@3');
-    expect(built.map((l) => l.name)).toContain('custom.outer');
-    expect(pack.expressions!.closed).toMatchObject({ 'eye.L': 'closed', mouth: 'closed' });
+    expect(built.map((l) => l.name)).toContain('outer');
+    expect(pack.expressions!.closed).toMatchObject({ 'eye.l': 'closed', mouth: 'closed' });
   });
 
   it('does not change the layers it was given', () => {

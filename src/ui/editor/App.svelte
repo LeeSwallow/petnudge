@@ -2,22 +2,24 @@
   import { onMount } from 'svelte';
   import { Button, EmptyState, Tabs } from '../components';
   import { editorApi, logEditorError } from './api';
-  import { CANVAS, DEFAULT_ZOOM, GUIDES, ZOOMS, type Guides, type Zoom } from './canvas';
+  import { DEFAULT_ZOOM, GUIDES, ZOOMS, type Guides, type Zoom } from './canvas';
   import Canvas from './Canvas.svelte';
+  import CanvasSize from './CanvasSize.svelte';
   import CharacterDialog from './CharacterDialog.svelte';
   import { importImage } from './cutout.svelte';
   import CutoutBar from './CutoutBar.svelte';
   import { editor, redo, replaceDraft, undo } from './draft.svelte';
   import { importLayered, imports } from './imports.svelte';
   import LayerPanel from './LayerPanel.svelte';
-  import LayeredDialog from './LayeredDialog.svelte';
+  import PartProps from './PartProps.svelte';
   import { notice } from './pictures.svelte';
-  import { emptyDraft } from '../../domain/character/placement';
+  import { fromTemplate, TEMPLATES, type TemplateId } from '../../domain/character/standard';
 
   // The editor's frame (#26 C): top bar, 부위/캐릭터 tabs, and three panes —
   // 부위 목록, 캔버스, 미리보기. Placing parts and undo are #58 (draft.svelte.ts);
-  // bringing pictures in is #57 (불러오기, 새로 만들기); opening, preview and
-  // saving come in later issues, their buttons disabled until then.
+  // bringing pictures in is #57 (불러오기, 새로 만들기); free parts, the part
+  // properties, the canvas size and the starter templates are #71; opening,
+  // preview and saving come in later issues, their buttons disabled until then.
 
   const TABS = [
     { id: 'parts', label: '부위' },
@@ -27,11 +29,12 @@
   let characterCount = $state<number | null>(null);
   let zoom = $state<Zoom>(DEFAULT_ZOOM);
   let guides = $state<Guides>({ border: true, feet: true, head: true });
-  // 새로 만들기's two choices.
+  // 새로 만들기: a starter template (an empty list of parts on a canvas of its
+  // proportions), or an existing character.
   let newMenu = $state(false);
-  const startBlank = () => {
+  const startTemplate = (id: TemplateId) => {
     newMenu = false;
-    replaceDraft(emptyDraft());
+    replaceDraft(fromTemplate(id));
     notice.text = '';
   };
   const startFromCharacter = () => {
@@ -65,7 +68,9 @@
         <Button data-action="new" aria-expanded={newMenu} onclick={() => (newMenu = !newMenu)}>새로 만들기</Button>
         {#if newMenu}
           <span class="menu" role="menu" data-new-menu>
-            <button type="button" role="menuitem" data-new="blank" onclick={startBlank}>빈 캐릭터</button>
+            {#each TEMPLATES as t (t.id)}
+              <button type="button" role="menuitem" data-new={t.id} onclick={() => startTemplate(t.id)}>{t.label} <small>{t.hint}</small></button>
+            {/each}
             <button type="button" role="menuitem" data-new="character" onclick={startFromCharacter}>기존 캐릭터에서 시작…</button>
           </span>
         {/if}
@@ -75,7 +80,7 @@
     </div>
     <div class="actions" role="toolbar" aria-label="불러오기">
       <Button variant="ghost" data-import="image" onclick={importImage} title="PNG 한 장을 원본으로 불러와 부위를 오려 내요">그림 불러오기</Button>
-      <Button variant="ghost" data-import="layered" onclick={importLayered} title=".pxo 또는 .aseprite의 레이어를 칸에 넣어요">레이어 파일</Button>
+      <Button variant="ghost" data-import="layered" onclick={importLayered} title=".pxo 또는 .aseprite의 레이어를 부위로 넣어요">레이어 파일</Button>
       <Button variant="ghost" data-import="character" onclick={() => (imports.characterPick = 'parts')} title="다른 캐릭터의 부위를 골라 가져와요">다른 캐릭터에서</Button>
     </div>
     <div class="actions" role="toolbar" aria-label="편집">
@@ -102,10 +107,12 @@
       <section class="pane slots" data-pane="slots" aria-labelledby="slots-title">
         <h2 id="slots-title">레이어</h2>
         <div class="pane-scroll"><LayerPanel /></div>
+        <PartProps />
       </section>
 
       <section class="pane stage" data-pane="canvas" aria-labelledby="canvas-title">
-        <h2 id="canvas-title">캔버스 <small>{CANVAS.width}×{CANVAS.height} · {zoom}배</small></h2>
+        <h2 id="canvas-title">캔버스 <small>{editor.draft.canvas.w}×{editor.draft.canvas.h} · {zoom}배</small></h2>
+        <CanvasSize />
         <div class="stage-well">
           <Canvas {zoom} {guides} />
         </div>
@@ -130,7 +137,6 @@
   {/if}
 </div>
 
-<LayeredDialog />
 <CharacterDialog />
 
 <style>
@@ -154,7 +160,7 @@
     left: 0;
     z-index: 10;
     display: grid;
-    min-width: 180px;
+    min-width: 240px;
     background: var(--color-panel);
     border: var(--stroke-frame) solid var(--color-edge);
     box-shadow: var(--shadow-md) var(--shadow-md) 0 var(--color-shadow);
@@ -168,6 +174,7 @@
     padding: var(--space-1) var(--space-2);
     cursor: pointer;
   }
+  .menu small { color: var(--color-muted); font: var(--type-small) var(--font-small); }
   .menu button:hover, .menu button:focus-visible { background: var(--color-well); outline: none; }
   .toggles { display: flex; }
   .toggle {
@@ -188,7 +195,7 @@
     flex: 1;
     min-height: 0;
     display: grid;
-    grid-template-columns: 200px 1fr 200px;
+    grid-template-columns: 220px 1fr 200px;
     gap: var(--space-2);
     padding: var(--space-2);
   }
