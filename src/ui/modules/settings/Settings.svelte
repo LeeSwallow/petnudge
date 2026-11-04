@@ -195,6 +195,7 @@
         await updateSettings({ characterId: id });
         await api.editCharacter(id);
       })}>이 캐릭터로 새로 만들기</button></div>
+    <button type="button" id="open-editor" onclick={() => api.openEditor().catch((error) => { characterStatus = error instanceof Error ? error.message : '에디터를 열지 못했어요'; })}>에디터 열기</button>
     <div class="hint">원본 편집을 누르면 저장할 때마다 자동으로 반영돼요. 새로 만들면 지금 캐릭터의 그림·표정·동작이 복사돼요.</div>
     <div class="hint" id="character-status" role="status" aria-live="polite">{characterStatus}</div>
   </div>

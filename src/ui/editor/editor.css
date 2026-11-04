@@ -1,0 +1,20 @@
+/* The editor window's page; the tokens come first from installTokens(). */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#editor {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  overflow: hidden;
+  background: var(--color-panel);
+  color: var(--color-ink);
+  font: var(--type-body) / 1.5 var(--font);
+  -webkit-font-smoothing: none;
+  user-select: none;
+}

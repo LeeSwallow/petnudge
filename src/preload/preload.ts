@@ -24,6 +24,8 @@ const petApi = {
   editCharacter: (id: string): Promise<void> => ipcRenderer.invoke('characters:edit', id),
   rebuildCharacter: (id: string): Promise<CharacterAsset> => ipcRenderer.invoke('characters:rebuild', id),
   cloneCharacter: (from: string, name: string): Promise<string> => ipcRenderer.invoke('characters:clone', from, name),
+  // The character editor window (main/editorWindow.ts); focuses it when open.
+  openEditor: (): Promise<void> => ipcRenderer.invoke('editor:open'),
   onCharacterError: (listener: (id: string, message: string) => void) => {
     ipcRenderer.on('characters:error', (_event, id: string, message: string) => listener(id, message));
   },

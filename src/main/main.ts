@@ -26,6 +26,9 @@ import { bridgePower } from '../infra/electron/power';
 import { installLinks } from '../infra/electron/links';
 import { createTray } from './tray';
 import { CHAT_SHORTCUT, RESET_SHORTCUT, type TrayAction } from './trayMenu';
+import { createEditorWindow } from './editorWindow';
+import { installEditorIpc } from './editorIpc';
+import { OPEN_EDITOR_CHANNEL } from '../domain/character-editor/ipc';
 const NOW_PLAYING_POLL_MS = 2000;
 
 const AUDIO_EXTENSIONS = ['mp3', 'm4a', 'aac', 'wav', 'ogg', 'oga', 'flac', 'opus', 'webm'];
@@ -504,6 +507,18 @@ ipcMain.handle('characters:edit', async (_event, id: unknown) => {
 });
 ipcMain.handle('characters:clone', (_event, from: unknown, name: unknown) => characters.clone(from, name));
 ipcMain.handle('characters:rebuild', (_event, id: unknown) => characters.rebuild(id));
+
+// The character editor (#26): its own window, preload and editor:* channels.
+const editor = createEditorWindow({ page: path.join(__dirname, 'editor', 'index.html'), preload: path.join(__dirname, 'editor-preload.js') });
+installEditorIpc({
+  listCharacters: () => characters.list(),
+  closeEditor: () => editor.close(),
+  editorContents: () => editor.current()?.webContents ?? null,
+  logger
+});
+ipcMain.handle(OPEN_EDITOR_CHANNEL, () => {
+  editor.open();
+});
 
 ipcMain.on('quit', () => app.quit());
 
