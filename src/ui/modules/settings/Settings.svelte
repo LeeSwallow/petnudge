@@ -7,6 +7,7 @@
   import { pixelIcon } from '../../../renderer/icons';
   import { modStatus, onModStatus } from '../../../renderer/pet/mods';
   import type { CharacterChoice } from '../../../shared/characterImport';
+  import { chooseOutfit, choiceAllowed } from '../../../domain/character/outfits';
   import { avatarFor, type AppSettings } from '../../../shared/settings';
   import { revision } from '../../state/revision.svelte';
   import AiSettings from './AiSettings.svelte';
@@ -97,27 +98,30 @@
 
   const editable = $derived(characters.find((c) => c.id === mainId)?.editable ?? false);
 
+  // Outfit slots only (colour slots were removed, #50). A choice with no walk
+  // drawing under the slots above it is disabled; choosing one moves the
+  // slots below it to the closest combination that has every drawing.
   const dressUp = $derived.by(() => {
     void revision.settings, characterBusy;
-    return Object.entries(pack.slots).map(([slot, def]) => {
-      const chosen = avatarFor(pack, data.settings)[slot] ?? Object.keys(def.variants)[0];
-      return {
-        slot,
-        label: def.label,
-        // every outfit can be chosen from the start (unlocks were removed, #38)
-        variants: Object.entries(def.variants).map(([id, variant]) => ({
-          id,
-          label: variant.label,
-          selected: id === chosen,
-          swatch: def.swatch ? variant.recolor?.map[def.swatch] ?? def.swatch : null
-        }))
-      };
-    });
+    const worn = avatarFor(pack, data.settings);
+    return Object.entries(pack.slots).map(([slot, def]) => ({
+      slot,
+      label: def.label,
+      // every outfit can be chosen from the start (unlocks were removed, #38)
+      variants: Object.entries(def.variants).map(([id, variant]) => ({
+        id,
+        label: variant.label,
+        selected: id === worn[slot],
+        allowed: choiceAllowed(pack, worn, slot, id)
+      }))
+    }));
   });
 
   const chooseAvatar = (slot: string, id: string) => {
     if (!pack.slots[slot]?.variants[id]) return;
-    void updateSettings({ characterAvatars: { ...data.settings.characterAvatars, [pack.id]: { ...avatarFor(pack, data.settings), [slot]: id } } });
+    const worn = avatarFor(pack, data.settings);
+    if (!choiceAllowed(pack, worn, slot, id)) return;
+    void updateSettings({ characterAvatars: { ...data.settings.characterAvatars, [pack.id]: chooseOutfit(pack, worn, slot, id) } });
   };
 
   const mods = $derived((void modsRev, modStatus()));
@@ -201,10 +205,11 @@
   </div>
   <div class="frame well setting-group" id="dressup">
     {#each dressUp as row (row.slot)}
-      <div class="slot-row"><span class="slot-label">{row.label}</span><div class="swatches">
+      <div class="slot-row" data-slot={row.slot}><span class="slot-label">{row.label}</span><div class="swatches">
         {#each row.variants as v (v.id)}
-          <button type="button" class="swatch" class:selected={v.selected} data-tip={v.label} onclick={() => chooseAvatar(row.slot, v.id)}>{#if v.swatch}<i style:background={v.swatch}></i>{/if}{v.label}</button>
+          <button type="button" class="swatch" class:selected={v.selected} disabled={!v.allowed} data-variant={v.id} title={v.allowed ? undefined : '걷기 그림이 없는 조합이에요'} data-tip={v.label} onclick={() => chooseAvatar(row.slot, v.id)}>{v.label}</button>
         {/each}
+        {#if row.variants.some((v) => !v.allowed)}<span class="slot-why">{row.variants.filter((v) => !v.allowed).map((v) => v.label).join('·')}: 걷기 그림이 없는 조합이에요</span>{/if}
       </div></div>
     {/each}
   </div>

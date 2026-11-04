@@ -1,11 +1,11 @@
 // 설정 › 설정 (src/ui/modules/settings): the settings list and the AI page.
 import { check } from './lib.mjs';
 
-const RESET = `await window.petApi.db.updateSettings({ nickname: '' }); return true;`;
+const RESET = `await window.petApi.db.updateSettings({ nickname: '', characterAvatars: {} }); return true;`;
 
 export default {
   name: 'settings',
-  covers: ['src/ui/modules/settings/**', 'src/shared/settings.ts', 'src/main/backup.ts', 'src/main/characters.ts', 'src/main/mods.ts', 'src/main/mcp.ts', 'src/shared/mods.ts', 'src/shared/chat.ts', 'src/main/chat*.ts', 'src/renderer/character.ts', 'src/renderer/character/**'],
+  covers: ['src/ui/modules/settings/**', 'src/shared/settings.ts', 'src/main/backup.ts', 'src/main/characters.ts', 'src/main/mods.ts', 'src/main/mcp.ts', 'src/shared/mods.ts', 'src/shared/chat.ts', 'src/main/chat*.ts', 'src/renderer/character.ts', 'src/renderer/character/**', 'src/domain/character/**', 'assets/characters/**'],
   setup: RESET,
   checks: [
     check('settings: steppers change and save', `await openPanel(); await open_('settings', 'settings'); await wait(300); const before = text('#out-focusMinutes'); $('#out-focusMinutes').nextElementSibling.click(); await wait(400); const after = text('#out-focusMinutes'); $('#out-focusMinutes').previousElementSibling.click(); await wait(400); return [before, after, text('#out-focusMinutes'), text('#out-petScale')];`, ['25분', '30분', '25분', '2배']),
@@ -13,7 +13,10 @@ export default {
     check('settings: chat shortcut toggle is under 펫 and off', `const box = $('[data-bool=chatShortcut]'); const group = box?.closest('.setting-group')?.previousElementSibling; return [box !== null, group?.textContent.trim(), box?.checked, (await window.petApi.db.getSettings()).chatShortcut];`, [true, '펫', false, false]),
     check('settings: chat shortcut toggle saves', `const box = $('[data-bool=chatShortcut]'); box.click(); await wait(400); const on = [box.checked, (await window.petApi.db.getSettings()).chatShortcut]; box.click(); await wait(400); return [on, box.checked, (await window.petApi.db.getSettings()).chatShortcut];`, [[true, true], false, false]),
     check('settings: character list and dress-up', `return [$$('#character-select option').length >= 3, $('#character-select').value, $$('#dressup .slot-row').length > 0];`, [true, 'lila', true]),
-    check('settings: every outfit can be chosen (no unlocks)', `return [$$('#dressup .swatch').length > 0, $$('#dressup .swatch[disabled]').length, text('#dressup').includes('잠김')];`, [true, 0, false]),
+    check('settings: dress-up has outfit slots only, no colour swatches (#50)', `return [$$('#dressup .slot-row').map((r) => r.dataset.slot), $$('#dressup .swatch i').length, ['피부색', '머리색', '네온'].some((t) => text('#dressup').includes(t)), text('#dressup').includes('잠김')];`, [['outer', 'headwear', 'hairpin'], 0, false, false]),
+    check('settings: a combination with no walk drawing is disabled, with the reason', `const sel = (slot) => $$('#dressup [data-slot=' + slot + '] .swatch').map((b) => b.dataset.variant + (b.classList.contains('selected') ? '*' : '') + (b.disabled ? '!' : '')); return [sel('outer'), sel('headwear'), sel('hairpin'), text('#dressup [data-slot=headwear] .slot-why')];`, [['jacket*', 'cardigan', 'none'], ['catphones*', 'none!'], ['clip*', 'none'], '없음: 걷기 그림이 없는 조합이에요']),
+    check('settings: choosing an outer moves the headwear to an allowed one', `$('#dressup [data-slot=outer] [data-variant=cardigan]').click(); await wait(500); const sel = (slot) => $$('#dressup [data-slot=' + slot + '] .swatch').map((b) => b.dataset.variant + (b.classList.contains('selected') ? '*' : '') + (b.disabled ? '!' : '')); return [sel('outer'), sel('headwear'), (await window.petApi.db.getSettings()).characterAvatars.lila];`, [['jacket', 'cardigan*', 'none'], ['catphones!', 'none*'], { outer: 'cardigan', headwear: 'none', hairpin: 'clip' }]),
+    check('settings: a disabled choice changes nothing; back to the jacket', `$('#dressup [data-slot=headwear] [data-variant=catphones]').click(); await wait(400); const kept = (await window.petApi.db.getSettings()).characterAvatars.lila.headwear; $('#dressup [data-slot=outer] [data-variant=jacket]').click(); await wait(500); return [kept, (await window.petApi.db.getSettings()).characterAvatars.lila];`, ['none', { outer: 'jacket', headwear: 'catphones', hairpin: 'clip' }]),
     check('settings: nickname saves', `type('#nickname', '민'); $('#nickname').dispatchEvent(new Event('change', { bubbles: true })); await wait(400); return $('#nickname').value;`, '민'),
     check('settings: backup and MCP sections', `await wait(500); return [$$('#backup-box button').length, text('#mcp-box').includes('Claude Code')];`, [2, true]),
     check('settings: AI page opens over the list and goes back', `$('#ai-open').click(); await wait(400); const open = [!$('#ai-page').hidden, getComputedStyle($('#nickname')).display === 'none' || $('#nickname').offsetParent === null]; $('#ai-page [data-action=ai-back]').click(); await wait(300); return [open, $('#ai-page').hidden];`, [[true, true], true]),
