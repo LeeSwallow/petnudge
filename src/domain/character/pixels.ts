@@ -99,6 +99,21 @@ export const rimUnder = (dst: Pixels, layer: Pixels, color: number, opacity: num
   dst.data.set(out);
 };
 
+// The smallest box holding every opaque pixel, or undefined when there is none.
+export const bounds = (px: Pixels): Box | undefined => {
+  let [x0, y0, x1, y1] = [px.w, px.h, 0, 0];
+  for (let y = 0; y < px.h; y++) {
+    for (let x = 0; x < px.w; x++) {
+      if (!opaque(px.data[y * px.w + x])) continue;
+      x0 = Math.min(x0, x);
+      y0 = Math.min(y0, y);
+      x1 = Math.max(x1, x + 1);
+      y1 = Math.max(y1, y + 1);
+    }
+  }
+  return x1 > 0 ? [x0, y0, x1, y1] : undefined;
+};
+
 // Keeps only the pixels where `mask` is opaque.
 export const clipTo = (px: Pixels, mask: Pixels): Pixels => {
   const out = blank(px.w, px.h);
