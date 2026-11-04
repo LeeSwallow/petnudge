@@ -1247,7 +1247,7 @@ select:focus {
   color: var(--ink-2);
 }
 
-/* ---------- AI chat settings (modules/aiSettings.ts) ---------- */
+/* ---------- AI chat settings (ui/modules/settings/aiSettings.ts) ---------- */
 .ai-open > :not(#ai-page) {
   display: none !important;
 }
