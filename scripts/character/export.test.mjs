@@ -65,6 +65,25 @@ describe('check', () => {
     expect(missing.errors.join('\n')).toMatch(/head[\s\S]*eye\.L\.closed[\s\S]*pose\.stretch/);
   });
 
+  it('warns, per selectable outfit, about a pose it cannot draw (#50)', () => {
+    const pack = makePack();
+    pack.layers.push({ id: 'headwear', from: 'slot' });
+    pack.slots.headwear = { label: 'h', variants: { cap: { label: 'c' }, none: { label: 'n' } } };
+    pack.poses = { ...pack.poses, walk1: { cell: 'pose.walk1', whole: true } };
+    pack.states.walk = { loop: [{ ms: 100, pose: 'walk1' }] };
+    const names = ['head', 'outer.jacket', 'eye.L.closed', 'pose.stretch', 'headwear.cap', 'pose.walk1', 'outer.jacket#walk1'];
+    const { errors, warnings } = checkPack(pack, cellsOf(names));
+    expect(errors).toEqual([]);
+    // the cap has no walk cell: every outfit with the cap is reported, with the state that walks
+    expect(warnings.filter((w) => w.startsWith('의상 조합'))).toEqual([
+      '의상 조합 outer.jacket + headwear.cap: 그릴 수 없는 자세 walk1 (동작 walk)',
+      '의상 조합 outer.none + headwear.cap: 그릴 수 없는 자세 walk1 (동작 walk)'
+    ]);
+    // outfit drawings of a whole pose count as used layers
+    pack.poses.walk1 = { cell: 'pose.walk1', whole: true, outfits: [{ when: { headwear: 'cap' }, cell: 'pose.walk1.cap' }] };
+    expect(checkPack(pack, cellsOf([...names, 'pose.walk1.cap'])).warnings).toEqual([]);
+  });
+
   it('takes a standard @3 pack as it is: nothing missing, unused or discovered', async () => {
     const { buildPack } = await import('../../src/domain/character/buildPack.ts');
     const part = (x0, y0, x1, y1) => {

@@ -1,6 +1,7 @@
 // Checks the layer list against the pack. Errors stop the export; warnings
 // are printed (names the pack never uses, extra frames). An empty layer is a
 // valid cell: `nose.open@turnR` left empty means "no nose on that head".
+import { poseDrawable, selectableOutfits } from '../../src/domain/character/outfits.ts';
 import { NAME, ownerOf, splitSuffix } from './names.mjs';
 
 const hasFace = (pack, cells, face) => face === 'open' || Boolean(pack.expressions ? pack.expressions[face] : cells[`face.${face}`]);
@@ -43,7 +44,17 @@ export const checkPack = (pack, cells) => {
   }
   if (Object.values(pack.states).some((s) => s.blink) && !hasFace(pack, cells, 'closed')) errors.push('눈 깜빡임에 쓸 closed 표정이 없어요');
 
-  const poses = new Set(Object.values(pack.poses ?? {}).map(poseCell));
+  // Every outfit the settings let her wear must draw in every pose (#50).
+  const usedIn = (pose) => Object.entries(pack.states).filter(([, s]) => [...(s.start ?? []), ...s.loop].some((f) => f.pose === pose)).map(([name]) => name);
+  for (const outfit of selectableOutfits(pack)) {
+    const missing = Object.keys(pack.poses ?? {}).filter((pose) => !poseDrawable(pack, cells, outfit, pose));
+    if (!missing.length) continue;
+    const states = [...new Set(missing.flatMap(usedIn))];
+    const combo = Object.entries(outfit).map(([slot, id]) => `${slot}.${id}`).join(' + ');
+    warnings.push(`의상 조합 ${combo}: 그릴 수 없는 자세 ${missing.join(', ')}${states.length ? ` (동작 ${states.join(', ')})` : ''}`);
+  }
+
+  const poses = new Set(Object.values(pack.poses ?? {}).flatMap((def) => [poseCell(def), ...(typeof def === 'object' ? def.outfits ?? [] : []).map((o) => o.cell)]));
   const unused = Object.keys(cells).filter((name) => !poses.has(name) && !ownerOf(pack, splitSuffix(name).base));
   if (unused.length) warnings.push(`팩에서 쓰지 않는 레이어예요 (이름 오타인지 확인해주세요): ${unused.join(', ')}`);
   return { errors, warnings: [...new Set(warnings)] };
