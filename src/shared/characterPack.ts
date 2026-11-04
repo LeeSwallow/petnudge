@@ -1,92 +1,12 @@
-import type { ActionDef } from '../renderer/character/actions';
+import type { CharacterPack, LayerDef, PoseDef, Recolor, Variant } from '../domain/character/pack';
 
-// Character pack v2 ("study-pet-character@2"): layered paper-doll sprites.
-// A frame is composed from layers back to front: body parts (hair, head,
-// torso, arms, legs...), face features (eyes, iris, mouth...) and outfit
-// slots. Moves (breathing, nods, glances) shift a layer whole when it names
-// them in `follow`, otherwise they shift its pixels inside the region boxes —
-// see timeline.ts and pixels.ts. Authored as <id>.pack.json + <id>.aseprite, built into
-// character.json + sheet.png by scripts/build-character.mjs.
-
-export type Box = [x0: number, y0: number, x1: number, y1: number];
-export type Move = [dx: number, dy: number];
-
-// `pose` swaps in `<cell>#<pose>` cells (e.g. arms up); `head` forces a turned head.
-export type FrameDef = { ms: number; dx?: number; dy?: number; face?: string; pose?: string; head?: string; move?: Record<string, Move> };
-export type StateDef = {
-  face?: string;
-  // Eyes follow the cursor (moves the "eyes" region by the head turn).
-  look?: boolean;
-  blink?: { everyMs: number; ms: number };
-  start?: FrameDef[];
-  loop: FrameDef[];
-};
-export type Recolor = { layers?: string[]; region?: string; map: Record<string, string> };
-// `hides`: layers not drawn while this variant is worn (hair that would poke out of a hood).
-// `unlock` is read from older packs and ignored (unlocks were removed, #38).
-export type Variant = { label: string; recolor?: Recolor; unlock?: string; hides?: string[] };
-export type Slot = { label: string; swatch?: string; variants: Record<string, Variant> };
-// `from: 'slot'` draws cell `<id>.<variant>`. `from: 'face'` draws
-// `<id>.<variant>` with the variant the expression picks for this layer
-// (packs without `expressions` draw `face.<expression>`); otherwise cell `<id>`.
-// `follow`: moves that shift the whole layer (summed); without it the layer
-// gets the region moves. `clip`: drawn only where cell `<clip>.<variant>` is
-// opaque (an iris inside its eye socket), the mask shifted by `clipFollow`.
-// `group: 'body'` layers give way to the pose cell while a pose plays.
-// `edge`: a 1px contact rim on what is under the layer, just outside it, so
-// it stands out (headphones over hair, a jacket over a shirt); `light` is used
-// where what is under it is dark.
-export type LayerDef = {
-  id: string;
-  from?: 'slot' | 'face';
-  follow?: string[];
-  clip?: string;
-  clipFollow?: string[];
-  group?: 'body';
-  edge?: { color: string; opacity: number; light?: string };
-  // Region moves this layer ignores (e.g. a jacket keeps still while the arms under it swing).
-  ignore?: string[];
-};
-// Per expression (and `<expression>@<head>` for a turned head): the variant
-// each face layer shows. Unlisted layers show `open`; `none` hides the layer.
-export type Expression = Record<string, string>;
-// A hit area: frame boxes, or the body-part layers it covers.
-export type HitArea = Box[] | { layers: string[] };
-
-export type CharacterPack = {
-  format: 'study-pet-character@2';
-  id: string;
-  name: string;
-  // How she talks in chat (main/chat.ts), e.g. "밝고 장난기 많은 게이머".
-  persona?: string;
-  frame: { w: number; h: number };
-  feetY: number;
-  sheet: string;
-  cells: Record<string, [number, number]>;
-  layers: LayerDef[];
-  expressions?: Record<string, Expression>;
-  // Pose name → one cell drawn instead of the `group: 'body'` layers.
-  // `whole`: a frame drawn from another view (a side-view walk): only the pose
-  // cell and the layers' own `#<pose>` cells are drawn, nothing from the front.
-  poses?: Record<string, PoseDef>;
-  // Head direction → the one drawn mirrored for it ({ turnR: 'turnL' }): with
-  // no cells of its own, it is the other direction flipped left-right.
-  mirror?: Record<string, string>;
-  regions: Record<string, Box[]>;
-  states: Record<string, StateDef>;
-  slots: Record<string, Slot>;
-  fallback: string;
-  // Touch targets on the sprite (frame pixels) and the interactions they start.
-  hitAreas?: Record<string, HitArea>;
-  actions?: Record<string, ActionDef>;
-  // Idle fidgets: every `everyMs` (random in range) idle plays one of these
-  // states once, then returns to idle.
-  fidgets?: { states: string[]; everyMs: [number, number] };
-  // Random emotes: every `everyMs` (random in range) while idle, one of these actions plays.
-  emotes?: { actions: string[]; everyMs: [number, number] };
-  // Thin silhouette outline drawn by the renderer, `width` in device pixels.
-  outline?: { color: string; opacity?: number; width?: number };
-};
+// Character pack v2 ("study-pet-character@2"): layered paper-doll sprites. The
+// types live in src/domain/character/pack.ts; see timeline.ts and pixels.ts
+// for how frames are composed. Authored as <id>.pack.json + <id>.aseprite/.pxo,
+// built into character.json + sheet.png by scripts/build-character.mjs.
+export type {
+  ActionDef, Box, CharacterPack, Expression, FrameDef, Fx, HitArea, LayerDef, Move, PoseDef, PoseOutfit, Recolor, Slot, StateDef, Variant
+} from '../domain/character/pack';
 
 // Chosen variant id per slot.
 export type Avatar = Record<string, string>;
@@ -191,11 +111,6 @@ const pick = (pack: CharacterPack, base: string, head?: string, pose?: string) =
   return pack.cells[base] ? base : undefined;
 };
 
-// `outfits`: in a whole pose, a cell drawn with the clothes on, used alone
-// (no overlays) when the avatar wears every slot variant in `when`. Overlays
-// drawn frame by frame never line up as well as one drawing of the outfit.
-export type PoseOutfit = { when: Record<string, string>; cell: string };
-export type PoseDef = string | { cell: string; whole?: boolean; outfits?: PoseOutfit[] };
 export const poseCellOf = (def: PoseDef | undefined) => (typeof def === 'string' ? def : def?.cell);
 
 export type LayerCell = { layer: string; cell: string; def: LayerDef; clip?: string };
