@@ -33,7 +33,7 @@ export const music = {
 
   async toggle() {
     if (localItem) {
-      if (audio.paused) await audio.play().catch(() => undefined);
+      if (audio.paused) await audio.play().catch(() => undefined); // autoplay can be refused until the user interacts
       else audio.pause();
       return;
     }
@@ -63,7 +63,7 @@ const play = async (item: PlaylistItem | null) => {
   if (item.player === 'Local') {
     localItem = item;
     audio.src = `pet-audio://${item.id}`;
-    await audio.play().catch(() => undefined);
+    await audio.play().catch(() => undefined); // autoplay can be refused until the user interacts
   } else if (isExternalPlayer(item.player)) {
     stopLocal();
     await api.playItem(item.player, item.ref);
@@ -114,7 +114,7 @@ export const handleModeChange = async (previous: TimerMode, next: TimerMode) => 
   if (!action) return;
   if (action.type === 'playlist') return playPlaylist(action.playlistId);
   if (localItem) {
-    if (action.type === 'play') await audio.play().catch(() => undefined);
+    if (action.type === 'play') await audio.play().catch(() => undefined); // autoplay can be refused until the user interacts
     else audio.pause();
   } else if (externalNow && isExternalPlayer(externalNow.player)) {
     music.queue = null;

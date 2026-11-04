@@ -101,7 +101,11 @@ const petApi = {
   onFriendHold: (listener: (ms: number, faceDx: number) => void) => {
     ipcRenderer.on('friend-hold', (_event, ms, faceDx) => listener(ms, faceDx));
   },
-  quit: () => ipcRenderer.send('quit')
+  quit: () => ipcRenderer.send('quit'),
+  // The app log (main/logIpc.ts): level is error | warn | info | debug.
+  log: (level: string, scope: string, message: string, detail?: string) => ipcRenderer.send('log', level, scope, message, detail),
+  openLogs: (): Promise<void> => ipcRenderer.invoke('logs:open'),
+  diagnostics: (): Promise<string> => ipcRenderer.invoke('logs:diagnostics')
 };
 
 export type PetApi = typeof petApi;

@@ -30,6 +30,7 @@ import { settingsUi } from '../ui/modules/settings';
 import { chatUi, showActiveSession } from '../ui/modules/chat';
 import { bump } from '../ui/state/revision.svelte';
 import { installTokens } from '../ui/theme/install';
+import { installErrorLogging, logError } from '../ui/log';
 
 const TRANSITION_STEP_MS = 1200;
 const MODULES: UiModule[] = [todoUi, pomodoroUi, dashboardUi, playlistUi, notesUi, chatUi, friendsUi, settingsUi];
@@ -155,6 +156,7 @@ const installClickThrough = () => {
 // ---------- boot ----------
 
 const boot = async () => {
+  installErrorLogging();
   installTokens();
   document.getElementById('player-next')!.innerHTML = pixelIcon('next');
   installTooltip();
@@ -162,7 +164,7 @@ const boot = async () => {
   try {
     await setCharacter(await api.getCharacter(data.settings.characterId));
   } catch (error) {
-    console.error('캐릭터를 불러오지 못해 기본 캐릭터를 사용합니다', error);
+    logError('character', error, 'warn'); // falls back to the default character
     data.settings = await api.db.updateSettings({ characterId: 'lila' });
   }
   api.onCharacterChanged(async (id) => {
@@ -170,7 +172,7 @@ const boot = async () => {
     try {
       await setCharacter(await api.getCharacter(id));
     } catch (error) {
-      console.error('다시 내보낸 캐릭터를 불러오지 못했어요', error);
+      logError('character:reload', error, 'warn');
     }
   });
   petStore.getState().applySettings(data.settings);

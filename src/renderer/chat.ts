@@ -1,4 +1,5 @@
 import { formatRemaining, getRemainingMs } from '../domain/pomodoro/timer';
+import { logError } from '../ui/log';
 import { api } from './api';
 import { pack, setCharacter } from './character';
 import { data, updateSettings } from './data';
@@ -152,7 +153,7 @@ export const nameOf = (id: string) =>
   id.startsWith('guest:') ? id.slice(6) : id === pack.id ? pack.name : names[id] ?? id;
 export const membersOf = (session: ChatSession) => session.members ?? [session.characterId];
 export const refreshNames = async () => {
-  const list = await api.listCharacters().catch(() => []);
+  const list = await api.listCharacters().catch((error) => (logError('chat:characters', error, 'warn'), []));
   names = Object.fromEntries(list.map((c) => [c.id, c.name]));
   personas = Object.fromEntries(list.map((c) => [c.id, c.persona]));
 };
@@ -385,7 +386,9 @@ export const startChat = async () => {
     else if (session) toolLine(session, event);
     changed();
   });
-  api.onPetCommand((command) => void runPetCommand(command).catch(() => undefined));
+  api.onPetCommand((command) => {
+    void runPetCommand(command).catch((error) => logError('chat:command', error, 'warn'));
+  });
   const read = async <T>(key: string, fallback: T): Promise<T> => {
     try { return JSON.parse((await api.db.getKv(key)) ?? 'null') ?? fallback; } catch { return fallback; }
   };

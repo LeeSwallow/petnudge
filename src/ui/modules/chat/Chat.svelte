@@ -9,6 +9,7 @@
   import { PROVIDER_INFO, routeFor, type ChatMessage } from '../../../shared/chat';
   import type { CharacterChoice } from '../../../shared/characterImport';
   import TextInput from '../../components/TextInput.svelte';
+  import { logError } from '../../log';
   import { revision } from '../../state/revision.svelte';
   import { friendIds, isGroup, preview, when } from './logic';
   import { chatView } from './view.svelte';
@@ -131,7 +132,7 @@
 
   const desk = async (id: string) => {
     if (friendsOnScreen.has(id)) api.closeFriend(id);
-    else await api.openFriend(id).catch(() => undefined);
+    else await api.openFriend(id).catch((error) => logError('chat:friend', error, 'warn'));
   };
 </script>
 
