@@ -10,8 +10,12 @@ const frame = z.object({
   ms: integer.min(16).max(60_000), dx: integer.min(-32).max(32).optional(), dy: integer.min(-32).max(32).optional(),
   face: name.optional(), head: name.optional(), pose: name.optional(), move: z.record(name, move).optional(), flip: z.boolean().optional()
 });
+// Per-language data (#77): a plain value in the pack's `lang`, or one per
+// language code ({ ko, en, ja, … }).
+const langCode = z.string().regex(/^[a-z]{2,3}$/);
+const perLanguage = <T extends z.ZodType>(value: T) => z.union([value, z.record(langCode, value)]);
 const schema = z.object({
-  format: z.enum(PACK_FORMATS), editor: z.object({ version: z.literal(1) }).optional(), id: z.string().regex(/^[a-z][a-z0-9-]{0,47}$/), name: z.string().min(1).max(80), persona: z.string().max(600).optional(),
+  format: z.enum(PACK_FORMATS), editor: z.object({ version: z.literal(1) }).optional(), id: z.string().regex(/^[a-z][a-z0-9-]{0,47}$/), name: z.string().min(1).max(80), lang: langCode.optional(), persona: perLanguage(z.string().max(600)).optional(),
   frame: z.object({ w: integer.min(1).max(256), h: integer.min(1).max(256) }), feetY: integer.min(0), sheet: z.literal('sheet.png'),
   cells: z.record(name, z.tuple([integer.min(0), integer.min(0)])),
   layers: z.array(z.object({
@@ -42,7 +46,7 @@ const schema = z.object({
   actions: z.record(name, z.object({
     label: z.string().max(80), area: name.optional(), tap: z.boolean().optional(), menu: z.boolean().optional(),
     state: name, ms: integer.min(16).max(60_000), fx: z.enum(['hearts', 'stars', 'anger', 'sweat', 'sparkles']).optional(),
-    lines: z.array(z.string().max(280)).max(32).optional()
+    lines: perLanguage(z.array(z.string().max(280)).max(32)).optional()
   })).optional(),
   fidgets: z.object({ states: z.array(name).min(1).max(32), everyMs: z.tuple([integer.min(1000), integer.min(1000)]) }).optional(),
   emotes: z.object({ actions: z.array(name).min(1).max(32), everyMs: z.tuple([integer.min(1000), integer.min(1000)]) }).optional(),

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MORE_LABEL, bubbleText, fitBubble, lineCount, linePx, plainText, speak, splitSentences, textWidth } from './text';
+import { moreLabel, bubbleText, fitBubble, lineCount, linePx, plainText, speak, splitSentences, textWidth } from './text';
 
 describe('plainText', () => {
   it('drops bold, italic, code, heading and link markers', () => {
@@ -98,7 +98,7 @@ describe('fitting the bubble (Galmuri11 12px)', () => {
     expect(textWidth('ab')).toBe(16);
     expect(textWidth('i.')).toBe(8);
     expect(textWidth(' ')).toBe(5);
-    expect(textWidth(MORE_LABEL)).toBe(58);
+    expect(textWidth(moreLabel())).toBe(58);
   });
 
   it('a line is the bubble width less its padding and border', () => {
@@ -122,12 +122,12 @@ describe('fitting the bubble (Galmuri11 12px)', () => {
     expect(fit.more).toBe(true);
     expect(fit.text.endsWith('…')).toBe(true);
     expect(long.startsWith(fit.text.slice(0, -1))).toBe(true);
-    expect(lineCount(`${fit.text} ${MORE_LABEL}`, 132, [MORE_LABEL])).toBeLessThanOrEqual(3);
+    expect(lineCount(`${fit.text} ${moreLabel()}`, 132, [moreLabel()])).toBeLessThanOrEqual(3);
     // as much as fits: one more (non-space) character would not
     let n = fit.text.length;
     while (long[n - 1] === ' ') n++;
     const longer = long.slice(0, n);
-    expect(lineCount(`${longer}… ${MORE_LABEL}`, 132, [MORE_LABEL])).toBeGreaterThan(3);
+    expect(lineCount(`${longer}… ${moreLabel()}`, 132, [moreLabel()])).toBeGreaterThan(3);
   });
 
   it('while streaming, keeps room for 더 보기 so what it shows never shrinks', () => {

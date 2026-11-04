@@ -1,4 +1,5 @@
 import lilaPack from '../../assets/characters/lila/character.json';
+import { t } from '../i18n';
 import lilaSheet from '../../assets/characters/lila/sheet.png';
 import { hasFace, layerCells, recolorsFor, validatePack, type Avatar, type Move } from './character/pack';
 import { withModStates } from './character/mods';
@@ -48,7 +49,7 @@ const readImage = (url: string) => new Promise<Pixels>((resolve, reject) => {
     const { data } = ctx.getImageData(0, 0, image.width, image.height);
     resolve({ w: image.width, h: image.height, data: new Uint32Array(data.buffer) });
   };
-  image.onerror = () => reject(new Error('캐릭터 PNG를 읽지 못했어요'));
+  image.onerror = () => reject(new Error(t('error.character.png')));
   image.src = url;
 });
 const ready = readImage(lilaSheet).then((pixels) => { sheet = pixels; });

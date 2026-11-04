@@ -4,6 +4,7 @@
   import type { Widget } from '../widgets/widget';
   import { DOCK_GAP, dockSide } from './logic';
   import { dock } from './store.svelte';
+  import { t } from '../i18n';
 
   // The dock beside the pet: the talk button (pet/chatbar.ts puts it into
   // #dock-talk) and up to three widgets, on whichever side has room. Widgets
@@ -28,7 +29,7 @@
 <div
   id="dock"
   role="group"
-  aria-label="펫 옆 도크"
+  aria-label={t('dock.label')}
   class={side}
   data-side={side}
   style:width="{WIDTH}px"

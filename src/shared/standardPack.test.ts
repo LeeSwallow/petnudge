@@ -50,6 +50,22 @@ describe('standard pack @3', () => {
     expect(() => validatePack(pack)).toThrow(/unsupported format/);
   });
 
+  it('accepts lines and persona per language, and plain ones (#77)', () => {
+    const pack = JSON.parse(JSON.stringify(buildPack(full()).pack));
+    const pat = Object.keys(pack.actions)[0];
+    pack.lang = 'ko';
+    pack.persona = { ko: '느긋한 친구', en: 'A laid-back friend' };
+    pack.actions[pat].lines = { ko: ['헤헤'], en: ['Hehe'], ja: ['えへへ'] };
+    const imported = validateImportedPack(pack, 16 * 96, 112);
+    expect(imported.persona).toEqual({ ko: '느긋한 친구', en: 'A laid-back friend' });
+    expect(imported.actions![pat].lines).toEqual({ ko: ['헤헤'], en: ['Hehe'], ja: ['えへへ'] });
+    pack.persona = '느긋한 친구';
+    pack.actions[pat].lines = ['헤헤'];
+    expect(() => validateImportedPack(pack, 16 * 96, 112)).not.toThrow();
+    pack.actions[pat].lines = { english: ['Hehe'] };
+    expect(() => validateImportedPack(pack, 16 * 96, 112)).toThrow();
+  });
+
   it('round-trips a full draft and a body-only draft through the importer', () => {
     expect(roundTrip(full()).id).toBe('bean');
     expect(Object.keys(roundTrip(draft({ 'torso.chest': rect(30, 50, 66, 80) })).states)).toContain('walkR');

@@ -1,3 +1,4 @@
+import { localeFromTag, setLocale, t } from '../i18n';
 import { BrowserWindow, app, dialog, globalShortcut, ipcMain, net, protocol, screen, shell } from 'electron';
 import os from 'node:os';
 import { createLogger } from '../infra/logger';
@@ -56,7 +57,7 @@ process.on('uncaughtException', (thrown) => {
   process.stderr.write(`${detail ?? message}\n`);
   if (app.isReady() && !shownErrors.has(message)) {
     shownErrors.add(message);
-    dialog.showErrorBox('petnudge에 문제가 생겼어요', `${message}\n\n설정 › 문제 해결 › 진단 정보 복사로 알려 주세요.`);
+    dialog.showErrorBox(t('dialog.crash.title'), t('dialog.crash.body', { message }));
   }
 });
 process.on('unhandledRejection', (reason) => {
@@ -128,6 +129,9 @@ const openDatabase = () => {
   migrate(db);
   repository = createRepository(db);
   database = db;
+  // First run: the language the OS prefers (ko, ja, else en), saved once.
+  if (!repository.hasSetting('locale')) repository.updateSettings({ locale: localeFromTag(app.getPreferredSystemLanguages()[0] ?? app.getLocale()) });
+  setLocale(repository.getSettings().locale);
   // Stop the scheduler loop before the database it reads goes away.
   app.on('will-quit', () => {
     void engine?.dispose();
@@ -204,6 +208,8 @@ const runTrayAction = (action: TrayAction) => {
 // another app holds the keys; the tray's 말 걸기 still works then.
 let chatShortcutOn = false;
 const syncChatShortcut = () => {
+  // the language too: the tray menu below is built in it
+  setLocale(repository.getSettings().locale);
   const wanted = repository.getSettings().chatShortcut;
   if (wanted && !chatShortcutOn) {
     chatShortcutOn = globalShortcut.register(CHAT_SHORTCUT, openQuickChat);
@@ -339,7 +345,7 @@ const friends = createFriends({
 });
 ipcMain.handle('friends:list', () => friends.list());
 ipcMain.handle('friends:open', async (_event, id: unknown) => {
-  if (typeof id !== 'string' || !(await characters.list()).some((c) => c.id === id)) throw new Error('없는 캐릭터예요');
+  if (typeof id !== 'string' || !(await characters.list()).some((c) => c.id === id)) throw new Error(t('error.character.unknown'));
   friends.open(id);
 });
 ipcMain.on('friends:close', (event, id: unknown) => {
@@ -384,9 +390,9 @@ ipcMain.handle('music-play-item', async (_event, player: unknown, ref: unknown) 
 ipcMain.handle('pick-audio-files', async () => {
   if (!win) return [];
   const result = await dialog.showOpenDialog(win, {
-    title: '플레이리스트에 추가할 음악',
+    title: t('dialog.pickAudio'),
     properties: ['openFile', 'multiSelections'],
-    filters: [{ name: '오디오', extensions: AUDIO_EXTENSIONS }]
+    filters: [{ name: t('dialog.audioFiles'), extensions: AUDIO_EXTENSIONS }]
   });
   return result.canceled ? [] : result.filePaths.filter((file) => isValidMusicRef('Local', file));
 });
@@ -407,7 +413,7 @@ let pendingImport: Backup | null = null;
 ipcMain.handle('data:export', async () => {
   if (!win) return null;
   const { canceled, filePath } = await dialog.showSaveDialog(win, {
-    title: '데이터 내보내기',
+    title: t('dialog.exportData'),
     defaultPath: path.join(app.getPath('documents'), `study-pet-backup-${toDateKey(new Date())}.json`),
     filters: [{ name: 'JSON', extensions: ['json'] }]
   });
@@ -422,7 +428,7 @@ ipcMain.handle('data:import', async (_event, step: unknown) => {
     return null;
   }
   if (step === 'apply') {
-    if (!pendingImport) throw new Error('가져올 파일을 먼저 골라주세요');
+    if (!pendingImport) throw new Error(t('error.backup.pickFirst'));
     const session = restoreBackup(database, pendingImport);
     pendingImport = null;
     applyAlwaysOnTop(repository.getSettings().alwaysOnTop);
@@ -433,12 +439,12 @@ ipcMain.handle('data:import', async (_event, step: unknown) => {
   if (!win) return null;
   pendingImport = null;
   const { canceled, filePaths } = await dialog.showOpenDialog(win, {
-    title: '백업 파일 가져오기',
+    title: t('dialog.importData'),
     properties: ['openFile'],
     filters: [{ name: 'JSON', extensions: ['json'] }]
   });
   if (canceled || !filePaths[0]) return null;
-  if ((await stat(filePaths[0])).size > MAX_BACKUP_BYTES) throw new Error('파일이 너무 커요 (100MB 이하만 가져올 수 있어요)');
+  if ((await stat(filePaths[0])).size > MAX_BACKUP_BYTES) throw new Error(t('error.backup.tooBig'));
   const backup = parseBackup(await readFile(filePaths[0], 'utf8'));
   pendingImport = backup;
   return { file: path.basename(filePaths[0]), ...summarizeBackup(backup) };
@@ -451,7 +457,7 @@ ipcMain.handle('mods:create', async () => {
   return file;
 });
 ipcMain.handle('mods:open', async (_event, file: unknown) => {
-  if (!insideMods(file)) throw new Error('모드 폴더 밖의 파일은 열 수 없어요');
+  if (!insideMods(file)) throw new Error(t('error.mod.outside'));
   const error = await shell.openPath(file);
   if (error) shell.showItemInFolder(file);
 });
@@ -469,7 +475,7 @@ ipcMain.handle('characters:list', () => characters.list());
 ipcMain.handle('characters:get', (_event, id: unknown) => characters.load(id));
 ipcMain.handle('characters:import', async () => {
   if (!win) return null;
-  const selected = await dialog.showOpenDialog(win, { title: '캐릭터 팩 폴더 가져오기', properties: ['openDirectory'] });
+  const selected = await dialog.showOpenDialog(win, { title: t('dialog.importCharacter'), properties: ['openDirectory'] });
   return selected.canceled ? null : characters.importFolder(selected.filePaths[0]);
 });
 // Pixelorama doesn't register .pxo with the OS, so it is opened by name on
@@ -478,7 +484,7 @@ ipcMain.handle('characters:import', async () => {
 const openInEditor = async (file: string) => {
   if (file.endsWith('.pxo') && process.platform === 'darwin') {
     const target = process.env.PIXELORAMA ?? (existsSync('/Applications/Pixelorama.app') ? '/Applications/Pixelorama.app' : path.join(app.getPath('home'), 'Applications', 'Pixelorama.app'));
-    if (!existsSync(target)) throw new Error('Pixelorama를 찾지 못했어요. 응용 프로그램 폴더에 설치해주세요');
+    if (!existsSync(target)) throw new Error(t('error.character.noPixelorama'));
     await new Promise<void>((resolve, reject) => execFile('open', ['-a', target, file], (error) => (error ? reject(error) : resolve())));
     return;
   }
@@ -535,13 +541,13 @@ installEditorIpc({
   listCharacters: () => characters.list(),
   closeEditor: () => editor.close(),
   importImage: async () => {
-    const file = await pickForEditor('그림 불러오기', [{ name: 'PNG 그림', extensions: ['png'] }]);
+    const file = await pickForEditor(t('dialog.importImage'), [{ name: t('dialog.pngImages'), extensions: ['png'] }]);
     if (!file) return null;
-    if ((await stat(file)).size > MAX_IMAGE_BYTES) throw new Error('그림 파일이 너무 커요');
+    if ((await stat(file)).size > MAX_IMAGE_BYTES) throw new Error(t('error.editor.imageFile'));
     return imageFromPng(path.basename(file), await readFile(file));
   },
   importLayered: async () => {
-    const file = await pickForEditor('레이어 파일 불러오기', [{ name: '레이어 파일', extensions: ['pxo', 'aseprite', 'ase'] }]);
+    const file = await pickForEditor(t('dialog.importLayers'), [{ name: t('dialog.layerFiles'), extensions: ['pxo', 'aseprite', 'ase'] }]);
     return file ? { name: path.basename(file), layers: await layersFromFile(file) } : null;
   },
   importCharacter: async (id) => characterDraft(await characters.sourceOf(id)),

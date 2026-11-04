@@ -1,7 +1,7 @@
 <script lang="ts">
   import { revision } from '../../state/revision.svelte';
   import { myNotes, type PinnedFeed } from './feed';
-  import { EMPTY_TEXT, pinnedView } from './logic';
+  import { emptyText, pinnedView } from './logic';
 
   let { feed = myNotes }: { feed?: PinnedFeed } = $props();
 
@@ -15,7 +15,7 @@
   <div class="title" data-pinned-title>{view.title}</div>
   {#each view.lines as line, i (i)}<div class="line">{line}</div>{/each}
 {:else}
-  <p class="empty" data-pinned-empty>{EMPTY_TEXT}</p>
+  <p class="empty" data-pinned-empty>{emptyText()}</p>
 {/if}
 
 <style>

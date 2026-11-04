@@ -3,6 +3,7 @@
   import { revision } from '../../state/revision.svelte';
   import { myTodos, type TodosFeed } from './feed';
   import { todosView } from './logic';
+  import { t } from '../../i18n';
 
   let { feed = myTodos }: { feed?: TodosFeed } = $props();
 
@@ -13,11 +14,11 @@
 </script>
 
 {#if view.empty}
-  <p class="empty" data-todos-empty>할 일이 비었어요</p>
+  <p class="empty" data-todos-empty>{t('todo.empty')}</p>
 {:else}
   <div class="count" data-todos-count>{view.done}/{view.total}</div>
-  <ProgressBar value={view.done} max={view.total} label="끝낸 할 일" tone="goal" />
-  <p class="active" data-todos-active>{view.active ?? '지금 할 일 없음'}</p>
+  <ProgressBar value={view.done} max={view.total} label={t('widgets.todos.done')} tone="goal" />
+  <p class="active" data-todos-active>{view.active ?? t('widgets.todos.noActive')}</p>
 {/if}
 
 <style>

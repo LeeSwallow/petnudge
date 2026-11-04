@@ -10,24 +10,27 @@
   import { chooseOutfit, choiceAllowed } from '../../../domain/character/outfits';
   import { avatarFor, type AppSettings } from '../../../shared/settings';
   import { revision } from '../../state/revision.svelte';
+  import { LOCALE_NAMES, LOCALES, type Locale } from '../../../i18n';
+  import { t, type MessageKey } from '../../i18n';
   import AiSettings from './AiSettings.svelte';
   import Backup from './Backup.svelte';
   import { aiSummary, stepperText, type BoolKey, type NumberKey } from './logic';
 
-  const STEPPERS: [NumberKey, string, number][] = [
-    ['focusMinutes', '집중 시간', 5],
-    ['breakMinutes', '짧은 휴식', 1],
-    ['longBreakMinutes', '긴 휴식', 5],
-    ['longBreakEvery', '긴 휴식 주기', 1],
-    ['dailyGoalSessions', '하루 목표', 1]
+  const STEPPERS: [NumberKey, MessageKey, number][] = [
+    ['focusMinutes', 'settings.focusMinutes', 5],
+    ['breakMinutes', 'settings.breakMinutes', 1],
+    ['longBreakMinutes', 'settings.longBreakMinutes', 5],
+    ['longBreakEvery', 'settings.longBreakEvery', 1],
+    ['dailyGoalSessions', 'settings.dailyGoal', 1]
   ];
-  const PET_TOGGLES: [BoolKey, string][] = [
-    ['alwaysOnTop', '항상 다른 창 위에 표시'],
-    ['eyesFollowCursor', '눈으로 마우스 커서 따라보기'],
-    ['walkAround', '가끔 화면 위를 걸어다니기 (집중 중에는 쉬어요)'],
-    ['reduceMotion', '움직임 줄이기 (전환 효과 끄기)'],
-    ['chatShortcut', '⌘/Ctrl + Alt + C 로 어디서든 말 걸기']
+  const PET_TOGGLES: [BoolKey, MessageKey][] = [
+    ['alwaysOnTop', 'settings.alwaysOnTop'],
+    ['eyesFollowCursor', 'settings.eyesFollowCursor'],
+    ['walkAround', 'settings.walkAround'],
+    ['reduceMotion', 'settings.reduceMotion'],
+    ['chatShortcut', 'settings.chatShortcut']
   ];
+  const LANGUAGES = LOCALES.map((id) => ({ id, name: LOCALE_NAMES[id] }));
 
   let root: HTMLElement;
   let aiOpen = $state(false);
@@ -49,7 +52,7 @@
     try {
       characters = await api.listCharacters();
     } catch (error) {
-      characterStatus = error instanceof Error ? error.message : '캐릭터 목록을 읽지 못했어요';
+      characterStatus = error instanceof Error ? error.message : t('settings.character.listFailed');
     }
   };
 
@@ -68,7 +71,7 @@
       chatRev += 1;
     });
     api.onCharacterError((id, message) => {
-      if (id === pack.id) characterStatus = `✗ 다시 반영하지 못했어요: ${message}`;
+      if (id === pack.id) characterStatus = t('settings.character.reloadFailed', { message });
     });
     void api.getMcpInfo().then((info) => {
       mcp = info;
@@ -78,12 +81,12 @@
   const characterTask = async (task: () => Promise<void>) => {
     if (characterBusy) return;
     characterBusy = true;
-    characterStatus = '불러오는 중…';
+    characterStatus = t('settings.loading');
     try {
       await task();
-      characterStatus = '적용했어요';
+      characterStatus = t('settings.character.applied');
     } catch (error) {
-      characterStatus = error instanceof Error ? error.message : '캐릭터를 적용하지 못했어요';
+      characterStatus = error instanceof Error ? error.message : t('settings.character.applyFailed');
     } finally {
       characterBusy = false;
       await loadCharacters();
@@ -164,19 +167,19 @@
 {/snippet}
 
 {#snippet copyRow(label: string, value: string)}
-  <div class="copy-row"><div class="hint">{label}</div><div class="row"><code class="grow">{value}</code><button type="button" onclick={() => copy(value)}>{copied === value ? '복사됨!' : '복사'}</button></div></div>
+  <div class="copy-row"><div class="hint">{label}</div><div class="row"><code class="grow">{value}</code><button type="button" onclick={() => copy(value)}>{copied === value ? t('settings.copied') : t('settings.copy')}</button></div></div>
 {/snippet}
 
 <div class="settings-root" class:ai-open={aiOpen} bind:this={root}>
-  <div class="section-title">뽀모도로</div>
+  <div class="section-title">{t('settings.section.pomodoro')}</div>
   <div class="frame well setting-group">
-    {#each STEPPERS as [key, label, by] (key)}{@render stepper(key, label, by)}{/each}
-    {@render toggleRow('autoStartFocus', '휴식이 끝나면 바로 다음 집중 시작')}
+    {#each STEPPERS as [key, label, by] (key)}{@render stepper(key, t(label), by)}{/each}
+    {@render toggleRow('autoStartFocus', t('settings.autoStartFocus'))}
   </div>
-  <div class="section-title">캐릭터 꾸미기 <small>{(void mainId, pack.name)}</small></div>
+  <div class="section-title">{t('settings.section.character')} <small>{(void mainId, pack.name)}</small></div>
   <div class="frame well setting-group">
-    <label class="row">캐릭터 <select class="grow" id="character-select" aria-label="캐릭터 선택" disabled={characterBusy} onchange={(e) => useCharacter(e.currentTarget.value)}>
-      {#each characters as c (c.id)}<option value={c.id} selected={c.id === mainId}>{c.name}{c.builtin ? ' (기본)' : ''}</option>{/each}
+    <label class="row">{t('settings.character.label')} <select class="grow" id="character-select" aria-label={t('settings.character.select')} disabled={characterBusy} onchange={(e) => useCharacter(e.currentTarget.value)}>
+      {#each characters as c (c.id)}<option value={c.id} selected={c.id === mainId}>{c.name}{c.builtin ? t('settings.character.builtinSuffix') : ''}</option>{/each}
     </select></label>
     <div class="row">
       <button type="button" id="character-import" disabled={characterBusy} onclick={() => characterTask(async () => {
@@ -184,103 +187,107 @@
         if (!id) return;
         await setCharacter(await api.getCharacter(id));
         await updateSettings({ characterId: id });
-      })}>팩 가져오기</button>
-      <button type="button" id="character-edit" disabled={characterBusy || !editable} onclick={() => characterTask(async () => { await api.editCharacter(pack.id); })}>원본 편집</button>
+      })}>{t('settings.character.import')}</button>
+      <button type="button" id="character-edit" disabled={characterBusy || !editable} onclick={() => characterTask(async () => { await api.editCharacter(pack.id); })}>{t('settings.character.edit')}</button>
     </div>
     <button type="button" id="character-reload" disabled={characterBusy || !editable} onclick={() => characterTask(async () => {
       await setCharacter(await api.rebuildCharacter(pack.id));
       await updateSettings({ characterId: pack.id });
-    })}>저장한 원본 다시 적용</button>
-    <div class="row"><input type="text" id="clone-name" class="grow" maxlength="40" placeholder="새 캐릭터 이름" aria-label="새 캐릭터 이름" bind:value={cloneName} />
+    })}>{t('settings.character.reload')}</button>
+    <div class="row"><input type="text" id="clone-name" class="grow" maxlength="40" placeholder={t('settings.character.cloneName')} aria-label={t('settings.character.cloneName')} bind:value={cloneName} />
       <button type="button" id="character-clone" disabled={characterBusy} onclick={() => characterTask(async () => {
-        const id = await api.cloneCharacter(pack.id, cloneName.trim() || `${pack.name} 2`);
+        const id = await api.cloneCharacter(pack.id, cloneName.trim() || t('settings.character.cloneDefault', { name: pack.name }));
         cloneName = '';
         await setCharacter(await api.getCharacter(id));
         await updateSettings({ characterId: id });
         await api.editCharacter(id);
-      })}>이 캐릭터로 새로 만들기</button></div>
-    <button type="button" id="open-editor" onclick={() => api.openEditor().catch((error) => { characterStatus = error instanceof Error ? error.message : '에디터를 열지 못했어요'; })}>에디터 열기</button>
-    <div class="hint">원본 편집을 누르면 저장할 때마다 자동으로 반영돼요. 새로 만들면 지금 캐릭터의 그림·표정·동작이 복사돼요.</div>
+      })}>{t('settings.character.clone')}</button></div>
+    <button type="button" id="open-editor" onclick={() => api.openEditor().catch((error) => { characterStatus = error instanceof Error ? error.message : t('settings.character.editorFailed'); })}>{t('settings.character.openEditor')}</button>
+    <div class="hint">{t('settings.character.hint')}</div>
     <div class="hint" id="character-status" role="status" aria-live="polite">{characterStatus}</div>
   </div>
   <div class="frame well setting-group" id="dressup">
     {#each dressUp as row (row.slot)}
       <div class="slot-row" data-slot={row.slot}><span class="slot-label">{row.label}</span><div class="swatches">
         {#each row.variants as v (v.id)}
-          <button type="button" class="swatch" class:selected={v.selected} disabled={!v.allowed} data-variant={v.id} title={v.allowed ? undefined : '걷기 그림이 없는 조합이에요'} data-tip={v.label} onclick={() => chooseAvatar(row.slot, v.id)}>{v.label}</button>
+          <button type="button" class="swatch" class:selected={v.selected} disabled={!v.allowed} data-variant={v.id} title={v.allowed ? undefined : t('settings.dressUp.noWalk')} data-tip={v.label} onclick={() => chooseAvatar(row.slot, v.id)}>{v.label}</button>
         {/each}
-        {#if row.variants.some((v) => !v.allowed)}<span class="slot-why">{row.variants.filter((v) => !v.allowed).map((v) => v.label).join('·')}: 걷기 그림이 없는 조합이에요</span>{/if}
+        {#if row.variants.some((v) => !v.allowed)}<span class="slot-why">{row.variants.filter((v) => !v.allowed).map((v) => v.label).join('·')}: {t('settings.dressUp.noWalk')}</span>{/if}
       </div></div>
     {/each}
   </div>
-  <div class="section-title">펫</div>
+  <div class="section-title">{t('settings.section.pet')}</div>
   <div class="frame well setting-group">
-    <div class="stepper"><span class="grow">크기</span>
+    <div class="stepper"><span class="grow">{t('settings.petScale')}</span>
       <button type="button" onclick={() => step('petScale', -1)}>-</button>
       <output id="out-petScale">{stepperText('petScale', settings.petScale)}</output>
       <button type="button" onclick={() => step('petScale', 1)}>+</button></div>
-    {#each PET_TOGGLES as [key, label] (key)}{@render toggleRow(key, label)}{/each}
-    <div class="hint">단축키는 다른 앱의 같은 키를 가져가므로 기본으로 꺼져 있어요. 메뉴 막대(트레이) 아이콘에서도 말 걸기를 할 수 있어요.</div>
+    {#each PET_TOGGLES as [key, label] (key)}{@render toggleRow(key, t(label))}{/each}
+    <div class="hint">{t('settings.shortcutHint')}</div>
   </div>
-  <div class="section-title">모드 <small>행동 스크립트</small></div>
+  <div class="section-title">{t('settings.section.mods')} <small>{t('settings.mods.subtitle')}</small></div>
   <div class="frame well setting-group">
     <div id="mod-list">
       {#each mods.mods as { mod, builtin, enabled, path } (mod.id)}
         <div class="row mod-row">
-          <label class="toggle grow" data-tip={mod.description ?? ''}>{mod.name} <small>{builtin ? '기본' : '내 모드'} · 행동 {mod.behaviors.length}개</small>
+          <label class="toggle grow" data-tip={mod.description ?? ''}>{mod.name} <small>{builtin ? t('settings.mods.builtin') : t('settings.mods.mine')} · {t('settings.mods.behaviors', { count: mod.behaviors.length })}</small>
             <input type="checkbox" data-mod={mod.id} checked={enabled} onchange={(e) => void api.setModEnabled(mod.id, e.currentTarget.checked)} /></label>
-          <button type="button" class="ghost" onclick={() => void api.openMod(path)}>열기</button>
+          <button type="button" class="ghost" onclick={() => void api.openMod(path)}>{t('settings.mods.open')}</button>
         </div>
       {:else}
-        <div class="hint">모드가 없어요.</div>
+        <div class="hint">{t('settings.mods.none')}</div>
       {/each}
     </div>
-    <div class="row"><button type="button" class="grow" onclick={() => void api.createMod()}>새 모드 만들기</button></div>
-    <div class="hint">모드는 블록(JSON)으로 "언제 → 무엇을"을 적어요. 저장하면 바로 다시 불러와요.</div>
+    <div class="row"><button type="button" class="grow" onclick={() => void api.createMod()}>{t('settings.mods.create')}</button></div>
+    <div class="hint">{t('settings.mods.hint')}</div>
     <div class="hint" id="mod-problems" role="status" aria-live="polite">{mods.problems.map((p) => `⚠ ${p.path.split('/').slice(-2).join('/')}: ${p.error}`).join('\n')}</div>
   </div>
   <Backup />
-  <div class="section-title">프로필</div>
+  <div class="section-title">{t('settings.section.profile')}</div>
   <div class="frame well setting-group">
-    <div class="row"><span style="width:52px">닉네임</span><input type="text" id="nickname" class="grow" maxlength="16" placeholder="방·랭킹에 표시될 이름" bind:value={nickname}
+    <label class="row" id="language-row"><span class="field-label">{t('settings.language')}</span><select class="grow" id="language-select" aria-label={t('settings.language')} onchange={(e) => void updateSettings({ locale: e.currentTarget.value as Locale })}>
+      {#each LANGUAGES as l (l.id)}<option value={l.id} selected={l.id === settings.locale}>{l.name}</option>{/each}
+    </select></label>
+    <div class="row"><span class="field-label">{t('settings.nickname')}</span><input type="text" id="nickname" class="grow" maxlength="16" placeholder={t('settings.nicknamePlaceholder')} bind:value={nickname}
       onfocus={() => (nicknameFocused = true)} onblur={() => (nicknameFocused = false)} onchange={() => void updateSettings({ nickname })} /></div>
   </div>
-  <div class="section-title">AI 대화 <small>펫과 말하기</small></div>
+  <div class="section-title">{t('settings.section.ai')} <small>{t('settings.ai.subtitle')}</small></div>
   <div class="frame well setting-group">
     <button type="button" class="ai-open-button" id="ai-open" onclick={() => showAiPage(true)}>
-      <span class="grow"><b>AI 대화 설정 열기</b><small id="ai-summary">{(void chatRev, void revision.settings, aiSummary(chatState.config, chatState.providers))}</small></span><span aria-hidden="true">›</span>
+      <span class="grow"><b>{t('settings.ai.open')}</b><small id="ai-summary">{(void chatRev, void revision.settings, aiSummary(chatState.config, chatState.providers))}</small></span><span aria-hidden="true">›</span>
     </button>
-    <div class="hint">연결할 AI(Claude Code·Codex·Anthropic·OpenAI·OpenRouter·로컬), 도구 권한, 캐릭터별 말투와 프롬프트를 정해요.</div>
+    <div class="hint">{t('settings.ai.hint')}</div>
   </div>
-  <div class="section-title">AI 연결 (MCP)</div>
+  <div class="section-title">{t('settings.section.mcp')}</div>
   <div class="frame well setting-group" id="mcp-box">
     {#if mcp === undefined}
-      <div class="hint">불러오는 중…</div>
+      <div class="hint">{t('settings.loading')}</div>
     {:else if mcp === null}
-      <div class="hint">MCP 서버를 시작하지 못했어요.</div>
+      <div class="hint">{t('settings.mcp.failed')}</div>
     {:else}
-      <div class="hint">Claude·Cursor 같은 AI가 할 일·메모·통계를 읽고, 타이머를 켤 수 있어요. 앱이 켜져 있을 때만 동작해요.</div>
-      {@render copyRow('Claude Code (터미널에 붙여넣기)', `claude mcp add --transport http petnudge ${mcp.url} --header "Authorization: Bearer ${mcp.token}" --scope user`)}
+      <div class="hint">{t('settings.mcp.hint')}</div>
+      {@render copyRow(t('settings.mcp.claudeCode'), `claude mcp add --transport http petnudge ${mcp.url} --header "Authorization: Bearer ${mcp.token}" --scope user`)}
       {@render copyRow('Cursor (~/.cursor/mcp.json)', JSON.stringify({ mcpServers: { petnudge: { url: mcp.url, headers: { Authorization: `Bearer ${mcp.token}` } } } }))}
-      <div class="hint">토큰은 이 컴퓨터에만 저장돼요. 다른 사람에게 공유하지 마세요.</div>
+      <div class="hint">{t('settings.mcp.tokenHint')}</div>
     {/if}
   </div>
-  <div class="section-title">문제 해결</div>
+  <div class="section-title">{t('settings.section.troubleshoot')}</div>
   <div class="frame well setting-group" id="troubleshoot">
     <div class="row">
-      <button type="button" class="grow" id="open-logs" onclick={() => void api.openLogs()}>로그 폴더 열기</button>
-      <button type="button" class="grow" id="copy-diagnostics" onclick={copyDiagnostics}>{diagnosticsCopied ? '복사됨!' : '진단 정보 복사'}</button>
+      <button type="button" class="grow" id="open-logs" onclick={() => void api.openLogs()}>{t('settings.troubleshoot.openLogs')}</button>
+      <button type="button" class="grow" id="copy-diagnostics" onclick={copyDiagnostics}>{diagnosticsCopied ? t('settings.copied') : t('settings.troubleshoot.copyDiagnostics')}</button>
     </div>
-    <div class="hint">문제가 생기면 진단 정보를 복사해 버그 신고에 붙여 주세요. 버전과 최근 오류만 담기고, 대화·메모·키는 담기지 않아요.</div>
+    <div class="hint">{t('settings.troubleshoot.hint')}</div>
   </div>
   <div class="row">
-    <button type="button" class="grow" id="reset-position" onclick={() => api.resetPosition()}>{@html pixelIcon('home')} 펫 위치 초기화</button>
-    <button class="ghost" type="button" onclick={() => api.quit()}>펫 종료</button>
+    <button type="button" class="grow" id="reset-position" onclick={() => api.resetPosition()}>{@html pixelIcon('home')} {t('settings.resetPosition')}</button>
+    <button class="ghost" type="button" onclick={() => api.quit()}>{t('settings.quitPet')}</button>
   </div>
-  <div class="hint">펫을 잃어버렸다면 ⌘/Ctrl + Alt + P 나 메뉴 막대(트레이) 아이콘의 "위치 초기화"로 오른쪽 아래로 불러올 수 있어요.</div>
+  <div class="hint">{t('settings.lostPetHint')}</div>
   <div id="ai-page" hidden={!aiOpen}><AiSettings open={aiOpen} onBack={() => showAiPage(false)} /></div>
 </div>
 
 <style>
   .settings-root { display: contents; }
+  .field-label { flex: none; min-width: 52px; }
 </style>

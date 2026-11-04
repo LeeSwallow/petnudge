@@ -22,7 +22,7 @@ describe('date filter', () => {
   it('labels and groups days newest first', () => {
     expect(dayLabel(today, today)).toBe('오늘');
     expect(dayLabel('2026-10-14', today)).toBe('어제');
-    expect(dayLabel('2026-09-01', today)).toBe('2026.09.01');
+    expect(dayLabel('2026-09-01', today)).toBe('2026. 09. 01.');
     const groups = groupByDay(['2026-10-14:a', '2026-10-15:b', '2026-10-14:c'], (s) => s.slice(0, 10));
     expect(groups.map((g) => [g.dateKey, g.items.length])).toEqual([['2026-10-15', 1], ['2026-10-14', 2]]);
     expect(groups[1].items).toEqual(['2026-10-14:a', '2026-10-14:c']);

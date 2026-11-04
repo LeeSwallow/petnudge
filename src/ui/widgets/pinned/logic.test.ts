@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Note } from '../../../shared/types';
-import { EMPTY_TEXT, pinnedView } from './logic';
+import { emptyText, pinnedView } from './logic';
 
 const note = (id: string, pinned: boolean, updatedAt: number, title = id, body = ''): Note => ({ id, title, body, pinned, createdAt: 0, updatedAt });
 
@@ -12,7 +12,7 @@ describe('pinned note widget', () => {
 
   it('is empty when nothing is pinned', () => {
     expect(pinnedView({ notes: [note('a', false, 1)] })).toBeNull();
-    expect(EMPTY_TEXT).toBe('고정한 메모가 없어요');
+    expect(emptyText()).toBe('고정한 메모가 없어요');
   });
 
   it('names an untitled note', () => {

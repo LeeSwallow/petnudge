@@ -1,6 +1,7 @@
 <script lang="ts">
   import { reducedMotion } from '../../../renderer/fx';
   import { revision } from '../../state/revision.svelte';
+  import { t } from '../../i18n';
   import { changedCards, clockFace, type Card, type ClockFace } from './logic';
 
   // The pixel flip desk clock (design B of the brainstorm): a purple body with
@@ -47,7 +48,7 @@
 
 <div class="clock" data-clock>
   <div class="desk">
-    <time class="body" datetime="{face.hours}:{face.minutes}" aria-label="{face.hours}시 {face.minutes}분">
+    <time class="body" datetime="{face.hours}:{face.minutes}" aria-label={t('widgets.clock.time', { hours: face.hours, minutes: face.minutes })}>
       {@render flipCard('hours', face.hours)}
       {@render flipCard('minutes', face.minutes)}
     </time>

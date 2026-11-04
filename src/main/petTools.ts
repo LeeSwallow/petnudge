@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import * as z from 'zod/v4';
 import { formatMinutes, lastDateKeys } from '../shared/stats';
 import type { Repository } from './db/repository';
@@ -80,7 +81,7 @@ export const createPetTools = (repo: Repository, bridge: ToolBridge): PetTool[] 
   return [
     // ---------- info ----------
     {
-      name: 'get_now', label: '현재 날짜·시간', group: 'info', write: false,
+      name: 'get_now', get label() { return t('tools.get_now'); }, group: 'info', write: false,
       description: 'Current local date, time and weekday.',
       schema: z.object({}),
       run: async () => {
@@ -91,7 +92,7 @@ export const createPetTools = (repo: Repository, bridge: ToolBridge): PetTool[] 
 
     // ---------- todos ----------
     {
-      name: 'list_todos', label: '할 일 보기', group: 'todos', write: false,
+      name: 'list_todos', get label() { return t('tools.list_todos'); }, group: 'todos', write: false,
       description: 'List the study todos with completion state and pomodoro counts (estimate vs. done). Optional date range on creation date.',
       schema: z.object({
         include_done: z.boolean().optional().describe('Include completed todos (default true)'),
@@ -104,7 +105,7 @@ export const createPetTools = (repo: Repository, bridge: ToolBridge): PetTool[] 
           .map(({ id, title, done, estimate, pomodoros, createdAt }) => ({ id, title, done, estimate, pomodoros, created: new Date(createdAt).toISOString().slice(0, 10) }))
     },
     {
-      name: 'add_todo', label: '할 일 추가', group: 'todos', write: true,
+      name: 'add_todo', get label() { return t('tools.add_todo'); }, group: 'todos', write: true,
       description: 'Add a study todo. `estimate` is the expected number of 25-minute pomodoros.',
       schema: z.object({ title: z.string().min(1).max(80), estimate: z.number().int().min(1).max(12).optional() }),
       run: async ({ title, estimate }: { title: string; estimate?: number }) => {
@@ -115,7 +116,7 @@ export const createPetTools = (repo: Repository, bridge: ToolBridge): PetTool[] 
       }
     },
     {
-      name: 'update_todo', label: '할 일 수정', group: 'todos', write: true,
+      name: 'update_todo', get label() { return t('tools.update_todo'); }, group: 'todos', write: true,
       description: 'Rename a todo or change its pomodoro estimate.',
       schema: z.object({ id: z.string(), title: z.string().min(1).max(80).optional(), estimate: z.number().int().min(1).max(12).optional() }),
       run: async ({ id, title, estimate }: { id: string; title?: string; estimate?: number }) => {
@@ -127,7 +128,7 @@ export const createPetTools = (repo: Repository, bridge: ToolBridge): PetTool[] 
       }
     },
     {
-      name: 'complete_todo', label: '할 일 완료', group: 'todos', write: true,
+      name: 'complete_todo', get label() { return t('tools.complete_todo'); }, group: 'todos', write: true,
       description: 'Mark a todo as done (or not done) by id.',
       schema: z.object({ id: z.string(), done: z.boolean().optional() }),
       run: async ({ id, done = true }: { id: string; done?: boolean }) => {
@@ -138,7 +139,7 @@ export const createPetTools = (repo: Repository, bridge: ToolBridge): PetTool[] 
       }
     },
     {
-      name: 'delete_todo', label: '할 일 삭제', group: 'todos', write: true,
+      name: 'delete_todo', get label() { return t('tools.delete_todo'); }, group: 'todos', write: true,
       description: 'Delete a todo by id. Ask the user first unless they clearly asked for it.',
       schema: z.object({ id: z.string() }),
       run: async ({ id }: { id: string }) => {
@@ -149,7 +150,7 @@ export const createPetTools = (repo: Repository, bridge: ToolBridge): PetTool[] 
       }
     },
     {
-      name: 'clear_completed_todos', label: '완료한 할 일 정리', group: 'todos', write: true,
+      name: 'clear_completed_todos', get label() { return t('tools.clear_completed_todos'); }, group: 'todos', write: true,
       description: 'Remove all completed todos.',
       schema: z.object({}),
       run: async () => {
@@ -161,7 +162,7 @@ export const createPetTools = (repo: Repository, bridge: ToolBridge): PetTool[] 
 
     // ---------- notes ----------
     {
-      name: 'list_notes', label: '메모 보기', group: 'notes', write: false,
+      name: 'list_notes', get label() { return t('tools.list_notes'); }, group: 'notes', write: false,
       description: 'List or search memo notes (title and body), newest first. Optional date range on last update.',
       schema: z.object({
         query: z.string().max(80).optional(),
@@ -173,7 +174,7 @@ export const createPetTools = (repo: Repository, bridge: ToolBridge): PetTool[] 
         repo.listNotes(query).filter((n) => inRange(n.updatedAt, from, to) && (!pinned_only || n.pinned)).map(brief)
     },
     {
-      name: 'add_note', label: '메모 작성', group: 'notes', write: true,
+      name: 'add_note', get label() { return t('tools.add_note'); }, group: 'notes', write: true,
       description: 'Create a memo note in the pet app.',
       schema: z.object({ title: z.string().max(80), body: z.string().max(20000).optional(), pinned: z.boolean().optional() }),
       run: async ({ title, body = '', pinned }: { title: string; body?: string; pinned?: boolean }) => {
@@ -185,7 +186,7 @@ export const createPetTools = (repo: Repository, bridge: ToolBridge): PetTool[] 
       }
     },
     {
-      name: 'update_note', label: '메모 수정', group: 'notes', write: true,
+      name: 'update_note', get label() { return t('tools.update_note'); }, group: 'notes', write: true,
       description: 'Edit a memo: replace title/body, append text to the body, or pin/unpin it.',
       schema: z.object({
         id: z.string(), title: z.string().max(80).optional(), body: z.string().max(20000).optional(),
@@ -200,20 +201,20 @@ export const createPetTools = (repo: Repository, bridge: ToolBridge): PetTool[] 
       }
     },
     {
-      name: 'delete_note', label: '메모 삭제', group: 'notes', write: true,
+      name: 'delete_note', get label() { return t('tools.delete_note'); }, group: 'notes', write: true,
       description: 'Delete a memo by id. Ask the user first unless they clearly asked for it.',
       schema: z.object({ id: z.string() }),
       run: async ({ id }: { id: string }) => {
         const removed = note(id);
         repo.deleteNote(id);
         bridge.notifyChanged('notes');
-        return `Deleted "${removed.title || '(제목 없음)'}".`;
+        return `Deleted "${removed.title || '(untitled)'}".`;
       }
     },
 
     // ---------- timer & stats ----------
     {
-      name: 'get_timer', label: '타이머 보기', group: 'timer', write: false,
+      name: 'get_timer', get label() { return t('tools.get_timer'); }, group: 'timer', write: false,
       description: 'Current pomodoro timer state: mode (idle/focus/break), remaining seconds, paused, active todo.',
       schema: z.object({}),
       run: async () => {
@@ -232,7 +233,7 @@ export const createPetTools = (repo: Repository, bridge: ToolBridge): PetTool[] 
       }
     },
     {
-      name: 'control_timer', label: '타이머 조작', group: 'timer', write: true,
+      name: 'control_timer', get label() { return t('tools.control_timer'); }, group: 'timer', write: true,
       description: 'Start a focus session, stop (abandon) it, or pause/resume the running timer in the desktop pet.',
       schema: z.object({ command: z.enum(['start', 'stop', 'pause', 'resume']) }),
       run: async ({ command }: { command: TimerCommand }) => {
@@ -241,7 +242,7 @@ export const createPetTools = (repo: Repository, bridge: ToolBridge): PetTool[] 
       }
     },
     {
-      name: 'get_stats', label: '집중 통계', group: 'stats', write: false,
+      name: 'get_stats', get label() { return t('tools.get_stats'); }, group: 'stats', write: false,
       description: 'Focus statistics for the last N days: minutes and sessions per day, completion rate, pauses, average focus rating.',
       schema: z.object({ days: z.number().int().min(1).max(90).optional() }),
       run: async ({ days = 7 }: { days?: number }) => {
@@ -255,7 +256,7 @@ export const createPetTools = (repo: Repository, bridge: ToolBridge): PetTool[] 
 
     // ---------- settings ----------
     {
-      name: 'get_settings', label: '설정 보기', group: 'settings', write: false,
+      name: 'get_settings', get label() { return t('tools.get_settings'); }, group: 'settings', write: false,
       description: 'Timer lengths, daily goal, music and pet behaviour settings.',
       schema: z.object({}),
       run: async () => {
@@ -264,7 +265,7 @@ export const createPetTools = (repo: Repository, bridge: ToolBridge): PetTool[] 
       }
     },
     {
-      name: 'update_settings', label: '설정 바꾸기', group: 'settings', write: true,
+      name: 'update_settings', get label() { return t('tools.update_settings'); }, group: 'settings', write: true,
       description: 'Change timer lengths (minutes), long break cadence, daily goal sessions, auto start, music sync/volume, wandering and eye following.',
       schema: settingsPatch,
       run: async (patch: z.infer<typeof settingsPatch>) => {
@@ -276,13 +277,13 @@ export const createPetTools = (repo: Repository, bridge: ToolBridge): PetTool[] 
 
     // ---------- music ----------
     {
-      name: 'list_playlists', label: '플레이리스트 보기', group: 'music', write: false,
+      name: 'list_playlists', get label() { return t('tools.list_playlists'); }, group: 'music', write: false,
       description: 'The music playlists and how many tracks each has.',
       schema: z.object({}),
       run: async () => repo.listPlaylists().map((p) => ({ id: p.id, name: p.name, tracks: p.items.length }))
     },
     {
-      name: 'control_music', label: '음악 조작', group: 'music', write: true,
+      name: 'control_music', get label() { return t('tools.control_music'); }, group: 'music', write: true,
       description: 'Play, pause or skip to the next track in the pet music player.',
       schema: z.object({ action: z.enum(['play', 'pause', 'next']) }),
       run: async ({ action }: { action: 'play' | 'pause' | 'next' }) => {
@@ -293,7 +294,7 @@ export const createPetTools = (repo: Repository, bridge: ToolBridge): PetTool[] 
 
     // ---------- the pet ----------
     {
-      name: 'pet_express', label: '표정·동작', group: 'pet', write: false,
+      name: 'pet_express', get label() { return t('tools.pet_express'); }, group: 'pet', write: false,
       description: 'Make yourself (the pet) react visibly: an effect (hearts, stars, sparkles, sweat, anger), a face (smile, laugh, closed, focused…) or a pack action id. Use it naturally, not every turn.',
       schema: z.object({
         fx: z.enum(['hearts', 'stars', 'sparkles', 'sweat', 'anger']).optional(),
@@ -307,13 +308,13 @@ export const createPetTools = (repo: Repository, bridge: ToolBridge): PetTool[] 
       }
     },
     {
-      name: 'list_characters', label: '캐릭터 목록', group: 'pet', write: false,
+      name: 'list_characters', get label() { return t('tools.list_characters'); }, group: 'pet', write: false,
       description: 'Characters installed in the app (the user can switch between them).',
       schema: z.object({}),
       run: async () => (await bridge.listCharacters?.()) ?? []
     },
     {
-      name: 'switch_character', label: '캐릭터 바꾸기', group: 'pet', write: true,
+      name: 'switch_character', get label() { return t('tools.switch_character'); }, group: 'pet', write: true,
       description: 'Switch the desktop pet to another installed character by id.',
       schema: z.object({ id: z.string() }),
       run: async ({ id }: { id: string }) => {
@@ -324,20 +325,20 @@ export const createPetTools = (repo: Repository, bridge: ToolBridge): PetTool[] 
       }
     },
     {
-      name: 'list_mods', label: '모드 목록', group: 'pet', write: false,
+      name: 'list_mods', get label() { return t('tools.list_mods'); }, group: 'pet', write: false,
       description: 'Behaviour mods installed in the app and whether each is on.',
       schema: z.object({}),
       run: async () => (await bridge.listMods?.()) ?? []
     },
     // ---------- chat sessions (outside AIs joining the pet's conversations) ----------
     {
-      name: 'list_chat_sessions', label: '대화 세션 목록', group: 'chat', write: false, mcpOnly: true,
+      name: 'list_chat_sessions', get label() { return t('tools.list_chat_sessions'); }, group: 'chat', write: false, mcpOnly: true,
       description: "List the pet app's chat sessions (conversations between the user and the desktop pet characters), newest first.",
       schema: z.object({}),
       run: async () => sessions().map((s) => ({ id: s.id, title: s.title, members: s.members ?? [s.characterId], messages: s.messages.length, updated: new Date(s.updatedAt).toISOString() }))
     },
     {
-      name: 'read_chat_session', label: '대화 세션 읽기', group: 'chat', write: false, mcpOnly: true,
+      name: 'read_chat_session', get label() { return t('tools.read_chat_session'); }, group: 'chat', write: false, mcpOnly: true,
       description: 'Read the latest messages of a chat session. Speakers: "user", a character id, or "guest:<name>" for outside AIs.',
       schema: z.object({ session_id: z.string(), last: z.number().int().min(1).max(100).optional() }),
       run: async ({ session_id, last = 30 }: { session_id: string; last?: number }) => {
@@ -348,7 +349,7 @@ export const createPetTools = (repo: Repository, bridge: ToolBridge): PetTool[] 
       }
     },
     {
-      name: 'post_chat_message', label: '대화 세션에 말하기', group: 'chat', write: true, mcpOnly: true,
+      name: 'post_chat_message', get label() { return t('tools.post_chat_message'); }, group: 'chat', write: true, mcpOnly: true,
       description: 'Join a chat session as a guest and say something. With reply=true the pet characters in the session answer; read the session again after a few seconds to see them.',
       schema: z.object({ session_id: z.string(), name: z.string().min(1).max(24).describe('Your display name, e.g. "Claude Code"'), text: z.string().min(1).max(2000), reply: z.boolean().optional() }),
       run: async ({ session_id, name, text, reply = true }: { session_id: string; name: string; text: string; reply?: boolean }) => {
@@ -359,7 +360,7 @@ export const createPetTools = (repo: Repository, bridge: ToolBridge): PetTool[] 
       }
     },
     {
-      name: 'toggle_mod', label: '모드 켜기·끄기', group: 'pet', write: true,
+      name: 'toggle_mod', get label() { return t('tools.toggle_mod'); }, group: 'pet', write: true,
       description: 'Turn a behaviour mod on or off by id.',
       schema: z.object({ id: z.string(), enabled: z.boolean() }),
       run: async ({ id, enabled }: { id: string; enabled: boolean }) => {

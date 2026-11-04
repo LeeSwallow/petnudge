@@ -4,6 +4,7 @@ import { data } from './data';
 import { pixelIcon } from './icons';
 import { RANGE_PRESETS, dayLabel, rangeBounds, type DateRange } from '../shared/dateFilter';
 import { shiftDateKey } from '../shared/stats';
+import { onLocaleChange, t } from '../i18n';
 
 // The funnel (깔때기) filter shared by the notes, todo and focus record lists:
 // a toggle button plus a compact panel with a date range and whatever extra
@@ -12,7 +13,7 @@ import { shiftDateKey } from '../shared/stats';
 export type FilterState = DateRange & Record<string, string | boolean>;
 
 export const funnelButton = (id: string, controls: string) =>
-  `<button class="ghost funnel" type="button" id="${id}" aria-controls="${controls}" aria-expanded="false" data-tip="필터">${pixelIcon('funnel', '필터')}</button>`;
+  `<button class="ghost funnel" type="button" id="${id}" aria-controls="${controls}" aria-expanded="false" data-tip="${esc(t('filter.label'))}">${pixelIcon('funnel', t('filter.label'))}</button>`;
 
 export const segmented = (name: string, options: [string, string][], current: string, label: string) =>
   `<div class="seg" role="group" aria-label="${esc(label)}">${options
@@ -53,18 +54,18 @@ export const createFilter = <T extends FilterState>(button: HTMLButtonElement, p
 
   const render = () => {
     panel.innerHTML = `
-      ${segmented('preset', RANGE_PRESETS, state.preset, '기간')}
+      ${segmented('preset', RANGE_PRESETS.map(([preset, key]) => [preset, t(key)]), state.preset, t('filter.period'))}
       ${
         state.preset === 'custom'
           ? `<div class="row filter-dates">
-              <input type="date" data-date="from" value="${esc(state.from)}" max="${data.todayKey}" aria-label="시작 날짜" />
+              <input type="date" data-date="from" value="${esc(state.from)}" max="${data.todayKey}" aria-label="${esc(t('filter.from'))}" />
               <span>~</span>
-              <input type="date" data-date="to" value="${esc(state.to)}" max="${data.todayKey}" aria-label="끝 날짜" />
+              <input type="date" data-date="to" value="${esc(state.to)}" max="${data.todayKey}" aria-label="${esc(t('filter.to'))}" />
             </div>`
           : ''
       }
       ${options.extras?.(state) ?? ''}
-      <button class="ghost filter-reset" type="button" data-filter-reset hidden>필터 초기화</button>`;
+      <button class="ghost filter-reset" type="button" data-filter-reset hidden>${esc(t('filter.reset'))}</button>`;
     sync();
   };
 
@@ -107,6 +108,11 @@ export const createFilter = <T extends FilterState>(button: HTMLButtonElement, p
 
   panel.hidden = true;
   render();
+  // the panel is plain HTML: a change of language draws it again
+  onLocaleChange(() => {
+    render();
+    button.dataset.tip = t('filter.label');
+  });
 
   // Restore the remembered filter (only known keys of the right type).
   void api.db.getKv(options.kvKey).then((raw) => {

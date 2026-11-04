@@ -1,4 +1,5 @@
 import * as z from 'zod/v4';
+import { t } from '../i18n';
 
 // Chatting with the pet. Two kinds of providers:
 //   cli  the user's own Claude Code / Codex (no key in the app; app tools
@@ -114,11 +115,13 @@ const lengthRule = { short: '보통 1~3문장으로 짧게', normal: '필요한 
 // The system prompt: the shared base, then this character's profile.
 export const buildSystemPrompt = (config: ChatConfig, request: Pick<ChatRequest, 'characterId' | 'character' | 'packPersona' | 'nickname' | 'status' | 'members'>) => {
   const profile = profileSchema.parse(config.profiles[request.characterId] ?? {});
-  const persona = profile.persona?.trim() || request.packPersona || '다정하고 밝은 성격.';
+  const persona = profile.persona?.trim() || request.packPersona || t('chat.model.defaultPersona');
   const call = profile.callUser?.trim() || request.nickname;
   return [
     config.basePrompt.trim() || DEFAULT_BASE_PROMPT,
     '',
+    // the user's language (#77), in that language: the rest of the prompt is Korean
+    t('chat.model.language'),
     `[캐릭터] 이름: ${request.character}`,
     `성격·말투: ${persona}`,
     `${profile.speech ? `${profile.speech === 'jondaet' ? '존댓말' : '반말'}로, ` : ''}${lengthRule[profile.length]} 대답해.${profile.emoji ? ' 이모지는 가끔 써도 좋아.' : ' 이모지는 쓰지 마.'}`,
@@ -144,12 +147,12 @@ export const parseChatRequest = (input: unknown): ChatRequest => {
     .filter((m): m is { role: 'user' | 'pet'; text: string } => typeof m === 'object' && m !== null && (m.role === 'user' || m.role === 'pet') && typeof m.text === 'string')
     .map((m) => ({ role: m.role, text: m.text.slice(0, 4000) }))
     .slice(-30);
-  if (clean.length === 0 || clean[clean.length - 1].role !== 'user' || !clean[clean.length - 1].text.trim()) throw new Error('보낼 메시지가 없어요');
+  if (clean.length === 0 || clean[clean.length - 1].role !== 'user' || !clean[clean.length - 1].text.trim()) throw new Error(t('error.chat.noMessage'));
   const str = (value: unknown, max: number) => (typeof value === 'string' ? value.slice(0, max) : undefined);
   return {
     messages: clean,
     characterId: str(source.characterId, 48) ?? '',
-    character: str(source.character, 40) ?? '펫',
+    character: str(source.character, 40) ?? t('chat.model.pet'),
     packPersona: str(source.packPersona, 800),
     nickname: str(source.nickname, 40),
     status: str(source.status, 400) ?? '',

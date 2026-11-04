@@ -1,3 +1,4 @@
+import { localizedLines, localizedText, packLanguage, t } from '../i18n';
 import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -28,11 +29,11 @@ const rgbaPixels = (w: number, h: number, rgba: Uint8Array): Pixels => {
   return { w, h, data: new Uint32Array(copy.buffer, 0, w * h) };
 };
 
-const tooBig = (w: number, h: number) => new Error(`그림이 ${w}×${h}예요. ${FRAME.w}×${FRAME.h} 이하로 줄여 주세요 (격자 정리)`);
+const tooBig = (w: number, h: number) => new Error(t('error.editor.tooBig', { w, h, maxW: FRAME.w, maxH: FRAME.h }));
 
 // One PNG as a full-canvas picture (smaller ones in the middle).
 export const imageFromPng = (name: string, bytes: Uint8Array): ImportedImage => {
-  if (bytes.length > MAX_IMAGE_BYTES) throw new Error('그림 파일이 너무 커요');
+  if (bytes.length > MAX_IMAGE_BYTES) throw new Error(t('error.editor.imageFile'));
   const { width, height, rgba } = decodePng(Buffer.from(bytes.buffer, bytes.byteOffset, bytes.length));
   if (width > FRAME.w || height > FRAME.h) throw tooBig(width, height);
   return { name, pixels: framePicture(width, height, rgbaPixels(width, height, rgba).data) };
@@ -42,21 +43,21 @@ const layeredKind = (file: string) => {
   const ext = path.extname(file).toLowerCase();
   if (ext === '.pxo') return 'pxo' as const;
   if (ext === '.aseprite' || ext === '.ase') return 'aseprite' as const;
-  throw new Error(`레이어 파일은 .pxo나 .aseprite만 읽을 수 있어요: ${path.basename(file)}`);
+  throw new Error(t('error.editor.layerKind', { name: path.basename(file) }));
 };
 
 const findAseprite = () => {
   try {
     return aseprite.findAseprite();
   } catch {
-    throw new Error('.aseprite 파일은 Aseprite가 설치되어 있어야 읽을 수 있어요. Aseprite에서 PNG나 .pxo로 내보내거나, ASEPRITE 환경 변수에 실행 파일 경로를 지정해 주세요');
+    throw new Error(t('error.editor.needAseprite'));
   }
 };
 
 // Every pixel layer of a layered file at the file's size, bottom to top.
 export const layersFromFile = async (file: string): Promise<NamedPicture[]> => {
   const info = await stat(file);
-  if (!info.isFile() || info.size > MAX_LAYERED_BYTES) throw new Error('레이어 파일의 종류나 크기를 확인해 주세요');
+  if (!info.isFile() || info.size > MAX_LAYERED_BYTES) throw new Error(t('error.editor.layerFile'));
   if (layeredKind(file) === 'pxo') {
     const { width, height, layers } = await readPxo(file);
     if (width > FRAME.w || height > FRAME.h) throw tooBig(width, height);
@@ -83,7 +84,7 @@ export const layersFromFile = async (file: string): Promise<NamedPicture[]> => {
 // A layered file given as bytes (the editor check's test door): written to a
 // temporary file of the same kind and read like one.
 export const layersFromBytes = async (name: string, bytes: Uint8Array): Promise<NamedPicture[]> => {
-  if (bytes.length > MAX_LAYERED_BYTES) throw new Error('레이어 파일이 너무 커요');
+  if (bytes.length > MAX_LAYERED_BYTES) throw new Error(t('error.editor.layerTooBig'));
   const kind = layeredKind(name);
   const dir = await mkdtemp(path.join(os.tmpdir(), 'petnudge-editor-import-'));
   try {
@@ -98,6 +99,9 @@ export const layersFromBytes = async (name: string, bytes: Uint8Array): Promise<
 // Another character as a standard draft. An editor-made pack (@3) already
 // uses the standard names; an older pack (@2) is converted (convert.ts), and
 // what has no slot comes back in `dropped`.
+// A reaction's lines in the pack's own language (what the editor edits).
+const linesOf = (pack: CharacterPack, id: string) => [...(localizedLines(pack.actions?.[id]?.lines, packLanguage(pack), packLanguage(pack)) ?? [])];
+
 export const characterDraft = async (files: { source: string; manifest: string }): Promise<Converted> => {
   const pack = JSON.parse(await readFile(files.manifest, 'utf8')) as CharacterPack;
   const layers = await layersFromFile(files.source);
@@ -105,15 +109,15 @@ export const characterDraft = async (files: { source: string; manifest: string }
   const parts: Record<string, Pixels> = {};
   const dropped: Dropped[] = [];
   for (const { name, pixels } of layers) {
-    if (!standardPart(name) || parts[name]) dropped.push({ name, reason: '표준 칸에 없는 레이어예요' });
-    else if (pixels.w !== FRAME.w || pixels.h !== FRAME.h) dropped.push({ name, reason: `그림 크기가 ${FRAME.w}×${FRAME.h}가 아니에요` });
+    if (!standardPart(name) || parts[name]) dropped.push({ name, reason: t('error.editor.notStandard') });
+    else if (pixels.w !== FRAME.w || pixels.h !== FRAME.h) dropped.push({ name, reason: t('error.editor.wrongSize', { w: FRAME.w, h: FRAME.h }) });
     else parts[name] = pixels;
   }
   const draft: CharacterDraft = {
     id: pack.id,
     name: pack.name,
-    persona: pack.persona ?? '',
-    lines: { pat: [...(pack.actions?.pat?.lines ?? [])], pokeChest: [...(pack.actions?.pokeChest?.lines ?? [])], pokeBelly: [...(pack.actions?.pokeBelly?.lines ?? [])] },
+    persona: localizedText(pack.persona, packLanguage(pack), packLanguage(pack)) ?? '',
+    lines: { pat: linesOf(pack, 'pat'), pokeChest: linesOf(pack, 'pokeChest'), pokeBelly: linesOf(pack, 'pokeBelly') },
     parts,
     order: Object.keys(parts)
   };
