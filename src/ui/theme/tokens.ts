@@ -12,6 +12,7 @@ export const COLOR = {
   well: '#17142c',
   edge: '#6d5aa8',
   'edge-hi': '#9886d6',
+  'edge-lo': '#4b3f7a', // the desk clock's base and feet
   shadow: '#0b0918',
   focus: '#ffb86b',
   break: '#8fc7ff',
