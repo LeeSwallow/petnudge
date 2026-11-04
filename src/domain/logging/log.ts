@@ -9,12 +9,22 @@ export const LEVELS = Object.keys(RANK) as Level[];
 export const atLeast = (level: Level, min: Level) => RANK[level] <= RANK[min];
 
 const HIDDEN = '[가림]';
-// API keys (sk-…, sk-ant-…), bearer tokens, and long hex/base64url runs
-// (session tokens, hashes of secrets). Plain words never reach 32 characters.
-const SECRETS: RegExp[] = [/\bsk-[A-Za-z0-9_-]{8,}/g, /(\bBearer\s+)[A-Za-z0-9._~+/=-]{8,}/g, /\b[A-Za-z0-9_-]{32,}\b/g];
 
-export const redact = (text: string) =>
-  SECRETS.reduce((out, pattern) => out.replace(pattern, (match, bearer?: string) => (typeof bearer === 'string' && match.startsWith(bearer) ? bearer + HIDDEN : HIDDEN)), text);
+// Each rule keeps what names the secret (the scheme, the parameter, the
+// header) and hides the value. Ids and paths stay readable: a UUID or a long
+// kebab-case file name is not a secret, so the catch-all for long tokens asks
+// for what random tokens have and words do not (mixed case and digits).
+const RULES: [RegExp, (...m: string[]) => string][] = [
+  [/(\/\/)[^/\s:@]+:[^/\s@]+@/g, (_m, slashes) => `${slashes}${HIDDEN}@`],
+  [/\bsk-[A-Za-z0-9_-]{8,}/g, () => HIDDEN],
+  [/\b(bearer|basic)(\s+)[A-Za-z0-9._~+/=-]{6,}/gi, (_m, scheme, space) => `${scheme}${space}${HIDDEN}`],
+  [/([?&](?:api_?key|key|token|access_token|secret|password)=)[^&\s]+/gi, (_m, name) => `${name}${HIDDEN}`],
+  [/\b((?:x-)?api-key)(:\s*)\S+/gi, (_m, name, colon) => `${name}${colon}${HIDDEN}`],
+  [/\b[0-9a-fA-F]{32,}\b/g, () => HIDDEN],
+  [/[A-Za-z0-9+/_=-]{32,}/g, (m) => (/[a-z]/.test(m) && /[A-Z]/.test(m) && /[0-9]/.test(m) ? HIDDEN : m)]
+];
+
+export const redact = (text: string) => RULES.reduce((out, [pattern, replace]) => out.replace(pattern, replace as never), text);
 
 export type Entry = { at: Date; level: Level; scope: string; message: string; detail?: string };
 
