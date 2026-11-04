@@ -11,7 +11,8 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { editorFor } from './source.mjs';
-import { checkLayers, checkPack } from './check.mjs';
+import { checkLayers, checkPack, checkPixels } from './check.mjs';
+import { decodePng } from './png.mjs';
 import { discover } from './discover.mjs';
 
 const fail = (errors) => {
@@ -46,6 +47,23 @@ export const exportCharacter = async (source, manifest, outputDir, { log = conso
     const checked = checkPack(pack, cells);
     if (checked.errors.length) fail(checked.errors);
     checked.warnings.forEach((w) => log.warn(`! ${w}`));
+    // Pose colours and irises, from the exported pixels (when the sheet is 8-bit RGBA).
+    let png;
+    try {
+      png = decodePng(await readFile(sheet));
+    } catch {
+      png = undefined;
+    }
+    if (png) {
+      const all = new Uint32Array(png.rgba.buffer, png.rgba.byteOffset, png.rgba.length / 4);
+      const { w, h } = pack.frame;
+      const pictures = new Map(Object.entries(cells).map(([name, [x, y]]) => {
+        const data = new Uint32Array(w * h);
+        for (let row = 0; row < h; row++) data.set(all.subarray((y + row) * png.width + x, (y + row) * png.width + x + w), row * w);
+        return [name, { w, h, data }];
+      }));
+      checkPixels(pack, pictures).warnings.forEach((w) => log.warn(`! ${w}`));
+    }
 
     const result = { ...pack, sheet: 'sheet.png', cells };
     await mkdir(outputDir, { recursive: true });
