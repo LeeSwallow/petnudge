@@ -25,6 +25,7 @@ import { petStore, whenHydrated } from './store';
 import { installTooltip } from './tooltip';
 import { pixelIcon } from './icons';
 import { characterReady, pack, setCharacter } from './character';
+import { mountProbe } from '../ui/mount';
 
 const TRANSITION_STEP_MS = 1200;
 const MODULES: PanelModule[] = [todoModule, pomodoroModule, dashboardModule, playlistModule, notesModule, chatModule, friendsModule, settingsModule];
@@ -227,6 +228,7 @@ const boot = async () => {
   music.setVolume(data.settings.musicVolume);
 
   buildDock();
+  mountProbe(panel);
   const saved = (await api.db.getKv('ui.module')) as ModuleId | null;
   showModule(saved && MODULES.some((m) => m.id === saved) ? saved : 'pomodoro', false);
 

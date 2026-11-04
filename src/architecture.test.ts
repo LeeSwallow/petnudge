@@ -34,11 +34,15 @@ export const importsOf = (source: string): ImportRef[] => [
 const layerOf = (file: string): string => file.split('/')[0];
 
 // `file` and the result are paths relative to src/, with forward slashes.
+// A Svelte component imports only from its <script> blocks; the markup is text.
+const scriptsOf = (source: string) => [...source.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1]).join('\n');
+
 export const violations = (file: string, source: string): string[] => {
   const layer = layerOf(file) as Layer;
   if (!LAYERS.includes(layer)) return [];
   const found: string[] = [];
-  for (const { spec, typeOnly } of importsOf(source)) {
+  const code = file.endsWith('.svelte') ? scriptsOf(source) : source;
+  for (const { spec, typeOnly } of importsOf(code)) {
     if (spec.startsWith('.')) {
       const target = path.posix.normalize(path.posix.join(path.posix.dirname(file), spec));
       const targetLayer = layerOf(target);
@@ -62,7 +66,7 @@ const sourceFiles = (dir: string): string[] =>
   readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) return sourceFiles(full);
-    return entry.name.endsWith('.ts') ? [path.relative(SRC, full).split(path.sep).join('/')] : [];
+    return /\.(ts|svelte)$/.test(entry.name) ? [path.relative(SRC, full).split(path.sep).join('/')] : [];
   });
 
 describe('layer rule checker', () => {
@@ -85,6 +89,13 @@ describe('layer rule checker', () => {
       'domain/todos/todo.ts → core/engine'
     ]);
     expect(violations('core/engine.ts', "import { a } from '../app/todos/module';")).toEqual(['core/engine.ts → app/todos/module']);
+  });
+
+  it('reads the script blocks of Svelte components', () => {
+    expect(
+      violations('ui/Panel.svelte', '<script lang="ts">\nimport { ipcRenderer } from "electron";\n</script>\n<p>\nimport x from "effect"\n</p>')
+    ).toEqual(['ui/Panel.svelte → electron']);
+    expect(violations('ui/Panel.svelte', '<script lang="ts">import { a } from "../domain/x";</script>')).toEqual([]);
   });
 
   it('keeps app modules apart and away from legacy folders', () => {
