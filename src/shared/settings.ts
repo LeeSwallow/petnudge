@@ -19,6 +19,9 @@ export type AppSettings = {
   // Wander around the screen now and then (not during focus sessions).
   walkAround: boolean;
   reduceMotion: boolean;
+  // ⌘/Ctrl+Alt+C opens the quick chat from anywhere. Off by default: a global
+  // shortcut takes the keys away from every other app.
+  chatShortcut: boolean;
   nickname: string;
   // Character customisation: variant ids of the active character pack's slots.
   avatarHair: string;
@@ -45,6 +48,7 @@ export const defaultSettings: AppSettings = {
   eyesFollowCursor: true,
   walkAround: true,
   reduceMotion: false,
+  chatShortcut: false,
   nickname: '',
   avatarHair: 'lavender',
   avatarOutfit: 'jacket',
