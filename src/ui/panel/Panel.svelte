@@ -1,0 +1,90 @@
+<script lang="ts">
+  import { flushSync } from 'svelte';
+  import type { ModuleId, PanelModule } from '../../renderer/modules/module';
+  import { pixelIcon } from '../../renderer/icons';
+  import Tabs from '../components/Tabs.svelte';
+  import { DEFAULT_MODULE, GROUPS, groupOf, visibleGroups, type GroupId } from './groups';
+  import LegacyModule from './LegacyModule.svelte';
+
+  type Props = {
+    modules: PanelModule[];
+    // after a module is shown (persist it, render it, animate)
+    onshow: (id: ModuleId, animate: boolean) => void;
+    onquit: () => void;
+  };
+  let { modules, onshow, onquit }: Props = $props();
+
+  let current = $state<ModuleId>(DEFAULT_MODULE);
+  // the module each group showed last, so a group opens where it was left
+  const lastIn: Partial<Record<GroupId, ModuleId>> = {};
+  const group = $derived(groupOf(current));
+  const groupItems = visibleGroups().map((g) => ({ id: g.id, label: g.label, icon: g.icon }));
+  const inGroup = $derived(
+    (GROUPS.find((g) => g.id === group)?.modules ?? [])
+      .map((id) => modules.find((m) => m.id === id))
+      .filter((m): m is PanelModule => m !== undefined)
+      .map((m) => ({ id: m.id, label: m.label, icon: m.icon }))
+  );
+
+  export const show = (id: ModuleId, animate = true) => {
+    current = id;
+    lastIn[groupOf(id)] = id;
+    flushSync();
+    onshow(id, animate);
+  };
+  export const active = () => current;
+
+  const selectGroup = (id: string) => {
+    const g = GROUPS.find((x) => x.id === id);
+    if (g) show(lastIn[g.id] ?? g.modules[0]);
+  };
+</script>
+
+<div class="ui-panel">
+  <Tabs variant="group" key="group" label="기능 묶음" items={groupItems} selected={group} onselect={selectGroup} />
+  {#if inGroup.length > 1}
+    <Tabs variant="sub" key="module" label="기능" items={inGroup} selected={current} onselect={(id) => show(id as ModuleId)} />
+  {/if}
+  <div class="module-host">
+    {#each modules as module (module.id)}
+      <LegacyModule {module} visible={module.id === current} />
+    {/each}
+  </div>
+  {#if group === 'settings'}
+    <footer>
+      <button type="button" class="quit" data-quit onclick={onquit}>{@html pixelIcon('power')}<span>나가기</span></button>
+    </footer>
+  {/if}
+</div>
+
+<style>
+  .ui-panel {
+    min-height: 0;
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+  }
+  .ui-panel :global(.ui-tabs.group) { background: var(--color-well); }
+  footer {
+    flex: none;
+    display: flex;
+    justify-content: flex-end;
+    padding: var(--space-1) var(--space-2) var(--space-2);
+    border-top: var(--stroke-frame) solid var(--color-well);
+  }
+  .quit {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-1) var(--space-2);
+    font: var(--type-small) var(--font-small);
+    color: var(--color-muted);
+    background: var(--color-well);
+    border: var(--stroke-frame) solid var(--color-shadow);
+    box-shadow: none;
+    border-radius: 0;
+    cursor: pointer;
+  }
+  .quit:hover { color: #ff8fa3; border-color: #df6074; }
+  .quit:focus-visible { outline: var(--stroke-frame) solid var(--color-goal); outline-offset: -2px; }
+</style>

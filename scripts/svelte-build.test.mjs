@@ -10,11 +10,11 @@ import { svelteOptions } from './svelte-options.mjs';
 describe('Svelte in the renderer bundle', () => {
   it('bundles a Svelte component for the renderer without eval', async () => {
     const out = await build({
-      entryPoints: ['src/ui/mount.ts'], bundle: true, write: false, format: 'iife', platform: 'browser', target: 'es2022',
+      entryPoints: ['src/ui/panel/controller.ts'], bundle: true, write: false, format: 'iife', platform: 'browser', target: 'es2022',
       logLevel: 'silent', plugins: [sveltePlugin(svelteOptions)]
     });
     const js = out.outputFiles[0].text;
-    expect(js).toContain('petnudge-probe');
+    expect(js).toContain('ui-panel');
     expect(js).not.toMatch(/\beval\(|new Function\(/);
   });
 

@@ -108,49 +108,6 @@ body.below {
   }
 }
 
-.tabs {
-  display: flex;
-  flex: none;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: thin;
-  scrollbar-color: var(--edge) var(--well);
-  gap: 3px;
-  padding: 8px 6px 4px;
-  background: var(--well);
-  border-bottom: 2px solid var(--edge);
-}
-
-.tab {
-  flex: 0 0 auto;
-  white-space: nowrap;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 6px 10px 4px;
-  margin-bottom: -2px;
-  font: 12px var(--font);
-  color: var(--muted);
-  background: #1f1830;
-  border: 2px solid var(--shadow);
-  border-bottom: none;
-  cursor: pointer;
-}
-
-.tab[aria-selected='true'] {
-  color: var(--ink);
-  background: var(--panel);
-  border-color: var(--edge);
-  padding-top: 8px;
-  margin-top: -2px;
-  box-shadow: inset 2px 2px 0 var(--edge-hi);
-}
-
-.tab-icon {
-  display: inline-flex;
-}
-
 .pixel-icon {
   display: inline-block;
   flex: none;
@@ -174,11 +131,6 @@ body.below {
 button:focus-visible {
   outline: 2px solid var(--goal);
   outline-offset: -2px;
-}
-
-.tab[aria-selected='true'] .tab-icon {
-  color: var(--focus);
-  animation: bob 1s steps(2) infinite;
 }
 
 @keyframes bob {
@@ -916,65 +868,6 @@ select:focus {
   *::after {
     animation: none !important;
   }
-}
-
-/* ---------- 7-module dock ---------- */
-/* Tabs split the full width into equal columns, with a 3x icon over an
-   11px label and a 52px-tall target. */
-.tabs {
-  display: grid;
-  grid-template-columns: repeat(var(--tab-count, 7), minmax(0, 1fr)) 40px;
-}
-
-/* Quit sits at the end of the tab row, set apart from the tabs. */
-.dock-quit {
-  min-height: 52px;
-  margin: 0 0 2px 3px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  padding: 6px 0 4px;
-  font: 10px var(--font);
-  color: var(--muted);
-  background: #1f1830;
-  border: 2px solid var(--shadow);
-  cursor: pointer;
-}
-
-.dock-quit .pixel-icon {
-  width: 16px;
-  height: 16px;
-}
-
-.dock-quit:hover {
-  color: #ff8fa3;
-  border-color: #df6074;
-}
-
-.tab {
-  min-width: 0;
-  min-height: 52px;
-  flex-direction: column;
-  gap: 3px;
-  padding: 6px 0 4px;
-  font: 11px var(--font);
-  letter-spacing: -1px;
-}
-
-.tab .pixel-icon {
-  width: 24px;
-  height: 24px;
-}
-
-.tab:hover:not([aria-selected='true']) {
-  color: var(--ink-2);
-  background: #2a2140;
-}
-
-.tab[aria-selected='true'] {
-  padding-top: 8px;
 }
 
 .module-host {
