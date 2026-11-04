@@ -5,7 +5,7 @@ import { PROVIDER_INFO, type ChatConfig, type ChatProviderInfo, type ChatToolInf
 // The settings tab's wording, apart from the screen (tested in logic.test.ts).
 
 export type NumberKey = 'focusMinutes' | 'breakMinutes' | 'longBreakMinutes' | 'longBreakEvery' | 'dailyGoalSessions' | 'petScale';
-export type BoolKey = 'autoStartFocus' | 'alwaysOnTop' | 'eyesFollowCursor' | 'walkAround' | 'reduceMotion';
+export type BoolKey = 'autoStartFocus' | 'alwaysOnTop' | 'eyesFollowCursor' | 'walkAround' | 'reduceMotion' | 'chatShortcut';
 
 // dailyGoalSessions is drawn with a tomato icon by the screen; the text is the number.
 export const stepperText = (key: NumberKey, value: number) =>

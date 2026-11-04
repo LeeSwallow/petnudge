@@ -24,7 +24,8 @@
     ['alwaysOnTop', '항상 다른 창 위에 표시'],
     ['eyesFollowCursor', '눈으로 마우스 커서 따라보기'],
     ['walkAround', '가끔 화면 위를 걸어다니기 (집중 중에는 쉬어요)'],
-    ['reduceMotion', '움직임 줄이기 (전환 효과 끄기)']
+    ['reduceMotion', '움직임 줄이기 (전환 효과 끄기)'],
+    ['chatShortcut', '⌘/Ctrl + Alt + C 로 어디서든 말 걸기']
   ];
 
   let root: HTMLElement;
@@ -213,6 +214,7 @@
       <output id="out-petScale">{stepperText('petScale', settings.petScale)}</output>
       <button type="button" onclick={() => step('petScale', 1)}>+</button></div>
     {#each PET_TOGGLES as [key, label] (key)}{@render toggleRow(key, label)}{/each}
+    <div class="hint">단축키는 다른 앱의 같은 키를 가져가므로 기본으로 꺼져 있어요. 메뉴 막대(트레이) 아이콘에서도 말 걸기를 할 수 있어요.</div>
   </div>
   <div class="section-title">모드 <small>행동 스크립트</small></div>
   <div class="frame well setting-group">
@@ -269,7 +271,7 @@
     <button type="button" class="grow" id="reset-position" onclick={() => api.resetPosition()}>{@html pixelIcon('home')} 펫 위치 초기화</button>
     <button class="ghost" type="button" onclick={() => api.quit()}>펫 종료</button>
   </div>
-  <div class="hint">펫을 잃어버렸다면 ⌘/Ctrl + Alt + P 로 오른쪽 아래로 불러올 수 있어요.</div>
+  <div class="hint">펫을 잃어버렸다면 ⌘/Ctrl + Alt + P 나 메뉴 막대(트레이) 아이콘의 "위치 초기화"로 오른쪽 아래로 불러올 수 있어요.</div>
   <div id="ai-page" hidden={!aiOpen}><AiSettings open={aiOpen} onBack={() => showAiPage(false)} /></div>
 </div>
 
